@@ -1,4 +1,4 @@
-//This program is free software: you can redistribute it and/or modify
+﻿//This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
@@ -15,11 +15,13 @@
 #include <QDesktopServices>
 #include "syslog.hpp"
 #include "exception.hpp"
+#include "hugglequeuefilter.hpp"
 #include "huggleparser.hpp"
 #include "localization.hpp"
+#include "wikipage.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
-
 Configuration * Configuration::HuggleConfiguration = nullptr;
 
 Configuration::Configuration()
@@ -40,9 +42,6 @@ Configuration::Configuration()
     this->Platform = HUGGLE_UPDATER_PLATFORM_TYPE;
     this->ProjectConfig = new ProjectConfiguration();
     this->UserConfig = new UserConfiguration();
-    this->ProjectConfig->DeletionSummaries << "Deleted page using Huggle";
-    this->ProjectConfig->SoftwareRevertDefaultSummary = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to"\
-            " last revision by $2 using huggle software rollback (reverted by $3 revisions to revision $4)";
 
     this->MakeShortcut("main-revert-and-warn", "shortcut-raw", "Q");
     this->MakeShortcut("main-exit", "shortcut-exit");
@@ -83,6 +82,7 @@ Configuration::Configuration()
     this->MakeShortcut("main-revert-8", "shortcut-x-revert");
     this->MakeShortcut("main-revert-9", "shortcut-x-revert");
     this->MakeShortcut("main-talk", "shortcut-talk", "T");
+    this->MakeShortcut("main-mytalk", "shortcut-my-talk", "Alt+M");
     this->MakeShortcut("main-open-in-browser", "shortcut-open", "O");
     this->MakeShortcut("main-good", "shortcut-good", "G");
 
@@ -104,18 +104,15 @@ Configuration::Configuration()
                  << "October"
                  << "November"
                  << "December";
-
-    this->ProjectConfig->ProtectReason = "Persistent [[WP:VAND|vandalism]]";
-    this->ProjectConfig->BlockExpiryOptions.append("indefinite");
 }
 
 Configuration::~Configuration()
 {
-    QStringList ol = this->UserConfig->UserOptions.keys();
+    QStringList ol = this->ExtensionData.keys();
     while (ol.count())
     {
-        HuggleOption *option = this->UserConfig->UserOptions[ol[0]];
-        this->UserConfig->UserOptions.remove(ol[0]);
+        ExtensionConfig *option = this->ExtensionData[ol[0]];
+        this->ExtensionData.remove(ol[0]);
         delete option;
         ol.removeAt(0);
     }
@@ -168,7 +165,7 @@ QStringList Configuration::SetUserOptionList(QString key_, QString config_, QStr
     {
         // we must not add 2 same
         throw new Huggle::Exception("This option is already in a list you can't have multiple same keys in it",
-                                    "void Configuration::SetOption(QString key, QVariant data)");
+                                    "void Configuration::SetUserOptionList(QString key, QVariant data)");
     }
     QStringList value = HuggleParser::ConfigurationParse_QL(key_, config_, default_, CS);
     HuggleOption *h = new HuggleOption(key_, value, value == default_);
@@ -197,6 +194,7 @@ QString Configuration::GetSafeUserString(QString key_, QString default_value)
     HuggleOption *option = this->GetOption(key_);
     if (option != nullptr)
         return option->GetVariant().toString();
+
     return default_value;
 }
 
@@ -334,17 +332,17 @@ QString Configuration::MakeLocalUserConfig()
     configuration_ += "patrol-speedy:true\n";
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     configuration_ += "confirm-multiple:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmMultipleEdits) + "\n";
-    configuration_ += "confirm-page:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmPage) + "\n";
-    configuration_ += "confirm-same:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmSame) + "\n";
+    configuration_ += "confirm-talk:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmTalk) + "\n";
+    // configuration_ += "confirm-page:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmPage) + "\n";
+    // configuration_ += "confirm-same:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmSame) + "\n";
     configuration_ += "confirm-self-revert:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmOnSelfRevs) + "\n";
-    configuration_ += "confirm-warned:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmWarned) + "\n";
-    configuration_ += "confirm-range:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmRange) + "\n";
+    configuration_ += "confirm-whitelist:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmWL) + "\n";
+    //configuration_ += "confirm-warned:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmWarned) + "\n";
+    // configuration_ += "confirm-range:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmRange) + "\n";
     configuration_ += "default-summary:" + HuggleConfiguration->ProjectConfig->DefaultSummary + "\n";
     configuration_ += "// this option will change the behaviour of automatic resolution, be carefull\n";
     configuration_ += "revert-auto-multiple-edits:" + Bool2String(HuggleConfiguration->RevertOnMultipleEdits) + "\n";
     configuration_ += "automatically-resolve-conflicts:" + Bool2String(HuggleConfiguration->UserConfig_AutomaticallyResolveConflicts) + "\n";
-    configuration_ += "confirm-page:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmPage) + "\n";
-    configuration_ += "confirm-same:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmSame) + "\n";
     configuration_ += "software-rollback:" + Bool2String(HuggleConfiguration->EnforceManualSoftwareRollback) + "\n";
     configuration_ += "diff-font-size:" + QString::number(HuggleConfiguration->SystemConfig_FontSize) + "\n";
     configuration_ += "RevertOnMultipleEdits:" + Bool2String(HuggleConfiguration->RevertOnMultipleEdits) + "\n";
@@ -464,6 +462,7 @@ void Configuration::LoadSystemConfig(QString fn)
     conf.setContent(file.readAll());
     file.close();
     QDomNodeList l = conf.elementsByTagName("local");
+    QDomNodeList e = conf.elementsByTagName("extern");
     int item = 0;
     while (item < l.count())
     {
@@ -606,6 +605,22 @@ void Configuration::LoadSystemConfig(QString fn)
             continue;
         }
     }
+    item = 0;
+    while (item < e.count())
+    {
+        QDomElement option = l.at(item).toElement();
+        item++;
+        if (!option.attributes().contains("extension") || !option.attributes().contains("name"))
+            continue;
+        QString ExtensionName = option.attribute("extension");
+        QString KeyName = option.attribute("name");
+        if (!Configuration::HuggleConfiguration->ExtensionData.contains(ExtensionName))
+        {
+            // we need to insert a new option list because this extension is not yet known
+            Configuration::HuggleConfiguration->ExtensionData.insert(ExtensionName, new ExtensionConfig());
+        }
+        Configuration::HuggleConfiguration->ExtensionData[ExtensionName]->SetOption(KeyName, option.attribute("value"));
+    }
     Huggle::Syslog::HuggleLogs->DebugLog("Finished conf");
 }
 
@@ -652,6 +667,20 @@ void Configuration::SaveSystemConfig()
     /////////////////////////////
     InsertConfig("VandalNw_Login", Configuration::Bool2String(Configuration::HuggleConfiguration->VandalNw_Login), writer);
     InsertConfig("GlobalConfigWikiList", Configuration::HuggleConfiguration->SystemConfig_GlobalConfigWikiList, writer);
+    QStringList extensions = Configuration::HuggleConfiguration->ExtensionData.keys();
+    foreach (QString ex, extensions)
+    {
+        ExtensionConfig *ed = Configuration::HuggleConfiguration->ExtensionData[ex];
+        QStringList options = ed->Options.keys();
+        foreach (QString option, options)
+        {
+            writer->writeStartElement("extern");
+            writer->writeAttribute("extension", ex);
+            writer->writeAttribute("name", option);
+            writer->writeAttribute("value", ed->Options[option]);
+            writer->writeEndElement();
+        }
+    }
     writer->writeEndElement();
     writer->writeEndDocument();
     delete writer;
@@ -665,7 +694,11 @@ bool Configuration::ParseGlobalConfig(QString config)
     // Sanitize page titles (huggle2 done sth. similiar at Page.SanitizeTitle before requesting them)
     this->GlobalConfig_UserConf = ReplaceSpecialUserPage(ConfigurationParse("user-config-hg3", config));
     this->GlobalConfig_UserConf_old = ReplaceSpecialUserPage(ConfigurationParse("user-config", config));
+    this->HANMask = ConfigurationParse("han-mask", config, this->HANMask);
     this->GlobalConfig_Whitelist = ConfigurationParse("whitelist-server", config);
+    QString Webquery_ = ConfigurationParse("user-agent", config, "Huggle/$1 http://en.wikipedia.org/wiki/Wikipedia:Huggle");
+    Webquery_.replace("$1", this->SystemConfig_Username);
+    this->WebqueryAgent = Webquery_.toUtf8();
     this->GlobalConfigWasLoaded = true;
     return true;
 }
@@ -727,10 +760,14 @@ bool Configuration::ParseProjectConfig(QString config)
     this->ProjectConfig->WarningLevel = (byte_ht)ConfigurationParse("warning-mode", config, "4").toInt();
     this->ProjectConfig->WarningDefs = HuggleParser::ConfigurationParse_QL("warning-template-tags", config);
     // Reverting
-    this->ProjectConfig->ConfirmMultipleEdits = SafeBool(ConfigurationParse("confirm-multiple", config));
-    this->ProjectConfig->ConfirmRange = SafeBool(ConfigurationParse("confirm-range", config));
-    this->ProjectConfig->ConfirmSame = SafeBool(ConfigurationParse("confirm-same", config));
-    this->ProjectConfig->ConfirmWarned = SafeBool(ConfigurationParse("confirm-warned", config));
+    this->ProjectConfig->ConfirmWL = SafeBool(ConfigurationParse("confirm-ignored", config, "true"));
+    this->ProjectConfig->ConfirmMultipleEdits = SafeBool(ConfigurationParse("confirm-multiple", config, ""));
+    this->ProjectConfig->ConfirmTalk = SafeBool(ConfigurationParse("confirm-talk", config, "true"));
+    // this->ProjectConfig->ConfirmRange = SafeBool(ConfigurationParse("confirm-range", config, "true"));
+    // this->ProjectConfig->ConfirmPage = SafeBool(ConfigurationParse("confirm-page", config, "true"));
+    // this->ProjectConfig->ConfirmSame = SafeBool(ConfigurationParse("confirm-same", config, "true"));
+    this->ProjectConfig->ConfirmOnSelfRevs = SafeBool(ConfigurationParse("confirm-self-revert", config, "true"));
+    // this->ProjectConfig->ConfirmWarned = SafeBool(ConfigurationParse("confirm-warned", config, "true"));
     this->UserConfig_AutomaticallyResolveConflicts = SafeBool(ConfigurationParse("automatically-resolve-conflicts", config), false);
     // Welcoming
     this->WelcomeMP = ConfigurationParse("startup-message-location", config, "Project:Huggle/Message");
@@ -748,6 +785,22 @@ bool Configuration::ParseProjectConfig(QString config)
     this->ProjectConfig->TemplateAge = ConfigurationParse("template-age", config, QString::number(this->ProjectConfig->TemplateAge)).toInt();
     // UAA
     this->ProjectConfig->UAAPath = ConfigurationParse("uaa", config);
+    this->ProjectConfig->TaggingSummary = ConfigurationParse("tag-summary", config, "Tagging page");
+    this->ProjectConfig->Tags = HuggleParser::ConfigurationParse_QL("tags", config, true);
+    QStringList t2 = HuggleParser::ConfigurationParse_QL("tags-detailed", config, true);
+    foreach (QString item, t2)
+    {
+        // we need to copy the tags from this other list
+        // to keep h2 work with old ones
+        if (item.contains(";"))
+        {
+            // extract name
+            QString name = item.mid(0, item.indexOf(";"));
+            if (this->ProjectConfig->Tags.contains(name))
+                this->ProjectConfig->Tags.removeOne(name);
+        }
+        this->ProjectConfig->Tags.append(item);
+    }
     // Blocking
     this->ProjectConfig->WhitelistScore = ConfigurationParse("score-wl", config, "-800").toInt();
     this->ProjectConfig->BlockMessage = ConfigurationParse("block-message", config);
@@ -898,6 +951,10 @@ bool Configuration::ParseUserConfig(QString config)
     this->ProjectConfig->WarningDefs = this->SetUserOptionList("warning-template-tags", config, this->ProjectConfig->WarningDefs);
     this->ProjectConfig->BotScore = this->SetOption("score-bot", config, this->ProjectConfig->BotScore).toInt();
     HuggleQueueFilter::Filters += HuggleParser::ConfigurationParseQueueList(config, false);
+    this->ProjectConfig->ConfirmMultipleEdits = SafeBool(ConfigurationParse("confirm-multiple", config), this->ProjectConfig->ConfirmMultipleEdits);
+    this->ProjectConfig->ConfirmTalk = SafeBool(ConfigurationParse("confirm-talk", config), this->ProjectConfig->ConfirmTalk);
+    this->ProjectConfig->ConfirmOnSelfRevs = SafeBool(ConfigurationParse("confirm-self-revert", config), this->ProjectConfig->ConfirmOnSelfRevs);
+    this->ProjectConfig->ConfirmWL = SafeBool(ConfigurationParse("confirm-whitelist", config), this->ProjectConfig->ConfirmWL);
     this->UserConfig->TruncateEdits = SafeBool(ConfigurationParse("TruncateEdits", config, "false"));
     this->UserConfig->HistoryLoad = SafeBool(ConfigurationParse("HistoryLoad", config, "true"));
     this->UserConfig->LastEdit = SafeBool(ConfigurationParse("SkipToLastEdit", config, "false"));
@@ -933,6 +990,13 @@ bool Configuration::ParseUserConfig(QString config)
     this->NormalizeConf();
     /// \todo Lot of configuration options are missing
     return true;
+}
+
+QString Configuration::GetExtensionConfig(QString extension, QString name, QString ms)
+{
+    if (!this->ExtensionData.contains(extension))
+        return ms;
+    return this->ExtensionData[extension]->GetOption(name, ms);
 }
 
 QDateTime Configuration::ServerTime()
@@ -1041,6 +1105,8 @@ Shortcut::Shortcut(QString name, QString description)
         this->ID = HUGGLE_ACCEL_MAIN_GOOD;
     else if (name == "main-open-in-browser")
         this->ID = HUGGLE_ACCEL_MAIN_OPEN_IN_BROWSER;
+    else if (name == "main-mytalk")
+        this->ID = HUGGLE_ACCEL_MAIN_MYTALK_PAGE;
     else if (name == "main-talk")
         this->ID = HUGGLE_ACCEL_MAIN_TALK;
     else if (name.startsWith("main-revert-and-warn-"))
@@ -1119,4 +1185,24 @@ Shortcut::Shortcut(const Shortcut &copy)
     this->QAccel = copy.QAccel;
     this->ID = copy.ID;
     this->Description = copy.Description;
+}
+
+
+void ExtensionConfig::SetOption(QString name, QString value)
+{
+    if (this->Options.contains(name))
+    {
+        this->Options[name] = value;
+        return;
+    }
+    this->Options.insert(name, value);
+}
+
+QString ExtensionConfig::GetOption(QString name, QString md)
+{
+    // only return the value if we have it
+    if (!this->Options.contains(name))
+        return md;
+
+    return this->Options[name];
 }

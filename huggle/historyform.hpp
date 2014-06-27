@@ -16,19 +16,22 @@
 #include <Python.h>
 #endif
 
-#include <QTimer>
-#include <QToolTip>
 #include <QDockWidget>
 #include "apiquery.hpp"
 #include "wikiedit.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Ui
 {
     class HistoryForm;
 }
 
+class QTimer;
 namespace Huggle
 {
+    class ApiQuery;
+    class WikiEdit;
+
     //! This is a small gadget that is displayed on top of main window
 
     //! It can be used to retrieve a history of currently displayed page
@@ -36,7 +39,7 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit HistoryForm(QWidget *parent = 0);
+            explicit HistoryForm(QWidget *parent = nullptr);
             ~HistoryForm();
             void Read();
             void Update(WikiEdit *edit);
@@ -53,11 +56,11 @@ namespace Huggle
             void MakeSelectedRowBold();
             bool RetrievingEdit;
             Ui::HistoryForm *ui;
-            WikiEdit* CurrentEdit;
-            ApiQuery *query = nullptr;
+            Collectable_SmartPtr<WikiEdit> CurrentEdit;
+            Collectable_SmartPtr<ApiQuery> query;
             int PreviouslySelectedRow;
             int SelectedRow;
-            WikiEdit* RetrievedEdit;
+            Collectable_SmartPtr<WikiEdit> RetrievedEdit;
             //! This timer is used to check a query status
             QTimer *t1 = nullptr;
     };

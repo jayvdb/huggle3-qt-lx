@@ -1,12 +1,16 @@
+// IMPORTANT: this file has a different license than rest of huggle
+
 //This program is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Lesser General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
 //This program is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Lesser General Public License for more details.
+
+// Copyright (c) Petr Bena 2014
 
 #ifndef GC_H
 #define GC_H
@@ -21,8 +25,6 @@
 #include <QThread>
 #include <QMutex>
 #include <QList>
-#include "collectable.hpp"
-#include "gc_thread.hpp"
 
 #define HUGGLECONSUMER_WIKIEDIT                 0
 #define HUGGLECONSUMER_QUEUE                    1
@@ -41,6 +43,7 @@
 #define HUGGLECONSUMER_MAINFORM_HISTORICAL      13
 #define HUGGLECONSUMER_QP_MODS                  14
 #define HUGGLECONSUMER_REVERTQUERYTMR           16
+#define HUGGLECONSUMER_CALLBACK                 20
 #define HUGGLECONSUMER_CORE                     800
 
 // some macros so that people hate us

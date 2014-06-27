@@ -19,14 +19,8 @@
 
 #include <QApplication>
 #include <QList>
-#include <QPluginLoader>
+#include <QDateTime>
 #include <QFile>
-#include "login.hpp"
-#include "mainwindow.hpp"
-#include "iextension.hpp"
-#include "hugglequeuefilter.hpp"
-#include "resources.hpp"
-#include "querypool.hpp"
 
 #ifdef PYTHONENGINE
 #include "pythonengine.hpp"
@@ -43,7 +37,9 @@ namespace Huggle
 #endif
     class Login;
     class MainWindow;
+    class Exception;
     class HuggleFeed;
+    class GC;
     class ProcessorThread;
     class HuggleQueueFilter;
     class Syslog;
@@ -122,7 +118,7 @@ namespace Huggle
             //! Change this to false when you want to terminate all threads properly (you will need to wait few ms)
             bool Running;
             //! Garbage collector
-            GC *gc;
+            Huggle::GC *gc;
 #ifdef PYTHONENGINE
             Python::PythonEngine *Python;
 #endif

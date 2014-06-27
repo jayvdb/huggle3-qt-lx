@@ -23,6 +23,7 @@
 #include "editquery.hpp"
 #include "wikiedit.hpp"
 #include "apiquery.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Huggle
 {
@@ -36,7 +37,6 @@ namespace Huggle
     class RevertQuery : public QObject, public Query
     {
             Q_OBJECT
-
         public:
             static QString GetCustomRevertStatus(QString RevertData);
 
@@ -72,14 +72,12 @@ namespace Huggle
             void Exit();
             //! Whether software rollback should be used instead of regular rollback
             bool UsingSR = false;
-            QString SR_EditToken = "";
-            ApiQuery *qPreflight = nullptr;
-            ApiQuery *qRevert = nullptr;
-            ApiQuery *qHistoryInfo = nullptr;
-            ApiQuery *qRetrieve = nullptr;
-            ApiQuery *qSR_PageToken = nullptr;
-            EditQuery *eqSoftwareRollback = nullptr;
-            WikiEdit *edit;
+            Collectable_SmartPtr<ApiQuery> qPreflight;
+            Collectable_SmartPtr<ApiQuery> qRevert;
+            Collectable_SmartPtr<ApiQuery> qHistoryInfo;
+            Collectable_SmartPtr<ApiQuery> qRetrieve;
+            Collectable_SmartPtr<EditQuery> eqSoftwareRollback;
+            Collectable_SmartPtr<WikiEdit> edit;
             QTimer *timer = nullptr;
             //! Revert only and only last edit
             bool OneEditOnly = false;

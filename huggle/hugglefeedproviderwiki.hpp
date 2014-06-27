@@ -19,12 +19,14 @@
 #endif
 
 #include <QList>
+#include <QDomElement>
 #include <QStringList>
 #include <QString>
 #include <QDateTime>
-#include "hugglefeed.hpp"
+#include "collectable_smartptr.hpp"
 #include "apiquery.hpp"
 #include "wikiedit.hpp"
+#include "hugglefeed.hpp"
 
 namespace Huggle
 {
@@ -56,7 +58,7 @@ namespace Huggle
             bool Paused = false;
             bool Refreshing;
             QList<WikiEdit*> *Buffer;
-            ApiQuery *qReload;
+            Collectable_SmartPtr<ApiQuery> qReload;
             QDateTime LastRefresh;
             QDateTime LatestTime;
     };

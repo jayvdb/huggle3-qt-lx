@@ -98,6 +98,11 @@ Language *Localizations::MakeLanguageUsingXML(QString text, QString name)
             continue;
         }
         QString n_ = item.attribute("name");
+        if (n_ == "isrtl")
+        {
+            l->IsRTL = Configuration::SafeBool(item.text());
+            continue;
+        }
         if (l->Messages.contains(n_))
         {
             Syslog::HuggleLogs->WarningLog("Language " + name + " contains more than 1 definition for " + n_);
@@ -279,6 +284,22 @@ QString Localizations::Localize(QString key, QString parameter)
     QStringList list;
     list << parameter;
     return Localize(key, list);
+}
+
+bool Localizations::IsRTL()
+{
+    bool rtl = false;
+    int c = 0;
+    while (c<this->LocalizationData.count())
+    {
+        if (this->LocalizationData.at(c)->LanguageName == this->PreferredLanguage)
+        {
+            Language *l = this->LocalizationData.at(c);
+            rtl = l->IsRTL;
+        }
+        c++;
+    }
+    return rtl;
 }
 
 Language::Language(QString name)

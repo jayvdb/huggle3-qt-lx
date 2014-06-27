@@ -9,10 +9,13 @@
 //GNU General Public License for more details.
 
 #include "wikiedit.hpp"
+#include <QtXml>
+#include <QMutex>
+#include "wikiuser.hpp"
+#include "wikipage.hpp"
 #include "configuration.hpp"
 #include "generic.hpp"
 #include "core.hpp"
-#include "collectable.hpp"
 #include "querypool.hpp"
 #include "syslog.hpp"
 #include "mediawiki.hpp"
@@ -38,10 +41,6 @@ WikiEdit::WikiEdit()
     this->TrustworthEdit = false;
     this->RollbackToken = "";
     this->PostProcessing = false;
-    this->qDifference = nullptr;
-    this->qTalkpage = nullptr;
-    this->qText = nullptr;
-    this->qUser = nullptr;
     this->ProcessingDiff = false;
     this->ProcessingRevs = false;
     this->DiffText = "";
@@ -84,9 +83,6 @@ WikiEdit::~WikiEdit()
             this->Next->Previous = nullptr;
         }
     }
-    GC_DECNAMEDREF(this->qDifference, HUGGLECONSUMER_WIKIEDIT);
-    GC_DECNAMEDREF(this->qTalkpage, HUGGLECONSUMER_WIKIEDIT);
-    GC_DECNAMEDREF(this->qUser, HUGGLECONSUMER_WIKIEDIT);
     delete this->User;
     delete this->Page;
 }
@@ -112,7 +108,6 @@ bool WikiEdit::FinalizePostProcessing()
             Syslog::HuggleLogs->ErrorLog("Unable to fetch user information for " + this->User->Username + ": " +
                                          this->qUser->Result->ErrorMessage);
             // we can remove this query now
-            this->qUser->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
             this->qUser = nullptr;
 
         } else
@@ -160,7 +155,6 @@ bool WikiEdit::FinalizePostProcessing()
                 this->Score += Configuration::HuggleConfiguration->ProjectConfig->BotScore;
             }
             // let's delete it now
-            this->qUser->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
             this->qUser = nullptr;
         }
     }
@@ -242,7 +236,6 @@ bool WikiEdit::FinalizePostProcessing()
             // whoa it ended in error, we need to get rid of this edit somehow now
             Huggle::Syslog::HuggleLogs->WarningLog("Failed to obtain diff for " + this->Page->PageName + " the error was: "
                                                    + this->qDifference->Result->Data);
-            this->qDifference->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
             this->qDifference = nullptr;
             this->PostProcessing = false;
             return true;
@@ -290,7 +283,6 @@ bool WikiEdit::FinalizePostProcessing()
             Huggle::Syslog::HuggleLogs->WarningLog("Failed to obtain diff for " + this->Page->PageName + " the error was: "
                                                  + this->qDifference->Result->Data);
         }
-        this->qDifference->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
         this->qDifference = nullptr;
         // we are done processing the diff
         this->ProcessingDiff = false;
@@ -309,14 +301,13 @@ bool WikiEdit::FinalizePostProcessing()
             this->Page->Contents = result;
             this->Page->Contents.replace("//", "https://");
         }
-        GC_DECREF(this->qText);
+        this->qText = nullptr;
     }
 
     // check if everything was processed and clean up
-    if (this->ProcessingRevs || this->ProcessingDiff || this->qUser || this->qText)
+    if (this->ProcessingRevs || this->ProcessingDiff || this->qUser != nullptr || this->qText != nullptr)
         return false;
 
-    this->qTalkpage->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
     this->qTalkpage = nullptr;
     this->ProcessingByWorkerThread = true;
     ProcessorThread::EditLock.lock();
@@ -425,7 +416,6 @@ void WikiEdit::PostProcess()
 
     this->PostProcessing = true;
     this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk());
-    this->qTalkpage->RegisterConsumer(HUGGLECONSUMER_WIKIEDIT);
     QueryPool::HugglePool->AppendQuery(this->qTalkpage);
     this->qTalkpage->Target = "Retrieving tp " + this->User->GetTalk();
     this->qTalkpage->Process();
@@ -447,13 +437,11 @@ void WikiEdit::PostProcess()
         }
         this->qDifference->Target = Page->PageName;
         QueryPool::HugglePool->AppendQuery(this->qDifference);
-        this->qDifference->RegisterConsumer(HUGGLECONSUMER_WIKIEDIT);
         this->qDifference->Process();
         this->ProcessingDiff = true;
     } else if (!this->Page->Contents.size())
     {
         this->qText = Generic::RetrieveWikiPageContents(this->Page->PageName, true);
-        this->qText->IncRef();
         this->qText->Target = "Retrieving content of " + this->Page->PageName;
         QueryPool::HugglePool->AppendQuery(this->qText);
         this->qText->Process();
@@ -464,7 +452,6 @@ void WikiEdit::PostProcess()
     this->qUser = new ApiQuery(ActionQuery);
     this->qUser->Parameters = "list=users&usprop=blockinfo%7Cgroups%7Ceditcount%7Cregistration&ususers="
                                 + QUrl::toPercentEncoding(this->User->Username);
-    this->qUser->RegisterConsumer(HUGGLECONSUMER_WIKIEDIT);
     this->qUser->Process();
 }
 

@@ -12,10 +12,13 @@
 #include <QMessageBox>
 #include "configuration.hpp"
 #include "core.hpp"
+#include "exception.hpp"
 #include "huggleparser.hpp"
+#include "mainwindow.hpp"
 #include "localization.hpp"
 #include "warnings.hpp"
 #include "ui_warninglist.h"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
@@ -28,7 +31,6 @@ WarningList::WarningList(WikiEdit *edit, QWidget *parent) : QDialog(parent), ui(
         // unlikely to happen
         throw new Huggle::Exception("null user", "WarningList::WarningList(WikiEdit *edit, QWidget *parent) : QDialog(parent), ui(new Ui::WarningList)");
     }
-    this->wikiEdit->RegisterConsumer("WarningList");
     this->setWindowTitle(_l("warning-title", edit->User->Username));
     this->ui->pushButton->setText(_l(this->ui->pushButton->text()));
     // insert all possible warnings now
@@ -46,10 +48,7 @@ WarningList::WarningList(WikiEdit *edit, QWidget *parent) : QDialog(parent), ui(
 
 WarningList::~WarningList()
 {
-    if (this->wikiEdit != nullptr)
-    {
-        this->wikiEdit->UnregisterConsumer("WarningList");
-    }
+    this->wikiEdit.Delete();
     delete this->ui;
 }
 
@@ -78,7 +77,6 @@ void WarningList::on_pushButton_clicked()
     }
     if (ptr_Warning_ != nullptr)
         PendingWarning::PendingWarnings.append(ptr_Warning_);
-    this->wikiEdit->UnregisterConsumer("WarningList");
-    this->wikiEdit = nullptr;
+    this->wikiEdit.Delete();
     this->hide();
 }

@@ -19,10 +19,11 @@
 #include <Python.h>
 #endif
 
+#include <QString>
+
 #include <QList>
 #include <QStringList>
 #include <QHash>
-#include <QString>
 #include "huggleoption.hpp"
 
 namespace Huggle
@@ -42,6 +43,7 @@ namespace Huggle
     class UserConfiguration
     {
         public:
+            ~UserConfiguration();
             QHash<QString, HuggleOption*> UserOptions;
             bool                    EnforceMonthsAsHeaders = true;
             unsigned int            TalkPageFreshness = 20;

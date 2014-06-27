@@ -23,6 +23,7 @@
 #include <QDateTime>
 #include <QHeaderView>
 #include <QDockWidget>
+#include "collectable_smartptr.hpp"
 #include "query.hpp"
 
 namespace Ui
@@ -55,9 +56,9 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit ProcessList(QWidget *parent = 0);
+            explicit ProcessList(QWidget *parent = nullptr);
             //! Insert a query to process list, the query is automatically removed once it's done
-            void InsertQuery(Query* query);
+            void InsertQuery(Collectable_SmartPtr<Query> query);
             //! Remove all entries in process list
             void Clear();
             //! Return true if there is already this in a list

@@ -9,11 +9,13 @@
 //GNU General Public License for more details.
 
 #include "apiquery.hpp"
-#include <QtXml/QtXml>
+#include <QtXml>
 #include <QUrl>
 #include "syslog.hpp"
+#include "revertquery.hpp"
 #include "exception.hpp"
 #include "configuration.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
 
@@ -89,7 +91,10 @@ void ApiQuery::FinishRollback()
 {
     this->CustomStatus = RevertQuery::GetCustomRevertStatus(this->Result->Data);
     if (this->CustomStatus != "Reverted")
+    {
         this->Result->SetError();
+        this->ProcessFailure();
+    }
 }
 
 ApiQuery::ApiQuery()
@@ -115,6 +120,7 @@ void ApiQuery::Finished()
         this->reply->deleteLater();
         this->reply = nullptr;
         this->Status = StatusDone;
+        this->ProcessFailure();
         return;
     }
     if (this->ActionPart == "rollback")
@@ -151,6 +157,7 @@ void ApiQuery::Process()
         url = QUrl::fromEncoded(this->URL.toUtf8());
     }
     QNetworkRequest request(url);
+    request.setRawHeader("User-Agent", Configuration::HuggleConfiguration->WebqueryAgent);
     if (this->UsingPOST)
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
     if (Configuration::HuggleConfiguration->SystemConfig_DryMode && this->EditingQuery)
@@ -158,6 +165,7 @@ void ApiQuery::Process()
         this->Result = new QueryResult();
         this->Result->Data = "DM (didn't run a query)";
         this->Status = StatusDone;
+        this->ProcessCallback();
         Syslog::HuggleLogs->Log("If I wasn't in dry mode I would execute this query (post=" + Configuration::Bool2String(this->UsingPOST) +
                                 ") " + this->URL + "\ndata: " + QUrl::fromPercentEncoding(this->Parameters.toUtf8()));
         return;

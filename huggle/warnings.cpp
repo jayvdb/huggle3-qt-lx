@@ -9,9 +9,16 @@
 //GNU General Public License for more details.
 
 #include "warnings.hpp"
+#include <QtXml>
 #include "configuration.hpp"
+#include "exception.hpp"
+#include "huggleparser.hpp"
 #include "mainwindow.hpp"
 #include "querypool.hpp"
+#include "message.hpp"
+#include "reportuser.hpp"
+#include "revertquery.hpp"
+#include "wikiuser.hpp"
 #include "generic.hpp"
 #include "localization.hpp"
 #include "hooks.hpp"
@@ -32,14 +39,11 @@ PendingWarning::PendingWarning(Message *message, QString warning, WikiEdit *edit
     // we register a unique consumer here in case that multiple warnings pointer to same
     edit->RegisterConsumer("PendingWarning" + QString::number(gcid));
     this->Warning = message;
-    this->Query = nullptr;
 }
 
 PendingWarning::~PendingWarning()
 {
     this->RelatedEdit->UnregisterConsumer("PendingWarning" + QString::number(gcid));
-    if (this->Query != nullptr)
-        this->Query->DecRef();
     this->Warning->UnregisterConsumer(HUGGLECONSUMER_CORE_MESSAGE);
 }
 
@@ -93,7 +97,7 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
     if (!MessageText_.size())
     {
         // This is very rare error, no need to localize it
-        Syslog::HuggleLogs->Log("There is no such warning template " + Template_);
+        Syslog::HuggleLogs->Log(_l("missing-warning",Template_));
         return nullptr;
     }
 
@@ -219,7 +223,7 @@ void Warnings::ResendWarnings()
                     // there was some error, which suck, we print it to console and delete this warning, there is a little point
                     // in doing anything else to fix it.
                     Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user " + warning->Warning->user->Username
-                                     + " the warning will not be delivered to this user, check debug logs for more");
+                                        + " the warning will not be delivered to this user, check debug logs for more");
                     Syslog::HuggleLogs->DebugLog(warning->Query->Result->Data);
                     PendingWarning::PendingWarnings.removeAt(x);
                     delete warning;
@@ -280,7 +284,6 @@ void Warnings::ResendWarnings()
                 warning->Query->SetAction(ActionQuery);
                 warning->Query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
                                              "&titles=" + QUrl::toPercentEncoding(warning->Warning->user->GetTalk());
-                warning->Query->IncRef();
                 QueryPool::HugglePool->AppendQuery(warning->Query);
                 //! \todo LOCALIZE ME
                 warning->Query->Target = "Retrieving tp of " + warning->Warning->user->GetTalk();
@@ -289,15 +292,10 @@ void Warnings::ResendWarnings()
             {
                 Syslog::HuggleLogs->DebugLog("Expired " + warning->Warning->user->Username + " reparsing it now");
                 // we need to fetch the talk page again and later we need to issue new warning
-                if (warning->Query != nullptr)
-                {
-                    Syslog::HuggleLogs->DebugLog("Possible memory leak in MainWindow::ResendWarning: warning->Query != NULL");
-                }
                 warning->Query = new Huggle::ApiQuery();
                 warning->Query->SetAction(ActionQuery);
                 warning->Query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
                                              "&titles=" + QUrl::toPercentEncoding(warning->Warning->user->GetTalk());
-                warning->Query->IncRef();
                 QueryPool::HugglePool->AppendQuery(warning->Query);
                 //! \todo LOCALIZE ME
                 warning->Query->Target = "Retrieving tp of " + warning->Warning->user->GetTalk();

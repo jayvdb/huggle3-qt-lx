@@ -19,7 +19,6 @@
 #include <QUrl>
 #include <QDialog>
 #include <QTimer>
-#include "webserverquery.hpp"
 
 namespace Ui
 {
@@ -39,7 +38,7 @@ namespace Huggle
             Q_OBJECT
 
         public:
-            explicit UpdateForm(QWidget *parent = 0);
+            explicit UpdateForm(QWidget *parent = nullptr);
             void Check();
             ~UpdateForm();
             WebserverQuery *qData;

@@ -21,9 +21,6 @@
 #include <QFrame>
 #include <QWebHistory>
 #include <QWebFrame>
-#include "wikipage.hpp"
-#include "wikiedit.hpp"
-#include "resources.hpp"
 
 namespace Ui
 {
@@ -41,7 +38,7 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit HuggleWeb(QWidget *parent = 0);
+            explicit HuggleWeb(QWidget *parent = nullptr);
             ~HuggleWeb();
             QString CurrentPageName();
             /*!

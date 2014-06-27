@@ -13,7 +13,13 @@
 #include "configuration.hpp"
 #include "localization.hpp"
 #include "ui_vandalnw.h"
+#include "hugglequeue.hpp"
+#include "mainwindow.hpp"
+#include "networkirc.hpp"
 #include "syslog.hpp"
+#include "wikiedit.hpp"
+#include "wikipage.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
@@ -117,7 +123,10 @@ void VandalNw::WarningSent(WikiUser *user, byte_ht Level)
 
 QString VandalNw::GetChannel()
 {
-    return QString(Configuration::HuggleConfiguration->Project->IRCChannel + ".huggle").toLower();
+    QString channel = Configuration::HuggleConfiguration->HANMask;
+    channel.replace("$feed", Configuration::HuggleConfiguration->Project->IRCChannel);
+    channel.replace("$wiki", Configuration::HuggleConfiguration->Project->Name);
+    return channel;
 }
 
 bool VandalNw::IsParsed(WikiEdit *edit)

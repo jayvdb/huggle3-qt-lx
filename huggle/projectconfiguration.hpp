@@ -54,6 +54,7 @@ namespace Huggle
     class ProjectConfiguration
     {
         public:
+            ProjectConfiguration();
             void RequestLogin();
             //! Set to false when you are logged out for some reason
             bool            IsLoggedIn = false;
@@ -94,14 +95,16 @@ namespace Huggle
             QString         WelcomeSummary = "Welcoming user";
             Headings        MessageHeadings;
             int             TemplateAge = -30;
+            /// \todo move the following confirms to UserConfig, probably shouldn't read at all (initially) from ProjectConfig
             bool            ConfirmTalk = true;
             bool            ConfirmWL = true;
             bool            ConfirmOnSelfRevs = true;
             bool            ConfirmMultipleEdits = false;
-            bool            ConfirmRange = false;
-            bool            ConfirmPage = false;
-            bool            ConfirmSame = false;
-            bool            ConfirmWarned = false;
+            /// \todo implement or remove: also commented out on configuration read/write
+            // bool            ConfirmRange = false;
+            // bool            ConfirmPage = false;
+            // bool            ConfirmSame = false;
+            // bool            ConfirmWarned = false;
             bool            Patrolling = false;
             bool            PatrollingFlaggedRevs = false;
             int             IPScore = 20;
@@ -109,6 +112,7 @@ namespace Huggle
             QString         MultipleRevertSummary = "Reverted,edit by,edits by,and,other users,to last revision by,to an older version by";
             QStringList     RevertSummaries;
             QString         SoftwareRevertDefaultSummary;
+            /// \todo use rollback summary at least at mw-rollback
             QString         RollbackSummary = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to last revision by $2";
             QString         RollbackSummaryUnknownTarget = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]])";
             QString         DefaultSummary = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to last revision by $2";
@@ -166,6 +170,9 @@ namespace Huggle
             QStringList             IgnorePatterns;
             int                     TalkPageWarningScore = -800;
             bool                    GlobalRequired = true;
+            // Tagging
+            QString                 TaggingSummary;
+            QStringList             Tags;
             // This is internal only do not prefix it!!
             QList<QRegExp>          _RevertPatterns;
             int                     BotScore = -200;

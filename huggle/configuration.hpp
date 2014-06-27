@@ -20,14 +20,13 @@
 
 #include <QList>
 #include <QStringList>
+#include <QByteArray>
 #include <QHash>
 #include <QString>
-#include "hugglequeuefilter.hpp"
-#include "wikipage.hpp"
 #include "huggleoption.hpp"
-#include "wikisite.hpp"
 #include "userconfiguration.hpp"
 #include "projectconfiguration.hpp"
+class QXmlStreamWriter;
 
 #define HUGGLE_ACCEL_NONE ""
 #define HUGGLE_ACCEL_MAIN_EXIT                  0
@@ -71,6 +70,9 @@
 #define HUGGLE_ACCEL_MAIN_TALK                  38
 #define HUGGLE_ACCEL_MAIN_OPEN_IN_BROWSER       40
 #define HUGGLE_ACCEL_MAIN_GOOD                  41
+#define HUGGLE_ACCEL_MAIN_MYTALK_PAGE           42
+
+
 
 
 //! Huggle namespace contains all objects that belongs to huggle only so that they don't colide with other objects
@@ -95,6 +97,22 @@ namespace Huggle
             QString QAccel;
             int ID;
             bool Modified = false;
+    };
+
+    class ExtensionConfig
+    {
+        public:
+            void SetOption(QString name, QString value);
+            /*!
+             * \brief GetOption Retrieve an option from local config
+             * \param name Name of key
+             * \param md Value that is returned when key is missing
+             * \return Value that is associated with the key
+             */
+            QString GetOption(QString name, QString md = "");
+        private:
+            QHash<QString, QString> Options;
+            friend class Configuration;
     };
 
     //! Run time configuration of huggle
@@ -206,11 +224,13 @@ namespace Huggle
             //! Parse all information from local config, this function is used in login
             bool ParseProjectConfig(QString config);
             bool ParseUserConfig(QString config);
+            QString GetExtensionConfig(QString extension, QString name, QString ms);
             QDateTime ServerTime();
             ////////////////////////////////////////////
             // System
             ////////////////////////////////////////////
 
+            QHash<QString, ExtensionConfig*> ExtensionData;
             QHash<QString, Shortcut> Shortcuts;
             //! If it's needed to reload config of main form
             bool                     ReloadOfMainformNeeded = true;
@@ -218,6 +238,8 @@ namespace Huggle
             unsigned int    Verbosity = 0;
             //! Version
             QString         HuggleVersion;
+            QString         HANMask = "$feed.huggle";
+            QByteArray      WebqueryAgent;
             //! currently selected project
             WikiSite        *Project = nullptr;
             //! List of projects

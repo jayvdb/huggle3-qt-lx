@@ -19,10 +19,10 @@
 
 #include <QTimer>
 #include <QDialog>
-#include "wikiedit.hpp"
 #include "apiquery.hpp"
+#include "collectable_smartptr.hpp"
 #include "editquery.hpp"
-#include "wikiuser.hpp"
+#include "wikiedit.hpp"
 
 namespace Ui
 {
@@ -43,10 +43,12 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit SpeedyForm(QWidget *parent = 0);
+            explicit SpeedyForm(QWidget *parent = nullptr);
             ~SpeedyForm();
             void Init(WikiEdit *edit_);
+            Collectable_SmartPtr<WikiEdit> edit;
             QString Text;
+            QString Header;
 
         private slots:
             void OnTick();
@@ -54,13 +56,11 @@ namespace Huggle
             void on_pushButton_clicked();
 
         private:
-            void Remove();
             void Fail(QString reason);
             void processTags();
-            EditQuery *Template;
-            ApiQuery *qObtainText;
+            Collectable_SmartPtr<EditQuery> Template;
+            Collectable_SmartPtr<ApiQuery> qObtainText;
             QString base;
-            WikiEdit *edit;
             QString warning;
             QTimer *timer;
             Ui::SpeedyForm *ui;

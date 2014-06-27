@@ -19,9 +19,9 @@
 
 #include <QDockWidget>
 #include <QString>
-#include "wikiedit.hpp"
 #include "apiquery.hpp"
-#include "wikiuser.hpp"
+#include "collectable_smartptr.hpp"
+#include "wikiedit.hpp"
 
 namespace Ui
 {
@@ -42,7 +42,7 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit UserinfoForm(QWidget *parent = 0);
+            explicit UserinfoForm(QWidget *parent = nullptr);
             ~UserinfoForm();
             void ChangeUser(WikiUser *user);
             void Read();
@@ -55,9 +55,10 @@ namespace Huggle
         private:
             Ui::UserinfoForm *ui;
             WikiUser *User;
-            ApiQuery *qContributions;
+            Collectable_SmartPtr<WikiEdit> edit;
+            Collectable_SmartPtr<ApiQuery> qContributions;
             QTimer *timer;
-            WikiEdit *edit;
+
     };
 }
 

@@ -12,7 +12,9 @@
 #include <QtXml>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QTimer>
 #include "exception.hpp"
+#include "wikiuser.hpp"
 #include "wikiutil.hpp"
 #include "querypool.hpp"
 #include "localization.hpp"
@@ -28,10 +30,8 @@ BlockUser::BlockUser(QWidget *parent) : QDialog(parent), ui(new Ui::BlockUser)
     // we should initialise every variable
     this->BlockToken = "";
     this->user = nullptr;
-    this->qTokenApi = nullptr;
     this->t0 = new QTimer(this);
     connect(this->t0, SIGNAL(timeout()), this, SLOT(onTick()));
-    this->qUser = nullptr;
     this->ui->comboBox->addItem(Configuration::HuggleConfiguration->ProjectConfig->BlockReason);
     int x = 0;
     while (Configuration::HuggleConfiguration->ProjectConfig->BlockExpiryOptions.count() > x)
@@ -43,8 +43,6 @@ BlockUser::BlockUser(QWidget *parent) : QDialog(parent), ui(new Ui::BlockUser)
 
 BlockUser::~BlockUser()
 {
-    GC_DECREF(this->qUser);
-    GC_DECREF(this->qTokenApi);
     delete this->t0;
     delete this->ui;
 }
@@ -75,7 +73,6 @@ void BlockUser::GetToken()
     this->qTokenApi->Parameters = "prop=info&intoken=block&titles=User:" +
             QUrl::toPercentEncoding(this->user->Username);
     this->qTokenApi->Target = _l("block-token-1", this->user->Username);
-    this->qTokenApi->IncRef();
     QueryPool::HugglePool->AppendQuery(this->qTokenApi);
     this->qTokenApi->Process();
     this->QueryPhase = 0;
@@ -130,10 +127,8 @@ void BlockUser::CheckToken()
     }
     this->BlockToken = element.attribute("blocktoken");
     this->QueryPhase++;
-    this->qTokenApi->DecRef();
     this->qTokenApi = nullptr;
     HUGGLE_DEBUG("Block token for " + this->user->Username + ": " + this->BlockToken, 1);
-
     // let's block them
     this->qUser = new ApiQuery();
     QString nocreate = "";
@@ -158,7 +153,6 @@ void BlockUser::CheckToken()
             + noemail + autoblock + allowusertalk + "&token=" + QUrl::toPercentEncoding(BlockToken);
     this->qUser->Target = _l("blocking", this->user->Username);
     this->qUser->UsingPOST = true;
-    this->qUser->IncRef();
     QueryPool::HugglePool->AppendQuery(this->qUser);
     this->qUser->Process();
 }
@@ -189,7 +183,6 @@ void BlockUser::Block()
         mb.exec();
         this->ui->pushButton->setText("Block");
         this->qUser->Result->SetError(HUGGLE_EUNKNOWN, "Unable to block: " + reason);
-        this->qUser->DecRef();
         this->qUser = nullptr;
         this->ui->pushButton->setEnabled(true);
         this->t0->stop();
@@ -198,7 +191,6 @@ void BlockUser::Block()
     // let's assume the user was blocked
     this->ui->pushButton->setText("Blocked");
     HUGGLE_DEBUG("block result: " + this->qUser->Result->Data, 2);
-    this->qUser->DecRef();
     this->qUser = nullptr;
     this->t0->stop();
     this->sendBlockNotice(nullptr);
@@ -215,8 +207,9 @@ void BlockUser::Failed(QString reason)
     delete this->t0;
     this->t0 = nullptr;
     this->ui->pushButton->setEnabled(true);
-    GC_DECREF(this->qTokenApi);
-    GC_DECREF(this->qUser);
+    // remove the pointers
+    this->qTokenApi.Delete();
+    this->qUser.Delete();
 }
 
 void BlockUser::on_pushButton_clicked()
@@ -260,7 +253,6 @@ void Huggle::BlockUser::on_pushButton_3_clicked()
     {
         this->qUser->Parameters += "bkip=" + QUrl::toPercentEncoding(this->user->Username);
     }
-    this->qUser->IncRef();
     this->qUser->Process();
     this->QueryPhase = 2;
     this->t0->start();
@@ -275,19 +267,18 @@ void BlockUser::Recheck()
         QDomDocument d;
         d.setContent(this->qUser->Result->Data);
         QMessageBox mb;
-        mb.setWindowTitle("Result");
+        mb.setWindowTitle(_l("result"));
         QDomNodeList l = d.elementsByTagName("block");
         if (l.count() > 0)
         {
-            mb.setText("User is already blocked");
+            mb.setText(_l("warn-alreadyblocked"));
             this->user->IsBanned = true;
             this->user->Update();
         } else
         {
-            mb.setText("User is not blocked");
+            mb.setText(_l("block-not"));
         }
         mb.exec();
-        this->qUser->DecRef();
         this->qUser = nullptr;
         this->t0->stop();
         this->ui->pushButton_3->setEnabled(true);

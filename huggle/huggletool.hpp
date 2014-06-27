@@ -22,7 +22,7 @@
 #include <QDockWidget>
 #include <QFont>
 #include "apiquery.hpp"
-#include "wikipage.hpp"
+#include "collectable_smartptr.hpp"
 #include "wikiedit.hpp"
 
 namespace Ui
@@ -41,7 +41,7 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit HuggleTool(QWidget *parent = 0);
+            explicit HuggleTool(QWidget *parent = nullptr);
             ~HuggleTool();
             void SetTitle(QString title);
             void SetInfo(QString info);
@@ -59,11 +59,11 @@ namespace Huggle
             void FinishPage();
             void FinishEdit();
             Ui::HuggleTool *ui;
-            ApiQuery *query;
+            Collectable_SmartPtr<ApiQuery> query;
             //! Timer that is used to switch between events that happen when the data for page are retrieved
             QTimer *tick;
             //! Pointer used to create an instance of page before passing it to processing function
-            WikiEdit *edit;
+            Collectable_SmartPtr<WikiEdit> edit;
             //! Page download phase
 
             //! When we download a page from wiki we need to do that in several steps, this variable holds

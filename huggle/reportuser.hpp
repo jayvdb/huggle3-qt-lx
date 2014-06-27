@@ -8,7 +8,6 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
-
 #ifndef REPORTUSER_H
 #define REPORTUSER_H
 
@@ -20,13 +19,11 @@
 
 #include <QDialog>
 #include <QTimer>
-#include <QMutex>
 #include <QCheckBox>
 #include <QList>
-#include "blockuser.hpp"
 #include "editquery.hpp"
 #include "apiquery.hpp"
-#include "wikiuser.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Ui
 {
@@ -45,7 +42,7 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit ReportUser(QWidget *parent = 0);
+            explicit ReportUser(QWidget *parent = nullptr);
             //! Set a user
             bool SetUser(WikiUser *user);
             ~ReportUser();
@@ -71,15 +68,15 @@ namespace Huggle
             //! Reported user
             WikiUser *ReportedUser;
             //! This query is used to retrieve a history of user
-            ApiQuery *qHistory;
-            ApiQuery *qCheckIfBlocked;
+            Collectable_SmartPtr<ApiQuery> qHistory;
+            Collectable_SmartPtr<ApiQuery> qCheckIfBlocked;
             //! Timer is used to report the user
             QTimer *tReportUser;
             //! Timer to check the report page
             QTimer *tReportPageCheck;
             //! Used to retrieve a diff of page
             QTimer *tPageDiff;
-            EditQuery *qEdit;
+            Collectable_SmartPtr<EditQuery> qEdit;
             QList <QCheckBox*> CheckBoxes;
             //! Text of report to send to AIV page
             QString ReportText;
@@ -90,10 +87,10 @@ namespace Huggle
             bool Messaging;
             BlockUser *BlockForm;
             //! This query is used to get a block history
-            ApiQuery *qBlockHistory;
+            Collectable_SmartPtr<ApiQuery> qBlockHistory;
             //! This is used to retrieve current report page and write to it
-            ApiQuery *qReport;
-            ApiQuery *qDiff;
+            Collectable_SmartPtr<ApiQuery> qReport;
+            Collectable_SmartPtr<ApiQuery> qDiff;
     };
 }
 

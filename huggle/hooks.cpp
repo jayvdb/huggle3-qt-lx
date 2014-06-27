@@ -11,8 +11,13 @@
 #include "hooks.hpp"
 #include "core.hpp"
 #include "mainwindow.hpp"
+#include "vandalnw.hpp"
+#include "iextension.hpp"
+#include "wikiuser.hpp"
+#include "wikiedit.hpp"
 #include "syslog.hpp"
 #include "exception.hpp"
+#include "wikipage.hpp"
 
 void Huggle::Hooks::EditPreProcess(Huggle::WikiEdit *Edit)
 {
@@ -89,19 +94,38 @@ void Huggle::Hooks::BadnessScore(Huggle::WikiUser *User, int Score)
     }
 }
 
+void Huggle::Hooks::Speedy_Finished(Huggle::WikiEdit *edit, QString tags, bool success)
+{
+    foreach (Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
+    {
+        if (e->IsWorking())
+            e->Hook_SpeedyFinished((void*)edit, tags, success);
+    }
+#ifdef PYTHONENGINE
+    Huggle::Core::HuggleCore->Python->Hook_SpeedyFinished(edit, tags, success);
+#endif
+}
+
 void Huggle::Hooks::MainWindowIsLoaded(Huggle::MainWindow *window)
 {
-    int extension = 0;
-    while (extension < Huggle::Core::HuggleCore->Extensions.count())
+    foreach (Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
     {
-        Huggle::iExtension *e = Huggle::Core::HuggleCore->Extensions.at(extension);
         if (e->IsWorking())
-        {
             e->Hook_MainWindowOnLoad((void*)window);
-        }
-        extension++;
     }
 #ifdef PYTHONENGINE
     Huggle::Core::HuggleCore->Python->Hook_MainWindowIsLoaded();
+#endif
+}
+
+void Huggle::Hooks::Shutdown()
+{
+    foreach (Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
+    {
+        if ( e->IsWorking() )
+           e->Hook_Shutdown();
+    }
+#ifdef PYTHONENGINE
+    Huggle::Core::HuggleCore->Python->Hook_HuggleShutdown();
 #endif
 }

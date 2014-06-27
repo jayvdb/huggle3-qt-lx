@@ -17,6 +17,7 @@
 #endif
 
 #include <QDialog>
+#include "collectable_smartptr.hpp"
 #include "wikiedit.hpp"
 
 namespace Ui
@@ -26,20 +27,21 @@ namespace Ui
 
 namespace Huggle
 {
+    class WikiEdit;
     //! Widget that allows user to pick a warning to send to user
     class WarningList : public QDialog
     {
             Q_OBJECT
 
         public:
-            explicit WarningList(WikiEdit *edit, QWidget *parent = 0);
+            explicit WarningList(WikiEdit *edit, QWidget *parent = nullptr);
             ~WarningList();
 
         private slots:
             void on_pushButton_clicked();
 
         private:
-            WikiEdit *wikiEdit;
+            Collectable_SmartPtr<WikiEdit> wikiEdit;
             Ui::WarningList *ui;
     };
 }

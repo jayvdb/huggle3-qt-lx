@@ -10,6 +10,12 @@
 
 #include "querypool.hpp"
 #include "configuration.hpp"
+#include "query.hpp"
+#include "processlist.hpp"
+#include "message.hpp"
+#include "hugglefeed.hpp"
+#include "wikiedit.hpp"
+#include "editquery.hpp"
 #include "exception.hpp"
 #include "syslog.hpp"
 #include "wikiutil.hpp"
@@ -25,6 +31,11 @@ QueryPool::QueryPool()
 
 QueryPool::~QueryPool()
 {
+    while (this->RevertBuffer.count() != 0)
+    {
+        this->RevertBuffer.at(0)->UnregisterConsumer(HUGGLECONSUMER_QP_REVERTBUFFER);
+        this->RevertBuffer.removeAt(0);
+    }
     while (this->PendingMods.count() != 0)
     {
         this->PendingMods.at(0)->UnregisterConsumer(HUGGLECONSUMER_QP_MODS);

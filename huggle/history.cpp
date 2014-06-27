@@ -11,6 +11,8 @@
 #include "history.hpp"
 #include <QMenu>
 #include <QMessageBox>
+#include <QTimer>
+#include "revertquery.hpp"
 #include "localization.hpp"
 #include "syslog.hpp"
 #include "exception.hpp"
@@ -18,7 +20,6 @@
 #include "generic.hpp"
 #include "wikiutil.hpp"
 #include "querypool.hpp"
-#include "revertquery.hpp"
 #include "ui_history.h"
 #include "configuration.hpp"
 
@@ -59,16 +60,13 @@ History::~History()
         this->Items.removeAt(0);
         hi->DecRef();
     }
-    GC_DECREF(this->qSelf);
-    GC_DECREF(this->qTalk);
-    GC_DECREF(this->qEdit);
     delete this->ui;
     delete this->timerRetrievePageInformation;
 }
 
 void History::Undo(HistoryItem *hist)
 {
-    if (this->RevertingItem)
+    if (this->RevertingItem != nullptr)
     {
         Syslog::HuggleLogs->ErrorLog("I am already undoing another edit, please wait");
         return;
@@ -118,9 +116,8 @@ void History::Undo(HistoryItem *hist)
             }
             this->RevertingItem = hist;
             this->qEdit = Generic::RetrieveWikiPageContents("User_talk:" + hist->Target);
-            this->qEdit->IncRef();
             this->qEdit->Process();
-            QueryPool::HugglePool->AppendQuery(this->qEdit);
+            QueryPool::HugglePool->AppendQuery(this->qEdit.GetPtr());
             this->timerRetrievePageInformation->start(20);
             break;
         case HistoryRollback:
@@ -128,9 +125,8 @@ void History::Undo(HistoryItem *hist)
             // we need to revert both warning of user as well as page we rolled back
             this->RevertingItem = hist;
             this->qEdit = Generic::RetrieveWikiPageContents(hist->Target);
-            this->qEdit->IncRef();
             this->qEdit->Process();
-            QueryPool::HugglePool->AppendQuery(this->qEdit);
+            QueryPool::HugglePool->AppendQuery(this->qEdit.GetPtr());
             this->timerRetrievePageInformation->start(20);
             break;
         case HistoryUnknown:
@@ -146,9 +142,10 @@ void History::ContextMenu(const QPoint &position)
 {
     QPoint g_ = this->ui->tableWidget->mapToGlobal(position);
     QMenu menu;
-    menu.addAction("Undo");
+    QAction *undo = new QAction("Undo", &menu);
+    menu.addAction(undo);
     QAction *selection = menu.exec(g_);
-    if (selection)
+    if (selection == undo)
     {
         this->Undo(nullptr);
     }
@@ -156,16 +153,16 @@ void History::ContextMenu(const QPoint &position)
 
 void History::Tick()
 {
-    if ((this->qSelf && this->qSelf->IsProcessed()) || (this->qTalk && this->qTalk->IsProcessed()))
+    if ((this->qSelf != nullptr && this->qSelf->IsProcessed()) || (this->qTalk != nullptr && this->qTalk->IsProcessed()))
     {
-        if (this->qSelf && this->qSelf->IsFailed())
+        if (this->qSelf != nullptr && this->qSelf->IsFailed())
         {
             Syslog::HuggleLogs->ErrorLog("Unable to undo your edit to " + this->RevertingItem->Target
                                          + " error during revert: " + this->qSelf->Result->ErrorMessage);
             this->Fail();
             return;
         }
-        if (this->qTalk && this->qTalk->IsFailed())
+        if (this->qTalk != nullptr && this->qTalk->IsFailed())
         {
             Syslog::HuggleLogs->ErrorLog("Unable to undo your edit to " + this->RevertingItem->Target
                                          + " error during revert: " + this->qTalk->Result->ErrorMessage);
@@ -177,8 +174,10 @@ void History::Tick()
         Syslog::HuggleLogs->Log("Successfully undone edit to " + this->RevertingItem->Target);
         int position = this->ui->tableWidget->rowCount() - this->RevertingItem->ID;
         this->ui->tableWidget->setItem(position, 3, new QTableWidgetItem("Undone"));
-        GC_DECREF(this->qTalk);
-        GC_DECREF(this->qSelf);
+        // we need to delete all queries now
+        this->qSelf.Delete();
+        // if we don't delete this it will stop working
+        this->qTalk.Delete();
         // let's see if there is any dep and if so, let's undo it as well
         if (this->RevertingItem->UndoDependency)
         {
@@ -194,13 +193,13 @@ void History::Tick()
         return;
     }
     // we check the status of edit
-    if (this->qEdit && this->qEdit->IsProcessed())
+    if (this->qEdit != nullptr && this->qEdit->IsProcessed())
     {
         bool failed = false;
         QString user, title;
         int revid;
-        QString result = Generic::EvaluateWikiPageContents(this->qEdit, &failed, nullptr, nullptr, &user, &revid, nullptr, &title);
-        GC_DECREF(this->qEdit);
+        QString result = Generic::EvaluateWikiPageContents(this->qEdit.GetPtr(), &failed, nullptr, nullptr, &user, &revid, nullptr, &title);
+        this->qEdit.Delete();
         if (failed)
         {
             Syslog::HuggleLogs->ErrorLog("Unable to retrieve content of page we wanted to undo own edit for, error was: " + result);
@@ -208,8 +207,7 @@ void History::Tick()
             this->timerRetrievePageInformation->stop();
             return;
         }
-        WikiEdit *edit = new WikiEdit();
-        edit->IncRef();
+        Collectable_SmartPtr<WikiEdit> edit = new WikiEdit();
         if (this->RevertingItem->Type == HistoryMessage)
         {
             edit->Page = new WikiPage("User_talk:" + this->RevertingItem->Target);
@@ -234,7 +232,6 @@ void History::Tick()
                     // This error should never happen so we don't need to localize this
                     Syslog::HuggleLogs->Log("There are no welcome messages defined for this project");
                     this->Fail();
-                    edit->DecRef();
                     return;
                 }
                 QString message = HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig->WelcomeTypes.at(0));
@@ -243,27 +240,22 @@ void History::Tick()
                     // This error should never happen so we don't need to localize this
                     Syslog::HuggleLogs->ErrorLog("Invalid welcome template, ignored message");
                     this->Fail();
-                    edit->DecRef();
                     return;
                 }
                 this->qTalk = WikiUtil::EditPage(edit->Page, message, Configuration::HuggleConfiguration->ProjectConfig->WelcomeSummary, true);
-                edit->DecRef();
                 return;
             } else
             {
                 this->RevertingItem = nullptr;
                 this->timerRetrievePageInformation->stop();
-                edit->DecRef();
                 return;
             }
         }
         // so now we have likely everything we need, let's revert that page :D
         this->qSelf = WikiUtil::RevertEdit(edit, "Undoing own edit");
-        edit->DecRef();
         // set it to undo only a last edit
         this->qSelf->SetLast();
         // revert it!!
-        this->qSelf->IncRef();
         this->qSelf->Process();
     }
 }
@@ -293,8 +285,8 @@ void Huggle::History::on_tableWidget_clicked(const QModelIndex &index)
 
 void History::Fail()
 {
+    this->qTalk.Delete();
+    this->qSelf.Delete();
     this->RevertingItem = nullptr;
     this->timerRetrievePageInformation->stop();
-    GC_DECREF(this->qTalk);
-    GC_DECREF(this->qSelf);
 }

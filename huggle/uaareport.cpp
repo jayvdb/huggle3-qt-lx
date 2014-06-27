@@ -11,6 +11,9 @@
 #include "uaareport.hpp"
 #include <QtXml>
 #include <QMessageBox>
+#include <QUrl>
+#include "wikiuser.hpp"
+#include "wikipage.hpp"
 #include "wikiutil.hpp"
 #include "configuration.hpp"
 #include "generic.hpp"
@@ -98,7 +101,7 @@ void UAAReport::onTick()
     QString uaasum = "Reporting " + this->User->Username + " to UAA " + Configuration::HuggleConfiguration->ProjectConfig->EditSuffixOfHuggle;
     this->whatToReport();
     this->insertUsername();
-    WikiUtil::EditPage(Configuration::HuggleConfiguration->UAAP, dr, uaasum, true)->DecRef();
+    WikiUtil::EditPage(Configuration::HuggleConfiguration->UAAP, dr, uaasum, true);
     Huggle::Syslog::HuggleLogs->Log(_l("uaa-reporting", this->User->Username));
     this->ui->pushButton->setText(_l("uaa-reported"));
 

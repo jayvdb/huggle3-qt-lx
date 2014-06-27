@@ -17,8 +17,9 @@
 #endif
 
 #include <QString>
-#include <QUrl>
 #include "apiquery.hpp"
+#include "collectable_smartptr.hpp"
+#include "query.hpp"
 
 namespace Huggle
 {
@@ -32,6 +33,7 @@ namespace Huggle
             ~EditQuery();
             void Process();
             bool IsProcessed();
+            bool Append = false;
             bool InsertTargetToWatchlist = false;
             //! Page that is going to be edited
             QString Page;
@@ -53,9 +55,12 @@ namespace Huggle
             bool Minor;
         private:
             void EditPage();
-            ApiQuery *qToken;
+            QString OriginalText = "";
+            Collectable_SmartPtr<ApiQuery> qToken;
+            Collectable_SmartPtr<ApiQuery> qRetrieve;
+            bool HasPreviousPageText = false;
             //! Api query to edit page
-            ApiQuery *qEdit;
+            Collectable_SmartPtr<ApiQuery> qEdit;
     };
 }
 

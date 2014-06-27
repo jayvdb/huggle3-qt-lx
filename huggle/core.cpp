@@ -11,10 +11,23 @@
 #include "core.hpp"
 #include <QtXml>
 #include <QMessageBox>
-#include "exceptionwindow.hpp"
-#include "localization.hpp"
-#include "syslog.hpp"
+#include <QPluginLoader>
 #include "configuration.hpp"
+#include "exception.hpp"
+#include "exceptionwindow.hpp"
+#include "hooks.hpp"
+#include "hugglefeed.hpp"
+#include "hugglequeuefilter.hpp"
+#include "iextension.hpp"
+#include "localization.hpp"
+#include "login.hpp"
+#include "mainwindow.hpp"
+#include "sleeper.hpp"
+#include "resources.hpp"
+#include "querypool.hpp"
+#include "syslog.hpp"
+#include "wikipage.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
@@ -33,7 +46,7 @@ void Core::Init()
 #ifdef HUGGLE_BREAKPAD
     Syslog::HuggleLogs->Log("Dumping enabled using google breakpad");
 #endif
-    this->gc = new GC();
+    this->gc = new Huggle::GC();
     GC::gc = this->gc;
     Query::NetworkManager = new QNetworkAccessManager();
     QueryPool::HugglePool = new QueryPool();
@@ -353,7 +366,11 @@ void Core::ExtensionLoad()
     {
         Huggle::Syslog::HuggleLogs->Log("There is no extensions folder, skipping load");
     }
+#ifndef PYTHONENGINE
     Huggle::Syslog::HuggleLogs->Log("Extensions: " + QString::number(Core::Extensions.count()));
+#else
+    Huggle::Syslog::HuggleLogs->Log("Extensions: " + QString::number(Core::Python->Count() + Core::Extensions.count()));
+#endif
 }
 
 void Core::VersionRead()
@@ -372,6 +389,9 @@ void Core::VersionRead()
 
 void Core::Shutdown()
 {
+    // we need to disable all extensions first
+    Hooks::Shutdown();
+    // now we can shutdown whole huggle
     this->Running = false;
     // grace time for subthreads to finish
     if (this->Main != nullptr)
@@ -408,6 +428,10 @@ void Core::Shutdown()
         delete this->Main;
         this->Main = nullptr;
     }
+    MainWindow::HuggleMain = nullptr;
+    delete this->HGQP;
+    this->HGQP = nullptr;
+    QueryPool::HugglePool = nullptr;
     // now stop the garbage collector and wait for it to finish
     GC::gc->Stop();
     Syslog::HuggleLogs->Log("SHUTDOWN: waiting for garbage collector to finish");
@@ -415,9 +439,16 @@ void Core::Shutdown()
         Sleeper::usleep(200);
     // last garbage removal
     GC::gc->DeleteOld();
+#ifdef HUGGLE_PROFILING
+    Syslog::HuggleLogs->Log("Profiler info: locks " + QString::number(Collectable::LockCt));
+    foreach (Collectable *q, GC::gc->list)
+    {
+        // retrieve GC info
+        Syslog::HuggleLogs->Log(q->DebugHgc());
+    }
+#endif
     Syslog::HuggleLogs->DebugLog("GC: " + QString::number(GC::gc->list.count()) + " objects");
     delete GC::gc;
-    delete this->HGQP;
     GC::gc = nullptr;
     this->gc = nullptr;
     delete Configuration::HuggleConfiguration;
