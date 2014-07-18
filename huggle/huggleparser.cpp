@@ -10,31 +10,60 @@
 
 #include "huggleparser.hpp"
 #include "configuration.hpp"
+#include "projectconfiguration.hpp"
 #include "syslog.hpp"
 
 using namespace Huggle;
 
-QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key)
+QString HuggleParser::ConfigurationParse(QString key, QString content, QString missing)
+{
+    /// \todo this parses the config a lot different than HG2 (here only one line, mising replaces...)
+    /// \todo maybe move it to Huggle::HuggleParser like ConfigurationParse_QL
+    // if first line in config
+    if (content.startsWith(key + ":"))
+    {
+        QString value = content.mid(key.length() + 1);
+        if (value.contains("\n"))
+        {
+            value = value.mid(0, value.indexOf("\n"));
+        }
+        return value;
+    }
+
+    // make sure it's not inside of some string
+    if (content.contains("\n" + key + ":"))
+    {
+        QString value = content.mid(content.indexOf("\n" + key + ":") + key.length() + 2);
+        if (value.contains("\n"))
+        {
+            value = value.mid(0, value.indexOf("\n"));
+        }
+        return value;
+    }
+    return missing;
+}
+
+QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
     int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig->RevertSummaries.count())
+    while (id < project_conf->RevertSummaries.count())
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig->RevertSummaries.at(id);
+        QString line = project_conf->RevertSummaries.at(id);
         if (line.startsWith(key + ";"))
         {
             return HuggleParser::GetValueFromKey(line);
         }
         id++;
     }
-    return Configuration::HuggleConfiguration->ProjectConfig->DefaultSummary;
+    return project_conf->DefaultSummary;
 }
 
-QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key)
+QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
     int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.count())
+    while (id<project_conf->WarningTypes.count())
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(id);
+        QString line = project_conf->WarningTypes.at(id);
         if (line.startsWith(key) + ";")
         {
             return HuggleParser::GetValueFromKey(line);
@@ -44,12 +73,12 @@ QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key)
     return key;
 }
 
-QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id)
+QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id, ProjectConfiguration *project_conf)
 {
     int i=0;
-    while (i<Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.count())
+    while (i<project_conf->WarningTypes.count())
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(i);
+        QString line = project_conf->WarningTypes.at(i);
         if (line.endsWith(id) || line.endsWith(id + ","))
         {
             return HuggleParser::GetKeyFromValue(line);
@@ -605,9 +634,9 @@ byte_ht HuggleParser::GetIDOfMonth(QString month)
 {
     int i = 0;
     month = month.toLower();
-    while (i < Configuration::HuggleConfiguration->Months.count())
+    while (i < Configuration::HuggleConfiguration->ProjectConfig->Months.count())
     {
-        if (Configuration::HuggleConfiguration->Months.at(i).toLower() == month)
+        if (Configuration::HuggleConfiguration->ProjectConfig->Months.at(i).toLower() == month)
             return i+1;
         i++;
     }

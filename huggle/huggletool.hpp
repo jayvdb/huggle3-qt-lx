@@ -12,10 +12,6 @@
 #define HUGGLETOOL_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first because it simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QTimer>
@@ -59,6 +55,7 @@ namespace Huggle
             void FinishPage();
             void FinishEdit();
             Ui::HuggleTool *ui;
+            WikiPage *page;
             Collectable_SmartPtr<ApiQuery> query;
             //! Timer that is used to switch between events that happen when the data for page are retrieved
             QTimer *tick;

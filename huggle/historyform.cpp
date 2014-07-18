@@ -12,7 +12,6 @@
 #include <QTimer>
 #include <QToolTip>
 #include <QtXml>
-#include "querypool.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
 #include "mainwindow.hpp"
@@ -20,8 +19,10 @@
 #include "resources.hpp"
 #include "huggleweb.hpp"
 #include "syslog.hpp"
-#include "wikiutil.hpp"
 #include "ui_historyform.h"
+#include "querypool.hpp"
+#include "wikiuser.hpp"
+#include "wikiutil.hpp"
 
 using namespace Huggle;
 
@@ -77,8 +78,7 @@ void HistoryForm::Read()
 {
     //this->ui->pushButton->setText(Localizations::HuggleLocalizations->nullptrze("historyform-retrieving-history"));
     this->ui->pushButton->hide();
-    this->query = new ApiQuery();
-    this->query->SetAction(ActionQuery);
+    this->query = new ApiQuery(ActionQuery, this->CurrentEdit->GetSite());
     this->query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("ids|flags|timestamp|user|userid|size|sha1|comment") + "&rvlimit=" +
             QString::number(Huggle::Configuration::HuggleConfiguration->UserConfig->HistoryMax) +
             "&titles=" + QUrl::toPercentEncoding(this->CurrentEdit->Page->PageName);
@@ -87,7 +87,7 @@ void HistoryForm::Read()
     this->t1 = new QTimer(this);
     this->Clear();
     connect(t1, SIGNAL(timeout()), this, SLOT(onTick01()));
-    this->t1->start(200);
+    this->t1->start(HUGGLE_TIMER);
 }
 
 void HistoryForm::Update(WikiEdit *edit)
@@ -99,10 +99,7 @@ void HistoryForm::Update(WikiEdit *edit)
     this->ui->pushButton->show();
     this->ui->pushButton->setEnabled(true);
     this->Clear();
-    if (this->RetrievedEdit != nullptr)
-    {
-        this->RetrievedEdit = nullptr;
-    }
+    this->RetrievedEdit.Delete();
     this->RetrievingEdit = false;
     if (this->t1 != nullptr)
     {
@@ -340,33 +337,29 @@ void HistoryForm::Display(int row, QString html, bool turtlemode)
     this->SelectedRow = row;
     this->RetrievingEdit = true;
     // check if we don't have this edit in a buffer
-    int x = 0;
     int revid = this->ui->tableWidget->item(row, 4)->text().toInt();
     if (revid == 0)
     {
         this->RetrievingEdit = false;
         return;
     }
-    WikiEdit::Lock_EditList->lock();
-    while (x < WikiEdit::EditList.count())
+
+    Collectable_SmartPtr<WikiEdit> edit = WikiEdit::FromCacheByRevID(revid);
+    if (edit != nullptr)
     {
-        WikiEdit *edit = WikiEdit::EditList.at(x);
-        x++;
-        if (edit->RevID == revid)
-        {
-            MainWindow::HuggleMain->ProcessEdit(edit, false, true);
-            this->RetrievingEdit = false;
-            WikiEdit::Lock_EditList->unlock();
-            this->MakeSelectedRowBold();
-            return;
-        }
+        MainWindow::HuggleMain->ProcessEdit(edit, false, true);
+        this->RetrievingEdit = false;
+        this->MakeSelectedRowBold();
+        return;
     }
-    WikiEdit::Lock_EditList->unlock();
+
     // there is no such edit, let's get it
     WikiEdit *w = new WikiEdit();
     w->User = new WikiUser(this->ui->tableWidget->item(row, 1)->text());
+    w->User->Site = this->CurrentEdit->GetSite();
     w->Page = new WikiPage(this->CurrentEdit->Page);
     w->RevID = revid;
+    QueryPool::HugglePool->PreProcessEdit(w);
     QueryPool::HugglePool->PostProcessEdit(w);
     if (this->t1 != nullptr)
     {
@@ -379,7 +372,7 @@ void HistoryForm::Display(int row, QString html, bool turtlemode)
     connect(this->t1, SIGNAL(timeout()), this, SLOT(onTick01()));
     if (!turtlemode)
     {
-        this->t1->start(200);
+        this->t1->start(HUGGLE_TIMER);
         return;
     }
     this->t1->start(2000);

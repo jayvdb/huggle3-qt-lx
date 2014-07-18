@@ -31,12 +31,14 @@ HuggleTool::HuggleTool(QWidget *parent) : QDockWidget(parent), ui(new Ui::Huggle
     this->ui->label_3->setText(_l("main-page-curr-disp"));
     this->tick = new QTimer(this);
     this->ui->label->setText(_l("User"));
+    this->page = nullptr;
     this->ui->label_2->setText(_l("Page"));
     connect(this->tick, SIGNAL(timeout()), this, SLOT(onTick()));
 }
 
 HuggleTool::~HuggleTool()
 {
+    delete this->page;
     delete this->tick;
     delete this->ui;
 }
@@ -63,6 +65,11 @@ void HuggleTool::SetPage(WikiPage *page)
         throw new Huggle::Exception("HuggleTool::SetPage(WikiPage* page) page must not be nullptr");
 
     this->ui->lineEdit_3->setText(page->PageName);
+    if (this->page != nullptr)
+    {
+        delete this->page;
+    }
+    this->page = new WikiPage(page);
     this->tick->stop();
     this->ui->pushButton->setEnabled(true);
     // change color to default
@@ -81,7 +88,7 @@ void HuggleTool::RenderEdit()
     this->QueryPhase = 1;
     this->query = Generic::RetrieveWikiPageContents(this->ui->lineEdit_3->text());
     this->query->Process();
-    this->tick->start(200);
+    this->tick->start(HUGGLE_TIMER);
 }
 
 void Huggle::HuggleTool::on_pushButton_clicked()
@@ -166,6 +173,7 @@ void HuggleTool::FinishPage()
         {
             this->edit->User = new WikiUser();
         }
+        QueryPool::HugglePool->PreProcessEdit(this->edit);
         QueryPool::HugglePool->PostProcessEdit(this->edit);
         this->QueryPhase = 2;
     }
@@ -199,5 +207,5 @@ void Huggle::HuggleTool::on_lineEdit_2_returnPressed()
     this->query->Parameters = "list=usercontribs&ucuser=" + QUrl::toPercentEncoding(this->ui->lineEdit_2->text()) +
                               "&ucprop=flags%7Ccomment%7Ctimestamp%7Ctitle%7Cids%7Csize&uclimit=20";
     this->query->Process();
-    this->tick->start(200);
+    this->tick->start(HUGGLE_TIMER);
 }

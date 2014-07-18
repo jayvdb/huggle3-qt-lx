@@ -12,12 +12,10 @@
 #define WEBSERVERQUERY_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QList>
 #include <QString>
+#include <QNetworkReply>
 #include <QObject>
 #include <QThread>
 #include "query.hpp"

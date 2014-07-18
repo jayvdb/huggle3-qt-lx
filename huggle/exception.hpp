@@ -12,11 +12,6 @@
 #define EXCEPTION_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 
@@ -79,6 +74,12 @@ namespace Huggle
             static google_breakpad::ExceptionHandler   *GoogleBP_handler;
 #endif
             bool _IsRecoverable;
+    };
+
+    class NullPointerException : public Exception
+    {
+        public:
+            NullPointerException(QString name, QString source);
     };
 }
 

@@ -9,16 +9,17 @@
 //GNU General Public License for more details.
 
 #include "hugglefeedproviderirc.hpp"
-#include "querypool.hpp"
 #include "configuration.hpp"
 #include "mainwindow.hpp"
-#include "syslog.hpp"
 #include "exception.hpp"
 #include "hugglequeue.hpp"
 #include "localization.hpp"
 #include "networkirc.hpp"
+#include "querypool.hpp"
+#include "syslog.hpp"
 #include "wikiedit.hpp"
 #include "wikipage.hpp"
+#include "wikisite.hpp"
 #include "wikiuser.hpp"
 
 using namespace Huggle;
@@ -246,17 +247,17 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
         {
             QString xx = line.mid(0, line.indexOf(")"));
             xx = xx.replace("\002", "");
-            int size = 0;
+            long size = 0;
             if (xx.startsWith("+"))
             {
                 xx = xx.mid(1);
-                size = xx.toInt();
-                edit->Size = size;
+                size = xx.toLong();
+                edit->SetSize(size);
             } else if (xx.startsWith("-"))
             {
                 xx = xx.mid(1);
-                size = xx.toInt() * -1;
-                edit->Size = size;
+                size = xx.toLong() * -1;
+                edit->SetSize(size);
             } else
             {
                 HUGGLE_DEBUG("No size information for " + edit->Page->PageName, 1);

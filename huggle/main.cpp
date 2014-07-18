@@ -12,12 +12,7 @@
 // see http://stackoverflow.com/questions/20300201/why-python-h-of-python-3-2-must-be-included-as-first-together-with-qt4
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
-// we can finally include the normal, unbroken headers now
+
 #include <QApplication>
 #include <QStringList>
 #include <QString>
@@ -62,7 +57,7 @@ int main(int argc, char *argv[])
         Huggle::TerminalParser *parser = new Huggle::TerminalParser(argc, argv);
         if (parser->Init())
         {
-            // we need to do this before we init the qapp because otherwise it would work on systems
+            // we need to do this before we init the qapp because otherwise it would not work on systems
             // that don't have an X org
             delete parser;
             Huggle::Exception::ExitBreakpad();

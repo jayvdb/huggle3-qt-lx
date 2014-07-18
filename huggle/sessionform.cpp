@@ -11,6 +11,7 @@
 #include "sessionform.hpp"
 #include "configuration.hpp"
 #include "core.hpp"
+#include "generic.hpp"
 #include "hugglefeed.hpp"
 #include "ui_sessionform.h"
 
@@ -21,12 +22,12 @@ SessionForm::SessionForm(QWidget *parent) : QDialog(parent), ui(new Ui::SessionF
     this->ui->setupUi(this);
     /// \todo TRANSLATE ME
     this->ui->label_2->setText("You are logged in as " + Configuration::HuggleConfiguration->SystemConfig_Username + "\n" +
-                               "SSL: " + Configuration::Bool2String(Configuration::HuggleConfiguration->SystemConfig_UsingSSL) + "\n" +
+                               "SSL: " + Generic::Bool2String(Configuration::HuggleConfiguration->SystemConfig_UsingSSL) + "\n" +
                                "RC feed: " + Core::HuggleCore->PrimaryFeedProvider->ToString());
     int xx=0;
-    while (xx < Configuration::HuggleConfiguration->Rights.count())
+    while (xx < Configuration::HuggleConfiguration->ProjectConfig->Rights.count())
     {
-        this->ui->listWidget->addItem(Configuration::HuggleConfiguration->Rights.at(xx));
+        this->ui->listWidget->addItem(Configuration::HuggleConfiguration->ProjectConfig->Rights.at(xx));
         xx++;
     }
 }

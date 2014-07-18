@@ -12,18 +12,11 @@
 #define PREFERENCES_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 #include <QList>
 #include "iextension.hpp"
 #include "hugglequeuefilter.hpp"
-#ifdef PYTHONENGINE
-#include "pythonengine.hpp"
-#endif
 
 namespace Ui
 {
@@ -33,23 +26,15 @@ namespace Ui
 namespace Huggle
 {
     class HuggleQueueFilter;
-#ifdef PYTHONENGINE
-    namespace Python
-    {
-        class PythonScript;
-    }
-#endif
     //! Preferences window
     class Preferences : public QDialog
     {
             Q_OBJECT
-
         public:
             explicit Preferences(QWidget *parent = 0);
             ~Preferences();
             void EnableQueues();
             void Disable();
-
         private slots:
             void on_pushButton_clicked();
             void on_pushButton_2_clicked();
@@ -62,7 +47,6 @@ namespace Huggle
             void on_checkBox_26_clicked();
             void on_checkBox_27_clicked();
             void RecordKeys(int row, int column);
-
         private:
             void Reload();
             //! Used to reload shortcuts only

@@ -12,14 +12,12 @@
 #define UAAREPORT_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 #include <QString>
 #include <QTimer>
 #include "apiquery.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Ui
 {
@@ -39,6 +37,7 @@ namespace Huggle
             explicit UAAReport(QWidget *parent = nullptr);
             ~UAAReport();
             //! I don't have much of a clue why this is here lol, but I know the dialog can't be initialised from mainwindow without this
+            // Who are you? It's there because we must somehow set user to this class I guess --Petrb
             void setUserForUAA(WikiUser *user);
         private slots:
             void on_pushButton_clicked();
@@ -71,13 +70,13 @@ namespace Huggle
             //! Pointer to WikiUser
             WikiPage *page;
             //! Pointer to get UAA contents (we don't want replace the page with our content, do we?)
-            ApiQuery *qUAApage;
+            Collectable_SmartPtr<ApiQuery> qUAApage;
             //! Timer pointer that allows us to do magical things
             QTimer *Timer;
             //! Timer that does other magical things
             QTimer *TimerCheck;
             //! Pointer that also gets UAA contents; this time it is used for checking if a user is reported or not
-            ApiQuery *qCheckUAAUser;
+            Collectable_SmartPtr<ApiQuery> qCheckUAAUser;
     };
 }
 

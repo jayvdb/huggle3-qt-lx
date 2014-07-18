@@ -16,11 +16,6 @@
 #define GC_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QThread>
 #include <QMutex>
@@ -44,6 +39,7 @@
 #define HUGGLECONSUMER_QP_MODS                  14
 #define HUGGLECONSUMER_REVERTQUERYTMR           16
 #define HUGGLECONSUMER_CALLBACK                 20
+#define HUGGLECONSUMER_PYTHON                   60
 #define HUGGLECONSUMER_CORE                     800
 
 // some macros so that people hate us

@@ -25,8 +25,32 @@ WikiPageNS::WikiPageNS(int id, QString name, QString canonical_name)
     this->Name = name;
 }
 
+WikiPageNS::WikiPageNS(const WikiPageNS &k)
+{
+    this->CanonicalName = k.CanonicalName;
+    this->ID = k.ID;
+    this->Name = k.Name;
+    this->Talk = k.Talk;
+}
+
+WikiPageNS::WikiPageNS(WikiPageNS *k)
+{
+    this->CanonicalName = k->CanonicalName;
+    this->ID = k->ID;
+    this->Name = k->Name;
+    this->Talk = k->Talk;
+}
+
+WikiPageNS::~WikiPageNS()
+{
+
+}
+
 WikiSite::WikiSite(const WikiSite &w)
 {
+    QList<int> k_ = w.NamespaceList.keys();
+    foreach (int x, k_)
+        this->NamespaceList.insert(x, new WikiPageNS(w.NamespaceList[x]));
     this->LongPath = w.LongPath;
     this->IRCChannel = w.IRCChannel;
     this->Name = w.Name;
@@ -35,17 +59,28 @@ WikiSite::WikiSite(const WikiSite &w)
     this->SupportHttps = w.SupportHttps;
     this->SupportOAuth = w.SupportOAuth;
     this->URL = w.URL;
+    this->IsRightToLeft = w.IsRightToLeft;
+    this->Unknown = w.Unknown;
+    this->User = w.User;
+    this->Project = w.Project;
     this->WhiteList = w.WhiteList;
 }
 
 WikiSite::WikiSite(WikiSite *w)
 {
+    QList<int> k_ = w->NamespaceList.keys();
+    foreach (int x, k_)
+        this->NamespaceList.insert(x, new WikiPageNS(w->NamespaceList[x]));
     this->LongPath = w->LongPath;
     this->IRCChannel = w->IRCChannel;
     this->Name = w->Name;
     this->OAuthURL = w->OAuthURL;
     this->WhiteList = w->WhiteList;
     this->URL = w->URL;
+    this->Project = w->Project;
+    this->IsRightToLeft = w->IsRightToLeft;
+    this->Unknown = w->Unknown;
+    this->User = w->User;
     this->SupportOAuth = w->SupportOAuth;
     this->SupportHttps = w->SupportHttps;
     this->ScriptPath = w->ScriptPath;

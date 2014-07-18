@@ -14,8 +14,11 @@
 #include <QToolButton>
 #include <QInputDialog>
 #include <QMutex>
+#include <QLabel>
+#include <QTimer>
 #include <QThread>
 #include <QSplitter>
+#include <QDockWidget>
 #include "aboutform.hpp"
 #include "configuration.hpp"
 #include "reloginform.hpp"
@@ -47,6 +50,7 @@
 #include "syslog.hpp"
 #include "sleeper.hpp"
 #include "wikiuser.hpp"
+#include "wikisite.hpp"
 #include "ignorelist.hpp"
 #include "speedyform.hpp"
 #include "userinfoform.hpp"
@@ -74,7 +78,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->EditablePage = false;
     this->ShuttingDown = false;
     this->ui->setupUi(this);
-    this->Localize();
     this->Status = new QLabel();
     this->Status->setWordWrap(true);
     this->Status->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -97,17 +100,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->addDockWidget(Qt::BottomDockWidgetArea, this->VandalDock);
     this->preferencesForm = new Preferences(this);
     this->aboutForm = new AboutForm(this);
-    this->ui->actionRequest_protection->setEnabled(Configuration::HuggleConfiguration->ProjectConfig->RFPP);
     this->ui->actionDisplay_bot_data->setChecked(Configuration::HuggleConfiguration->UserConfig->HAN_DisplayBots);
     this->ui->actionDisplay_user_data->setChecked(Configuration::HuggleConfiguration->UserConfig->HAN_DisplayUser);
     this->ui->actionDisplay_user_messages->setChecked(Configuration::HuggleConfiguration->UserConfig->HAN_DisplayUserTalk);
     // we store the value in bool so that we don't need to call expensive string function twice
-    bool PermissionBlock = Configuration::HuggleConfiguration->Rights.contains("block");
+    bool PermissionBlock = Configuration::HuggleConfiguration->ProjectConfig->Rights.contains("block");
     this->ui->actionBlock_user->setEnabled(PermissionBlock);
     this->ui->actionBlock_user_2->setEnabled(PermissionBlock);
-    bool PermissionDelete = Configuration::HuggleConfiguration->Rights.contains("delete");
+    bool PermissionDelete = Configuration::HuggleConfiguration->ProjectConfig->Rights.contains("delete");
     this->ui->actionDelete->setEnabled(PermissionDelete);
-    this->ui->actionProtect->setEnabled(Configuration::HuggleConfiguration->Rights.contains("protect"));
+    this->ui->actionProtect->setEnabled(Configuration::HuggleConfiguration->ProjectConfig->Rights.contains("protect"));
     this->addDockWidget(Qt::LeftDockWidgetArea, this->_History);
     this->SystemLog->resize(100, 80);
     if (!Configuration::HuggleConfiguration->WhiteList.contains(Configuration::HuggleConfiguration->SystemConfig_Username))
@@ -153,52 +155,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         this->ChangeProvider(new HuggleFeedProviderWiki());
         Core::HuggleCore->PrimaryFeedProvider->Start();
     }
-    if (Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.count() > 0)
-    {
-        this->RevertSummaries = new QMenu(this);
-        this->WarnMenu = new QMenu(this);
-        this->RevertWarn = new QMenu(this);
-        int r=0;
-        while (r<Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.count())
-        {
-            QAction *action = new QAction(HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(r)), this);
-            QAction *actiona = new QAction(HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(r)), this);
-            QAction *actionb = new QAction(HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(r)), this);
-            this->RevertAndWarnItems.append(actiona);
-            this->WarnItems.append(actionb);
-            this->RevertItems.append(action);
-            this->RevertWarn->addAction(actiona);
-            this->WarnMenu->addAction(actionb);
-            this->RevertSummaries->addAction(action);
-            r++;
-            connect(action, SIGNAL(triggered()), this, SLOT(CustomRevert()));
-            connect(actiona, SIGNAL(triggered()), this, SLOT(CustomRevertWarn()));
-            connect(actionb, SIGNAL(triggered()), this, SLOT(CustomWarn()));
-        }
-        this->ui->actionWarn->setMenu(this->WarnMenu);
-        this->ui->actionRevert->setMenu(this->RevertSummaries);
-        this->ui->actionRevert_and_warn->setMenu(this->RevertWarn);
-
-        // replace abstract QAction with QToolButton to be able to set PopupMode for nicer menu opening
-        QToolButton* aW = new QToolButton(this->ui->mainToolBar);
-        QToolButton* aR = new QToolButton(this->ui->mainToolBar);
-        QToolButton* aRaW = new QToolButton(this->ui->mainToolBar);
-        aW->setDefaultAction(this->ui->actionWarn);
-        aR->setDefaultAction(this->ui->actionRevert);
-        aRaW->setDefaultAction(this->ui->actionRevert_and_warn);
-
-        aW->setPopupMode(QToolButton::MenuButtonPopup);
-        aR->setPopupMode(QToolButton::MenuButtonPopup);
-        aRaW->setPopupMode(QToolButton::MenuButtonPopup);
-
-        // insert them before their counterparts and then delete the counterpart
-        this->ui->mainToolBar->insertWidget(this->ui->actionRevert_and_warn, aRaW);
-        this->ui->mainToolBar->removeAction(this->ui->actionRevert_and_warn);
-        this->ui->mainToolBar->insertWidget(this->ui->actionRevert, aR);
-        this->ui->mainToolBar->removeAction(this->ui->actionRevert);
-        this->ui->mainToolBar->insertWidget(this->ui->actionWarn, aW);
-        this->ui->mainToolBar->removeAction(this->ui->actionWarn);
-    }
+    this->ReloadInterface();
     this->tabifyDockWidget(this->SystemLog, this->Queries);
     this->GeneralTimer = new QTimer(this);
     //this->ui->actionTag_2->setVisible(false);
@@ -246,9 +203,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QAction *debugm = this->ui->menuDebug_2->menuAction();
         this->ui->menuHelp->removeAction(debugm);
     }
-    Hooks::MainWindowIsLoaded(this);
+    this->Localize();
     this->VandalDock->Connect();
     this->tCheck = new QTimer(this);
+    Hooks::MainWindowIsLoaded(this);
     connect(this->tCheck, SIGNAL(timeout()), this, SLOT(TimerCheckTPOnTick()));
     this->tCheck->start(20000);
 }
@@ -322,7 +280,9 @@ void MainWindow::DisplayReportUserWindow(WikiUser *User)
         Syslog::HuggleLogs->ErrorLog(_l("report-duplicate"));
         return;
     }
-    if (!Configuration::HuggleConfiguration->ProjectConfig->AIV)
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
+    // only use this if current projects support it
+    if (!conf->AIV)
     {
         QMessageBox mb;
         mb.setText(_l("missing-aiv"));
@@ -351,7 +311,7 @@ void MainWindow::ProcessEdit(WikiEdit *e, bool IgnoreHistory, bool KeepHistory, 
     if (this->qNext != nullptr)
     {
         // we need to delete this because it's related to an old edit
-        this->qNext = nullptr;
+        this->qNext.Delete();
     }
     if (e->Page == nullptr || e->User == nullptr)
     {
@@ -480,7 +440,7 @@ void MainWindow::FinishPatrols()
     bool flaggedrevs = Configuration::HuggleConfiguration->ProjectConfig->PatrollingFlaggedRevs;
     while (x < this->PatrolledEdits.count())
     {
-        ApiQuery *query = this->PatrolledEdits.at(x);
+        Collectable_SmartPtr<ApiQuery> query = this->PatrolledEdits.at(x);
         // check if this query has actually some edit associated to it
         if (query->CallbackResult == nullptr)
         {
@@ -803,7 +763,7 @@ QString MainWindow::WikiScriptURL()
         return Configuration::GetProjectScriptURL();
     } else
     {
-        return Configuration::GetProjectScriptURL(this->CurrentEdit->Page->Site);
+        return Configuration::GetProjectScriptURL(this->CurrentEdit->GetSite());
     }
 }
 
@@ -920,16 +880,18 @@ bool MainWindow::Warn(QString WarningType, RevertQuery *dependency)
 
 QString MainWindow::GetSummaryKey(QString item)
 {
+    // first get the configuration for the project we are on
+    ProjectConfiguration *pr = this->GetCurrentWikiSite()->GetProjectConfig();
     if (item.contains(";"))
     {
         QString type = item.mid(0, item.indexOf(";"));
         int c=0;
-        while(c < Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.count())
+        while(c < pr->WarningTypes.count())
         {
-            QString x = Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(c);
+            QString x = pr->WarningTypes.at(c);
             if (x.startsWith(type + ";"))
             {
-                x = Configuration::HuggleConfiguration->ProjectConfig->WarningTypes.at(c);
+                x = pr->WarningTypes.at(c);
                 x = x.mid(x.indexOf(";") + 1);
                 if (x.endsWith(","))
                 {
@@ -950,7 +912,7 @@ void MainWindow::on_actionExit_triggered()
 
 void MainWindow::DisplayWelcomeMessage()
 {
-    WikiPage *welcome = new WikiPage(Configuration::HuggleConfiguration->WelcomeMP);
+    WikiPage *welcome = new WikiPage(Configuration::HuggleConfiguration->ProjectConfig->WelcomeMP);
     this->Browser->DisplayPreFormattedPage(welcome);
     this->LockPage();
     delete welcome;
@@ -988,7 +950,7 @@ void MainWindow::FinishRestore()
             this->RestoreEdit.Delete();
             return;
         }
-        QString sm = this->RestoreEdit->Page->Site->GetProjectConfig()->RestoreSummary;
+        QString sm = this->RestoreEdit->GetSite()->GetProjectConfig()->RestoreSummary;
         sm = sm.replace("$1", QString::number(this->RestoreEdit->RevID));
         sm = sm.replace("$2", this->RestoreEdit->User->Username);
         sm = sm.replace("$3", this->RestoreEdit_RevertReason);
@@ -1214,13 +1176,13 @@ void MainWindow::OnTimerTick0()
                 return;
             }
             // we finished writing the wl
-            this->fWaiting->Status(90, _l("updating-uc"));
+            this->fWaiting->Status(90, _l("saveuserconfig-progress"));
             this->wq = nullptr;
             this->Shutdown = ShutdownOpUpdatingConf;
             QString page = Configuration::HuggleConfiguration->GlobalConfig_UserConf;
             page = page.replace("$1", Configuration::HuggleConfiguration->SystemConfig_Username);
             WikiPage *uc = new WikiPage(page);
-            this->eq = WikiUtil::EditPage(uc, Configuration::MakeLocalUserConfig(), "Writing user config", true);
+            this->eq = WikiUtil::EditPage(uc, Configuration::MakeLocalUserConfig(), _l("saveuserconfig-progress"), true);
             delete uc;
             return;
         }
@@ -1279,14 +1241,8 @@ void MainWindow::on_actionRevert_currently_displayed_edit_and_warn_the_user_trig
 
 void MainWindow::on_actionRevert_and_warn_triggered()
 {
-    if (!this->CheckExit() || !this->CheckEditableBrowserPage())
+    if (!this->EditingChecks())
         return;
-
-    if (Configuration::HuggleConfiguration->Restricted)
-    {
-        Generic::DeveloperError();
-        return;
-    }
     Collectable_SmartPtr<RevertQuery> result = this->Revert("", false);
     if (result != nullptr)
     {
@@ -1333,9 +1289,10 @@ void MainWindow::CustomRevert()
     if (!this->EditingChecks())
         return;
     QAction *revert = (QAction*) QObject::sender();
-    QString k = HuggleParser::GetKeyOfWarningTypeFromWarningName(revert->text());
-    QString rs = HuggleParser::GetSummaryOfWarningTypeFromWarningKey(k);
-    rs = Huggle::Configuration::HuggleConfiguration->GenerateSuffix(rs);
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
+    QString k = HuggleParser::GetKeyOfWarningTypeFromWarningName(revert->text(), conf);
+    QString rs = HuggleParser::GetSummaryOfWarningTypeFromWarningKey(k, conf);
+    rs = Huggle::Configuration::HuggleConfiguration->GenerateSuffix(rs, conf);
     this->Revert(rs);
 }
 
@@ -1344,9 +1301,10 @@ void MainWindow::CustomRevertWarn()
     if (!this->EditingChecks())
         return;
     QAction *revert = (QAction*) QObject::sender();
-    QString k = HuggleParser::GetKeyOfWarningTypeFromWarningName(revert->text());
-    QString rs = HuggleParser::GetSummaryOfWarningTypeFromWarningKey(k);
-    rs = Huggle::Configuration::HuggleConfiguration->GenerateSuffix(rs);
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
+    QString k = HuggleParser::GetKeyOfWarningTypeFromWarningName(revert->text(), conf);
+    QString rs = HuggleParser::GetSummaryOfWarningTypeFromWarningKey(k, conf);
+    rs = Huggle::Configuration::HuggleConfiguration->GenerateSuffix(rs, conf);
     Collectable_SmartPtr<RevertQuery> result = this->Revert(rs, false);
     if (result != nullptr)
     {
@@ -1362,19 +1320,21 @@ void MainWindow::CustomWarn()
 {
     if (!this->EditingChecks())
         return;
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
     QAction *revert = (QAction*) QObject::sender();
-    QString k = HuggleParser::GetKeyOfWarningTypeFromWarningName(revert->text());
+    QString k = HuggleParser::GetKeyOfWarningTypeFromWarningName(revert->text(), conf);
     this->Warn(k, nullptr);
 }
 
 QString MainWindow::GetSummaryText(QString text)
 {
     int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig->RevertSummaries.count())
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
+    while (id <conf->RevertSummaries.count())
     {
-        if (text == this->GetSummaryKey(Configuration::HuggleConfiguration->ProjectConfig->RevertSummaries.at(id)))
+        if (text == this->GetSummaryKey(conf->RevertSummaries.at(id)))
         {
-            QString data = Configuration::HuggleConfiguration->ProjectConfig->RevertSummaries.at(id);
+            QString data = conf->RevertSummaries.at(id);
             if (data.contains(";"))
             {
                 data = data.mid(data.indexOf(";") + 1);
@@ -1383,7 +1343,7 @@ QString MainWindow::GetSummaryText(QString text)
         }
         id++;
     }
-    return Configuration::HuggleConfiguration->ProjectConfig->DefaultSummary;
+    return conf->DefaultSummary;
 }
 
 void MainWindow::ForceWarn(int level)
@@ -1506,7 +1466,7 @@ void MainWindow::SuspiciousEdit()
         WLQuery *wq_ = new WLQuery();
         wq_->Type = WLQueryType_SuspWL;
         wq_->Parameters = "page=" + QUrl::toPercentEncoding(this->CurrentEdit->Page->PageName) + "&wiki="
-                          + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->Project->WhiteList) + "&user="
+                          + QUrl::toPercentEncoding(this->GetCurrentWikiSite()->WhiteList) + "&user="
                           + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->SystemConfig_Username) + "&score="
                           + QString::number(this->CurrentEdit->Score) + "&revid="
                           + QString::number(this->CurrentEdit->RevID) + "&summary="
@@ -1520,12 +1480,13 @@ void MainWindow::SuspiciousEdit()
 
 void MainWindow::PatrolThis(WikiEdit *e)
 {
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
     if (e == nullptr)
         e = this->CurrentEdit;
-    if (e == nullptr || !Configuration::HuggleConfiguration->ProjectConfig->Patrolling)
+    if (e == nullptr || !conf->Patrolling)
         return;
     ApiQuery *query = nullptr;
-    bool flaggedrevs = Configuration::HuggleConfiguration->ProjectConfig->PatrollingFlaggedRevs;
+    bool flaggedrevs = conf->PatrollingFlaggedRevs;
 
     // if this edit doesn't have the patrol token we need to get one
     // if we're using flaggedrevs this will actually be an edit token, but we pretend it's a patrol one
@@ -1533,8 +1494,7 @@ void MainWindow::PatrolThis(WikiEdit *e)
     {
         // register consumer so that gc doesn't delete this edit meanwhile
         e->RegisterConsumer("patrol");
-        query = new ApiQuery();
-        query->SetAction(ActionTokens);
+        query = new ApiQuery(ActionTokens, this->GetCurrentWikiSite());
         if (flaggedrevs)
         {
             query->Target = "Retrieving patrol token (FlaggedRevs) for " + e->Page->PageName;
@@ -1555,6 +1515,7 @@ void MainWindow::PatrolThis(WikiEdit *e)
 
     // we can execute patrol now
     query = new ApiQuery();
+    query->Site = this->GetCurrentWikiSite();
     query->UsingPOST = true;
     if (flaggedrevs)
     {
@@ -1601,11 +1562,6 @@ void MainWindow::Localize()
     this->ui->actionFlag_as_a_good_edit->setText(_l("main-page-flag-good-edit"));
     this->ui->actionRequest_speedy_deletion->setText(_l("main-page-reqdeletion"));
     this->ui->actionDelete->setText(_l("main-page-delete"));
-    // button action depends on adminrights
-    if (Configuration::HuggleConfiguration->Rights.contains("delete"))
-        this->ui->actionDelete_page->setText(_l("main-page-delete"));
-    else
-        this->ui->actionDelete_page->setText(_l("main-page-reqdeletion"));
     this->ui->actionRequest_protection->setText(_l("main-page-reqprotection"));
     this->ui->actionProtect->setText(_l("main-page-protect"));
     this->ui->actionRestore_this_revision->setText(_l("main-page-restore"));
@@ -1641,11 +1597,12 @@ void MainWindow::Localize()
     this->ui->actionOpen_in_a_browser->setText(_l("main-browser-open"));
     this->ui->actionDisplay_this_page->setText(_l("main-page-display"));
 
-	// arrows icons should be mirrored for RTL languages
-	if (Localizations::HuggleLocalizations->IsRTL()) {
-		this->ui->actionForward->setIcon(QIcon(":/huggle/pictures/Resources/browser-prev.png"));
-		this->ui->actionBack->setIcon(QIcon(":/huggle/pictures/Resources/browser-next.png"));
-	}
+    // arrows icons should be mirrored for RTL languages
+    if (Localizations::HuggleLocalizations->IsRTL())
+    {
+        this->ui->actionForward->setIcon(QIcon(":/huggle/pictures/Resources/browser-prev.png"));
+        this->ui->actionBack->setIcon(QIcon(":/huggle/pictures/Resources/browser-next.png"));
+    }
 }
 
 void MainWindow::_BlockUser()
@@ -1731,6 +1688,16 @@ void MainWindow::WelcomeGood()
     this->DisplayNext();
 }
 
+WikiSite *MainWindow::GetCurrentWikiSite()
+{
+    if (this->CurrentEdit == nullptr || this->CurrentEdit->Page == nullptr)
+    {
+        return Configuration::HuggleConfiguration->Project;
+    }
+
+    return this->CurrentEdit->GetSite();
+}
+
 void MainWindow::LockPage()
 {
     this->EditablePage = false;
@@ -1742,7 +1709,7 @@ QString MainWindow::ProjectURL()
     {
         return Configuration::GetProjectWikiURL();
     }
-    return Configuration::GetProjectWikiURL(this->CurrentEdit->Page->Site);
+    return Configuration::GetProjectWikiURL(this->CurrentEdit->GetSite());
 }
 
 bool MainWindow::CheckExit()
@@ -1762,6 +1729,7 @@ void MainWindow::Welcome()
 {
     if (!this->EditingChecks())
         return;
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
     this->CurrentEdit->User->Resync();
     bool create_only = true;
     if (!this->CurrentEdit->User->TalkPage_GetContents().isEmpty())
@@ -1781,21 +1749,19 @@ void MainWindow::Welcome()
         if (this->CurrentEdit->User->TalkPage_GetContents().isEmpty())
         {
             // write something to talk page so that we don't welcome this user twice
-            this->CurrentEdit->User->TalkPage_SetContents(Configuration::HuggleConfiguration->ProjectConfig->WelcomeAnon);
+            this->CurrentEdit->User->TalkPage_SetContents(conf->WelcomeAnon);
         }
-        WikiUtil::MessageUser(this->CurrentEdit->User, Configuration::HuggleConfiguration->ProjectConfig->WelcomeAnon + " ~~~~",
-                              Configuration::HuggleConfiguration->ProjectConfig->WelcomeTitle,
-                              Configuration::HuggleConfiguration->ProjectConfig->WelcomeSummary,
+        WikiUtil::MessageUser(this->CurrentEdit->User, conf->WelcomeAnon + " ~~~~", conf->WelcomeTitle, conf->WelcomeSummary,
                               false, nullptr, false, false, true, this->CurrentEdit->TPRevBaseTime, create_only);
         return;
     }
-    if (Configuration::HuggleConfiguration->ProjectConfig->WelcomeTypes.count() == 0)
+    if (conf->WelcomeTypes.count() == 0)
     {
         // This error should never happen so we don't need to localize this
-        Syslog::HuggleLogs->Log("There are no welcome messages defined for this project");
+        Syslog::HuggleLogs->ErrorLog("There are no welcome messages defined for this project");
         return;
     }
-    QString message = HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig->WelcomeTypes.at(0));
+    QString message = HuggleParser::GetValueFromKey(conf->WelcomeTypes.at(0));
     if (message.isEmpty())
     {
         // This error should never happen so we don't need to localize this
@@ -1804,8 +1770,7 @@ void MainWindow::Welcome()
     }
     // write something to talk page so that we don't welcome this user twice
     this->CurrentEdit->User->TalkPage_SetContents(message);
-    WikiUtil::MessageUser(this->CurrentEdit->User, message, Configuration::HuggleConfiguration->ProjectConfig->WelcomeTitle,
-                          Configuration::HuggleConfiguration->ProjectConfig->WelcomeSummary, false, nullptr,
+    WikiUtil::MessageUser(this->CurrentEdit->User, message, conf->WelcomeTitle, conf->WelcomeSummary, false, nullptr,
                           false, false, true, this->CurrentEdit->TPRevBaseTime, create_only);
 }
 
@@ -1815,6 +1780,73 @@ void MainWindow::ChangeProvider(HuggleFeed *provider)
         delete HuggleFeed::PrimaryFeedProvider;
     HuggleFeed::PrimaryFeedProvider = provider;
     Core::HuggleCore->PrimaryFeedProvider = provider;
+}
+
+void MainWindow::ReloadInterface()
+{
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
+    this->WarnItems.clear();
+    this->RevertAndWarnItems.clear();
+    this->RevertItems.clear();
+    delete this->RevertSummaries;
+    delete this->WarnMenu;
+    delete this->RevertWarn;
+    this->ui->actionRequest_protection->setEnabled(conf->RFPP);
+    this->RevertSummaries = new QMenu(this);
+    this->WarnMenu = new QMenu(this);
+    this->RevertWarn = new QMenu(this);
+    if (conf->WarningTypes.count() > 0)
+    {
+        int r=0;
+        while (r< conf->WarningTypes.count())
+        {
+            QAction *action = new QAction(HuggleParser::GetValueFromKey(conf->WarningTypes.at(r)), this->RevertSummaries);
+            QAction *actiona = new QAction(HuggleParser::GetValueFromKey(conf->WarningTypes.at(r)), this->RevertWarn);
+            QAction *actionb = new QAction(HuggleParser::GetValueFromKey(conf->WarningTypes.at(r)), this->WarnMenu);
+            this->RevertAndWarnItems.append(actiona);
+            this->WarnItems.append(actionb);
+            this->RevertItems.append(action);
+            this->RevertWarn->addAction(actiona);
+            this->WarnMenu->addAction(actionb);
+            this->RevertSummaries->addAction(action);
+            r++;
+            connect(action, SIGNAL(triggered()), this, SLOT(CustomRevert()));
+            connect(actiona, SIGNAL(triggered()), this, SLOT(CustomRevertWarn()));
+            connect(actionb, SIGNAL(triggered()), this, SLOT(CustomWarn()));
+        }
+    }
+    this->ui->actionWarn->setMenu(this->WarnMenu);
+    this->ui->actionRevert->setMenu(this->RevertSummaries);
+    this->ui->actionRevert_and_warn->setMenu(this->RevertWarn);
+    bool fr = (this->warnToolButtonMenu == nullptr || this->rtToolButtonMenu == nullptr);
+    // replace abstract QAction with QToolButton to be able to set PopupMode for nicer menu opening
+    if (this->warnToolButtonMenu == nullptr)
+        this->warnToolButtonMenu = new QToolButton(this);
+    if (this->rtToolButtonMenu == nullptr)
+        this->rtToolButtonMenu = new QToolButton(this);
+    if (this->rwToolButtonMenu == nullptr)
+        this->rwToolButtonMenu = new QToolButton(this);
+    this->warnToolButtonMenu->setDefaultAction(this->ui->actionWarn);
+    this->rtToolButtonMenu->setDefaultAction(this->ui->actionRevert);
+    this->rwToolButtonMenu->setDefaultAction(this->ui->actionRevert_and_warn);
+    this->warnToolButtonMenu->setPopupMode(QToolButton::MenuButtonPopup);
+    this->rtToolButtonMenu->setPopupMode(QToolButton::MenuButtonPopup);
+    this->rwToolButtonMenu->setPopupMode(QToolButton::MenuButtonPopup);
+    if (fr)
+    {
+        // insert them before their counterparts and then delete the counterpart
+        this->ui->mainToolBar->insertWidget(this->ui->actionRevert_and_warn, rwToolButtonMenu);
+        this->ui->mainToolBar->removeAction(this->ui->actionRevert_and_warn);
+        this->ui->mainToolBar->insertWidget(this->ui->actionRevert, rtToolButtonMenu);
+        this->ui->mainToolBar->removeAction(this->ui->actionRevert);
+        this->ui->mainToolBar->insertWidget(this->ui->actionWarn, warnToolButtonMenu);
+        this->ui->mainToolBar->removeAction(this->ui->actionWarn);
+    }
+    // button action depends on adminrights
+    if (conf->Rights.contains("delete"))
+        this->ui->actionDelete_page->setText(_l("main-page-delete"));
+    else
+        this->ui->actionDelete_page->setText(_l("main-page-reqdeletion"));
 }
 
 void MainWindow::on_actionWelcome_user_triggered()
@@ -2026,7 +2058,7 @@ void Huggle::MainWindow::on_actionIRC_triggered()
 
 void Huggle::MainWindow::on_actionWiki_triggered()
 {
-    if (!this->CheckExit() || !this->CheckEditableBrowserPage())
+    if (!this->CheckExit())
         return;
     Syslog::HuggleLogs->Log(_l("irc-switch-rc"));
     Core::HuggleCore->PrimaryFeedProvider->Stop();
@@ -2131,7 +2163,7 @@ void Huggle::MainWindow::on_actionRevert_AGF_triggered()
                                            "No reason was provided / custom revert", &ok);
     if (!ok)
         return;
-    QString summary = Configuration::HuggleConfiguration->ProjectConfig->AgfRevert.replace("$2", this->CurrentEdit->User->Username);
+    QString summary = this->GetCurrentWikiSite()->GetProjectConfig()->AgfRevert.replace("$2", this->CurrentEdit->User->Username);
     summary = summary.replace("$1", reason);
     this->Revert(summary);
 }
@@ -2178,11 +2210,10 @@ void Huggle::MainWindow::on_actionRestore_this_revision_triggered()
                                            _l("main-no-reason"), &ok);
     if (!ok)
         return;
-    this->RestoreQuery = new ApiQuery();
+    this->RestoreQuery = new ApiQuery(ActionQuery, this->GetCurrentWikiSite());
     this->RestoreQuery->Parameters = "prop=revisions&revids=" +
             QString::number(this->CurrentEdit->RevID) + "&rvprop=" +
             QUrl::toPercentEncoding("ids|content");
-    this->RestoreQuery->SetAction(ActionQuery);
     this->RestoreQuery->Process();
     this->RestoreEdit = this->CurrentEdit;
     this->RestoreEdit_RevertReason = reason;
@@ -2196,7 +2227,7 @@ void Huggle::MainWindow::on_actionClear_triggered()
 
 void Huggle::MainWindow::on_actionDelete_page_triggered()
 {
-    if (Configuration::HuggleConfiguration->Rights.contains("delete"))
+    if (this->GetCurrentWikiSite()->GetProjectConfig()->Rights.contains("delete"))
     {
         this->DeletePage();
     } else
@@ -2226,8 +2257,8 @@ void MainWindow::TimerCheckTPOnTick()
         return;
     if (this->qTalkPage == nullptr)
     {
-        this->qTalkPage = new ApiQuery();
-        this->qTalkPage->SetAction(ActionQuery);
+        //! \todo Check this for every site we are logged to
+        this->qTalkPage = new ApiQuery(ActionQuery, this->GetCurrentWikiSite());
         this->qTalkPage->Parameters = "meta=userinfo&uiprop=hasmsg";
         this->qTalkPage->Process();
         return;
@@ -2279,12 +2310,13 @@ void Huggle::MainWindow::on_actionHtml_dump_triggered()
 
 void Huggle::MainWindow::on_actionEnforce_sysop_rights_triggered()
 {
-    if (!Configuration::HuggleConfiguration->Rights.contains("delete"))
-        Configuration::HuggleConfiguration->Rights.append("delete");
-    if (!Configuration::HuggleConfiguration->Rights.contains("protect"))
-        Configuration::HuggleConfiguration->Rights.append("protect");
-    if (!Configuration::HuggleConfiguration->Rights.contains("block"))
-        Configuration::HuggleConfiguration->Rights.append("block");
+    ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
+    if (!conf->Rights.contains("delete"))
+        conf->Rights.append("delete");
+    if (!conf->Rights.contains("protect"))
+        conf->Rights.append("protect");
+    if (!conf->Rights.contains("block"))
+        conf->Rights.append("block");
     this->ui->actionBlock_user->setEnabled(true);
     this->ui->actionBlock_user_2->setEnabled(true);
     this->ui->actionDelete_page->setEnabled(true);
@@ -2323,12 +2355,12 @@ void Huggle::MainWindow::on_actionDisplay_bot_data_triggered()
 
 void Huggle::MainWindow::on_actionRequest_protection_triggered()
 {
-    if (!this->CheckExit() || !Configuration::HuggleConfiguration->ProjectConfig->RFPP || this->CurrentEdit == nullptr)
+    if (!this->EditingChecks())
         return;
-    if (Configuration::HuggleConfiguration->Restricted)
+    if (!this->GetCurrentWikiSite()->GetProjectConfig()->RFPP)
     {
-        Generic::DeveloperError();
-        return;
+        //! \todo Localize
+        Syslog::HuggleLogs->ErrorLog("This project doesn't support requests for protection");
     }
     if (this->fRFProtection != nullptr)
         delete this->fRFProtection;
@@ -2340,7 +2372,7 @@ void Huggle::MainWindow::on_actionRemove_edits_made_by_whitelisted_users_trigger
 {
     // the number must be higher that the real score so that we match even the edits
     // which have the same score (-800 + 1) > (-800)
-    this->Queue1->DeleteByScore(Configuration::HuggleConfiguration->ProjectConfig->WhitelistScore + 1);
+    this->Queue1->DeleteByScore(this->GetCurrentWikiSite()->GetProjectConfig()->WhitelistScore + 1);
 }
 
 void Huggle::MainWindow::on_actionDelete_all_edits_with_score_lower_than_200_triggered()
@@ -2417,4 +2449,9 @@ void Huggle::MainWindow::on_actionTag_2_triggered()
     this->fWikiPageTags = new WikiPageTagsForm(this);
     this->fWikiPageTags->show();
     this->fWikiPageTags->ChangePage(this->CurrentEdit->Page);
+}
+
+void Huggle::MainWindow::on_actionReload_menus_triggered()
+{
+    this->ReloadInterface();
 }

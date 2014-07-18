@@ -155,7 +155,7 @@ WikiUser::WikiUser()
     this->Bot = false;
 }
 
-WikiUser::WikiUser(WikiUser *u)
+WikiUser::WikiUser(WikiUser *u) : MediaWikiObject(u)
 {
     this->UserLock = new QMutex(QMutex::Recursive);
     this->IP = u->IP;
@@ -167,14 +167,13 @@ WikiUser::WikiUser(WikiUser *u)
     this->ContentsOfTalkPage = u->ContentsOfTalkPage;
     this->IsReported = u->IsReported;
     this->_talkPageWasRetrieved = u->_talkPageWasRetrieved;
-    this->Site = u->Site;
     this->WhitelistInfo = 0;
     this->Bot = u->Bot;
     this->EditCount = u->EditCount;
     this->RegistrationDate = u->RegistrationDate;
 }
 
-WikiUser::WikiUser(const WikiUser &u)
+WikiUser::WikiUser(const WikiUser &u) : MediaWikiObject(u)
 {
     this->UserLock = new QMutex(QMutex::Recursive);
     this->WarningLevel = u.WarningLevel;
@@ -185,7 +184,6 @@ WikiUser::WikiUser(const WikiUser &u)
     this->IsBanned = u.IsBanned;
     this->DateOfTalkPage = u.DateOfTalkPage;
     this->ContentsOfTalkPage = u.ContentsOfTalkPage;
-    this->Site = u.Site;
     this->_talkPageWasRetrieved = u._talkPageWasRetrieved;
     this->WhitelistInfo = 0;
     this->Bot = u.Bot;
@@ -320,7 +318,7 @@ void WikiUser::ParseTP(QDate bt)
 QString WikiUser::GetTalk()
 {
     // get a usertalk prefix for this site
-    WikiPageNS *ns = this->Site->RetrieveNSByCanonicalName("User talk");
+    WikiPageNS *ns = this->GetSite()->RetrieveNSByCanonicalName("User talk");
     QString prefix = ns->GetName();
     if (!prefix.size())
         prefix = "User talk";

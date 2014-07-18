@@ -12,15 +12,13 @@
 #define WIKIUSER_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QList>
 #include <QStringList>
 #include <QDateTime>
 #include <QString>
 #include <QRegExp>
+#include "mediawikiobject.hpp"
 
 class QMutex;
 
@@ -29,7 +27,7 @@ namespace Huggle
     class WikiSite;
 
     //! User
-    class WikiUser
+    class WikiUser : public MediaWikiObject
     {
         public:
             //! Delete all users that have badness score 0 these users aren't necessary to be stored in a list
@@ -162,7 +160,6 @@ namespace Huggle
             QMutex *UserLock;
             bool Bot;
             bool IP;
-            WikiSite *Site;
     };
 
     inline void WikiUser::Sanitize()

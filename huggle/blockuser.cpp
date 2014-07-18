@@ -30,6 +30,11 @@ BlockUser::BlockUser(QWidget *parent) : QDialog(parent), ui(new Ui::BlockUser)
     // we should initialise every variable
     this->BlockToken = "";
     this->user = nullptr;
+    this->ui->checkBox_5->setText(_l("block-anononly"));
+    this->ui->checkBox_3->setText(_l("block-autoblock"));
+    this->ui->checkBox_4->setText(_l("block-creation"));
+    this->ui->checkBox_2->setText(_l("block-email"));
+    this->ui->label_2->setText(_l("block-duration"));
     this->t0 = new QTimer(this);
     connect(this->t0, SIGNAL(timeout()), this, SLOT(onTick()));
     this->ui->comboBox->addItem(Configuration::HuggleConfiguration->ProjectConfig->BlockReason);
@@ -43,6 +48,7 @@ BlockUser::BlockUser(QWidget *parent) : QDialog(parent), ui(new Ui::BlockUser)
 
 BlockUser::~BlockUser()
 {
+    delete this->user;
     delete this->t0;
     delete this->ui;
 }
@@ -53,7 +59,8 @@ void BlockUser::SetWikiUser(WikiUser *User)
     {
         throw new Huggle::Exception("WikiUser *User can't be NULL", "void BlockUser::SetWikiUser(WikiUser *User)");
     }
-    this->user = User;
+    this->user = new WikiUser(User);
+    this->setWindowTitle(_l("block-title", this->user->Username));
     if (this->user->IsIP())
     {
         this->ui->checkBox_5->setEnabled(true);
@@ -68,15 +75,14 @@ void BlockUser::SetWikiUser(WikiUser *User)
 void BlockUser::GetToken()
 {
     // Let's get a token before anything
-    this->qTokenApi = new ApiQuery();
-    this->qTokenApi->SetAction(ActionQuery);
+    this->qTokenApi = new ApiQuery(ActionQuery, this->user->GetSite());
     this->qTokenApi->Parameters = "prop=info&intoken=block&titles=User:" +
             QUrl::toPercentEncoding(this->user->Username);
     this->qTokenApi->Target = _l("block-token-1", this->user->Username);
     QueryPool::HugglePool->AppendQuery(this->qTokenApi);
     this->qTokenApi->Process();
     this->QueryPhase = 0;
-    this->t0->start(200);
+    this->t0->start(HUGGLE_TIMER);
 }
 
 void BlockUser::on_pushButton_2_clicked()
@@ -130,7 +136,7 @@ void BlockUser::CheckToken()
     this->qTokenApi = nullptr;
     HUGGLE_DEBUG("Block token for " + this->user->Username + ": " + this->BlockToken, 1);
     // let's block them
-    this->qUser = new ApiQuery();
+    this->qUser = new ApiQuery(ActionQuery, this->user->GetSite());
     QString nocreate = "";
     if (this->ui->checkBox_4->isChecked())
         nocreate = "&nocreate=";
@@ -141,17 +147,16 @@ void BlockUser::CheckToken()
     if (this->ui->checkBox_2->isChecked())
         noemail = "&noemail=";
     QString autoblock = "";
-    if (!this->ui->checkBox_3->isChecked())
+    if (this->ui->checkBox_3->isChecked())
         autoblock = "&autoblock=";
     QString allowusertalk = "";
     if (!this->ui->checkBox->isChecked())
         allowusertalk = "&allowusertalk=";
-    this->qUser->SetAction(ActionQuery);
     this->qUser->Parameters = "action=block&user=" +  QUrl::toPercentEncoding(this->user->Username) + "&reason="
             + QUrl::toPercentEncoding(this->ui->comboBox->currentText()) + "&expiry="
             + QUrl::toPercentEncoding(this->ui->comboBox_2->currentText()) + nocreate + anononly
             + noemail + autoblock + allowusertalk + "&token=" + QUrl::toPercentEncoding(BlockToken);
-    this->qUser->Target = _l("blocking", this->user->Username);
+    this->qUser->Target = _l("block-progress", this->user->Username);
     this->qUser->UsingPOST = true;
     QueryPool::HugglePool->AppendQuery(this->qUser);
     this->qUser->Process();
@@ -181,7 +186,7 @@ void BlockUser::Block()
         mb.setWindowTitle(_l("error"));
         mb.setText(_l("block-fail", reason));
         mb.exec();
-        this->ui->pushButton->setText("Block");
+        this->ui->pushButton->setText(_l("block-title", this->user->Username));
         this->qUser->Result->SetError(HUGGLE_EUNKNOWN, "Unable to block: " + reason);
         this->qUser = nullptr;
         this->ui->pushButton->setEnabled(true);
@@ -189,7 +194,7 @@ void BlockUser::Block()
         return;
     }
     // let's assume the user was blocked
-    this->ui->pushButton->setText("Blocked");
+    this->ui->pushButton->setText(_l("block-done", this->user->Username));
     HUGGLE_DEBUG("block result: " + this->qUser->Result->Data, 2);
     this->qUser = nullptr;
     this->t0->stop();
@@ -243,7 +248,7 @@ void Huggle::BlockUser::on_pushButton_3_clicked()
         return;
     this->ui->pushButton_3->setEnabled(false);
     this->ui->pushButton->setEnabled(false);
-    this->qUser = new ApiQuery(ActionQuery);
+    this->qUser = new ApiQuery(ActionQuery, this->user->GetSite());
     this->qUser->Target = "user";
     this->qUser->Parameters = "list=blocks&";
     if (!this->user->IsIP())

@@ -12,11 +12,6 @@
 #define HUGGLEPARSER_HPP
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QDateTime>
@@ -26,17 +21,26 @@
 namespace Huggle
 {
     class Configuration;
+    class ProjectConfiguration;
     class HuggleQueueFilter;
 
     //! This namespace contains functions to parse various text, such as configuration keys
     namespace HuggleParser
     {
+        //! Parse a string from configuration which has format used by huggle 2x
+        /*!
+         * \param key Key
+         * \param content Text to parse from
+         * \param missing Default value in case this key is missing in text
+         * \return Value of key, in case there is no such a key content of missing is returned
+         */
+        QString ConfigurationParse(QString key, QString content, QString missing = "");
         //! \todo This function needs a unit test
-        QString GetSummaryOfWarningTypeFromWarningKey(QString key);
+        QString GetSummaryOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf);
         //! \todo This function needs a unit test
-        QString GetNameOfWarningTypeFromWarningKey(QString key);
+        QString GetNameOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf);
         //! \todo This function needs a unit test
-        QString GetKeyOfWarningTypeFromWarningName(QString id);
+        QString GetKeyOfWarningTypeFromWarningName(QString id, ProjectConfiguration *project_conf);
         //! \todo This function needs a unit test
         /*!
          * \brief ConfigurationParse_QL Parses a QStringList of values for a given key

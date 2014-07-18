@@ -29,6 +29,8 @@ SpeedyForm::SpeedyForm(QWidget *parent) : QDialog(parent), ui(new Ui::SpeedyForm
     this->timer = new QTimer(this);
     this->connect(this->timer, SIGNAL(timeout()), this, SLOT(OnTick()));
     this->ui->setupUi(this);
+    this->ui->checkBox->setText(_l("speedy-notifycreator"));
+    this->ui->label->setText(_l("speedy-reason"));
     int i=0;
     while (i < Configuration::HuggleConfiguration->ProjectConfig->SpeedyTemplates.count())
     {
@@ -71,11 +73,11 @@ void SpeedyForm::on_pushButton_clicked()
     }
     this->ui->checkBox->setEnabled(false);
     this->ui->comboBox->setEnabled(false);
-    this->ui->pushButton->setText("Updating");
+    this->ui->pushButton->setText(_l("speedy-progress", this->edit->Page->PageName));
     this->ui->pushButton->setEnabled(false);
     this->Header = this->ui->comboBox->currentText();
     // first we need to retrieve the content of page if we don't have it already
-    this->qObtainText = Generic::RetrieveWikiPageContents(this->edit->Page->PageName);
+    this->qObtainText = Generic::RetrieveWikiPageContents(this->edit->Page);
     this->timer->start(200);
     this->qObtainText->Process();
 }
@@ -111,6 +113,7 @@ void SpeedyForm::processTags()
         this->Fail("Invalid CSD tag, there is no message and wiki tag to use");
         return;
     }
+    //! \todo make this cross wiki instead of checking random tag
     if (this->Text.contains("{{db"))
     {
         this->Fail("There is already a CSD tag on the page.");

@@ -8,37 +8,28 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
-#ifndef SESSIONFORM_H
-#define SESSIONFORM_H
+#ifndef MEDIAWIKIOBJECT_HPP
+#define MEDIAWIKIOBJECT_HPP
 
 #include "definitions.hpp"
 
-#include <QDialog>
-
-namespace Ui
-{
-    class SessionForm;
-}
-
 namespace Huggle
 {
-    //! Session info
+    class WikiSite;
 
-    //! Display which user, project, what rights and flags your session have
-    class SessionForm : public QDialog
+    //! Every mediawiki asset may be inherited from this
+
+    //! This class makes it simple to create cross-wiki support for various types that are bound to a given site
+    class MediaWikiObject
     {
-            Q_OBJECT
-
         public:
-            explicit SessionForm(QWidget *parent = nullptr);
-            ~SessionForm();
-
-        private slots:
-            void on_pushButton_clicked();
-
-        private:
-            Ui::SessionForm *ui;
+            MediaWikiObject();
+            MediaWikiObject(MediaWikiObject *m);
+            MediaWikiObject(const MediaWikiObject &m);
+            virtual ~MediaWikiObject();
+            virtual WikiSite *GetSite();
+            WikiSite *Site;
     };
 }
 
-#endif // SESSIONFORM_H
+#endif // MEDIAWIKIOBJECT_HPP

@@ -11,13 +11,14 @@
 #include "wikipagetagsform.hpp"
 #include <QMessageBox>
 #include "apiquery.hpp"
-#include "wikipage.hpp"
 #include "configuration.hpp"
+#include "exception.hpp"
 #include "syslog.hpp"
 #include "generic.hpp"
 #include "querypool.hpp"
 #include "localization.hpp"
 #include "wikiedit.hpp"
+#include "wikipage.hpp"
 #include "wikiutil.hpp"
 #include "ui_wikipagetagsform.h"
 
@@ -32,13 +33,6 @@ WikiPageTagsForm::WikiPageTagsForm(QWidget *parent) : QDialog(parent),  ui(new U
     this->ui->tableWidget->verticalHeader()->setVisible(false);
     this->ui->tableWidget->horizontalHeader()->setSelectionBehavior(QAbstractItemView::SelectRows);
     this->ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-#if QT_VERSION >= 0x050000
-// Qt5 code
-    this->ui->tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-#else
-// Qt4 code
-    this->ui->tableWidget->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
-#endif
     this->ui->tableWidget->setShowGrid(false);
 }
 
@@ -50,6 +44,10 @@ WikiPageTagsForm::~WikiPageTagsForm()
 
 void WikiPageTagsForm::ChangePage(WikiPage *wikipage)
 {
+    if (wikipage == nullptr)
+        throw new Huggle::NullPointerException("wikipage", "void WikiPageTagsForm::ChangePage(WikiPage *wikipage)");
+
+    // we copy the page now
     this->page = new WikiPage(wikipage);
     this->setWindowTitle(_l("tag-title", page->PageName));
     // fill it up with tags
@@ -96,7 +94,7 @@ static void Fail(Query *result)
     result->UnregisterConsumer(HUGGLECONSUMER_CALLBACK);
 }
 
-static void FinishRead(Query *result)
+void Huggle::WikiPageTagsForm_FinishRead(Query *result)
 {
     ApiQuery *retrieve = (ApiQuery*)result;
     bool success = false;
@@ -132,8 +130,7 @@ static void FinishRead(Query *result)
         xx++;
     }
     Collectable_SmartPtr<EditQuery> e = WikiUtil::EditPage(form->page, text, Configuration::HuggleConfiguration->GenerateSuffix
-                                        (Configuration::HuggleConfiguration->ProjectConfig->TaggingSummary),
-                                      true, t_);
+                                        (Configuration::HuggleConfiguration->ProjectConfig->TaggingSummary), true, t_);
     e->FailureCallback = (Callback)Fail;
     e->callback = (Callback)Finish;
     e->CallbackResult = (void*)form;
@@ -147,10 +144,10 @@ void Huggle::WikiPageTagsForm::on_pushButton_clicked()
 {
     this->ui->pushButton->setEnabled(false);
     // first get the contents of the page
-    ApiQuery *retrieve = Generic::RetrieveWikiPageContents(this->page->PageName, false);
+    ApiQuery *retrieve = Generic::RetrieveWikiPageContents(this->page, false);
     retrieve->FailureCallback = (Callback)Fail;
     retrieve->CallbackResult = (void*)this;
-    retrieve->callback = (Callback)FinishRead;
+    retrieve->callback = (Callback)Huggle::WikiPageTagsForm_FinishRead;
     QueryPool::HugglePool->AppendQuery(retrieve);
     retrieve->Process();
 }

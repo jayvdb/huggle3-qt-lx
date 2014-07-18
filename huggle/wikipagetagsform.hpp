@@ -12,9 +12,6 @@
 #define WIKIPAGETAGSFORM_HPP
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 #include <QCheckBox>
@@ -28,7 +25,13 @@ namespace Ui
 
 namespace Huggle
 {
+    // fwdecl
+    class Query;
     class WikiPage;
+    //! This is a callback for query we use to read the page
+    void WikiPageTagsForm_FinishRead(Query *result);
+
+    //! Form used to tag page
     class WikiPageTagsForm : public QDialog
     {
             Q_OBJECT
@@ -36,12 +39,13 @@ namespace Huggle
             explicit WikiPageTagsForm(QWidget *parent = nullptr);
             ~WikiPageTagsForm();
             void ChangePage(WikiPage *wikipage);
+        private slots:
+            void on_pushButton_clicked();
+        private:
+            friend void Huggle::WikiPageTagsForm_FinishRead(Query *result);
             WikiPage *page = nullptr;
             QList<QCheckBox*> CheckBoxes;
             Ui::WikiPageTagsForm *ui;
-
-        private slots:
-            void on_pushButton_clicked();
     };
 }
 

@@ -12,9 +12,6 @@
 #define WIKISITE_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QHash>
@@ -23,10 +20,14 @@
 
 namespace Huggle
 {
+    //! Namespace (mediawiki)
     class WikiPageNS
     {
         public:
             WikiPageNS(int id, QString name, QString canonical_name);
+            WikiPageNS(const WikiPageNS &k);
+            WikiPageNS(WikiPageNS *k);
+            ~WikiPageNS();
             //~WikiPageNS();
             QString GetName();
             QString GetCanonicalName();

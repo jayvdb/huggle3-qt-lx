@@ -11,10 +11,11 @@
 #include "apiquery.hpp"
 #include <QtXml>
 #include <QUrl>
+#include "configuration.hpp"
 #include "syslog.hpp"
 #include "revertquery.hpp"
 #include "exception.hpp"
-#include "configuration.hpp"
+#include "generic.hpp"
 #include "wikisite.hpp"
 
 using namespace Huggle;
@@ -25,11 +26,10 @@ void ApiQuery::ConstructUrl()
         throw new Huggle::Exception("No action provided for api request");
     if (this->OverrideWiki.isEmpty())
     {
-        this->URL = Configuration::GetProjectScriptURL(Configuration::HuggleConfiguration->Project)
-                    + "api.php?action=" + this->ActionPart;
+        this->URL = Configuration::GetProjectScriptURL(this->GetSite()) + "api.php?action=" + this->ActionPart;
     } else
     {
-        this->URL = Configuration::GetURLProtocolPrefix() + this->OverrideWiki + "api.php?action=" + this->ActionPart;
+        this->URL = Configuration::GetURLProtocolPrefix(this->GetSite()) + this->OverrideWiki + "api.php?action=" + this->ActionPart;
     }
     if (this->Parameters.length() > 0)
         this->URL += "&" + this->Parameters;
@@ -56,10 +56,10 @@ QString ApiQuery::ConstructParameterLessUrl()
         throw new Huggle::Exception("No action provided for api request", "void ApiQuery::ConstructParameterLessUrl()");
     }
     if (!this->OverrideWiki.size())
-        url = Configuration::GetProjectScriptURL(Configuration::HuggleConfiguration->Project)
+        url = Configuration::GetProjectScriptURL(this->GetSite())
                 + "api.php?action=" + this->ActionPart;
     else
-        url = Configuration::GetURLProtocolPrefix() + this->OverrideWiki + "api.php?action=" + this->ActionPart;
+        url = Configuration::GetURLProtocolPrefix(this->GetSite()) + this->OverrideWiki + "api.php?action=" + this->ActionPart;
 
     switch (this->RequestFormat)
     {
@@ -103,11 +103,19 @@ ApiQuery::ApiQuery()
     this->Type = QueryApi;
 }
 
-ApiQuery::ApiQuery(Action a)
+ApiQuery::ApiQuery(Action action)
 {
     this->RequestFormat = XML;
     this->Type = QueryApi;
-    this->SetAction(a);
+    this->SetAction(action);
+}
+
+ApiQuery::ApiQuery(Action action, WikiSite *site)
+{
+    this->RequestFormat = XML;
+    this->Site = site;
+    this->Type = QueryApi;
+    this->SetAction(action);
 }
 
 void ApiQuery::Finished()
@@ -116,7 +124,7 @@ void ApiQuery::Finished()
     // now we need to check if request was successful or not
     if (this->reply->error())
     {
-        this->Result->SetError(HUGGLE_EUNKNOWN, reply->errorString());
+        this->Result->SetError(HUGGLE_EUNKNOWN, this->reply->errorString());
         this->reply->deleteLater();
         this->reply = nullptr;
         this->Status = StatusDone;
@@ -166,7 +174,7 @@ void ApiQuery::Process()
         this->Result->Data = "DM (didn't run a query)";
         this->Status = StatusDone;
         this->ProcessCallback();
-        Syslog::HuggleLogs->Log("If I wasn't in dry mode I would execute this query (post=" + Configuration::Bool2String(this->UsingPOST) +
+        Syslog::HuggleLogs->Log("If I wasn't in dry mode I would execute this query (post=" + Generic::Bool2String(this->UsingPOST) +
                                 ") " + this->URL + "\ndata: " + QUrl::fromPercentEncoding(this->Parameters.toUtf8()));
         return;
     }

@@ -12,12 +12,10 @@
 #define HISTORYITEM_HPP
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include "collectable.hpp"
+#include "mediawikiobject.hpp"
 
 namespace Huggle
 {
@@ -31,7 +29,7 @@ namespace Huggle
     };
 
     //! History consist of these items
-    class HistoryItem : public Collectable
+    class HistoryItem : public Collectable, public MediaWikiObject
     {
         public:
             static QString TypeToString(HistoryType type);
@@ -49,6 +47,7 @@ namespace Huggle
             //! Change this to false in case that item can't be reverted
             bool IsRevertable = true;
             bool NewPage = false;
+            long RevID = WIKI_UNKNOWN_REVID;
             //! Type of item
             HistoryType Type;
             bool Undone = false;

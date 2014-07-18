@@ -13,14 +13,8 @@
 
 // Include file with all global defines
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
-
 #include <QList>
 #include <QStringList>
 #include <QHash>
@@ -45,8 +39,10 @@ namespace Huggle
         public:
             ~UserConfiguration();
             QHash<QString, HuggleOption*> UserOptions;
-            bool                    EnforceMonthsAsHeaders = true;
-            unsigned int            TalkPageFreshness = 20;
+            //! Resolve edit conflict without asking user
+            bool            AutomaticallyResolveConflicts = false;
+            bool            EnforceMonthsAsHeaders = true;
+            unsigned int    TalkPageFreshness = 20;
             //! If history and user info should be automatically loaded for every edit
             bool                    HistoryLoad = true;
             //! Defines what should be done on next edit

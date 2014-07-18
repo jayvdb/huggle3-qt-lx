@@ -12,9 +12,6 @@
 #define SYSLOG_HPP
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QStringList>
 
@@ -52,6 +49,8 @@ namespace Huggle
     };
 
     //! Provides a logging to various places
+
+    //! There is an instance of this class that can be used to log from external modules using same facility
     class Syslog
     {
         public:

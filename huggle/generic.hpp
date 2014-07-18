@@ -12,10 +12,6 @@
 #define GENERIC_HPP
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 
@@ -29,12 +25,34 @@ namespace Huggle
 {
     class ApiQuery;
     class WikiEdit;
+    class WikiPage;
+
+    enum MessageBoxStyle
+    {
+        MessageBoxStyleNormal,
+        MessageBoxStyleQuestion,
+        MessageBoxStyleWarning,
+        MessageBoxStyleError
+    };
 
     //! Generic requests that are frequently issued to wiki
     namespace Generic
     {
+        /*!
+         * \brief Bool2String Convert a bool to string
+         * \param b bool
+         * \return string
+         */
+        QString Bool2String(bool b);
+        bool SafeBool(QString value, bool defaultvalue = false);
         //! Display a user message before reporting a user based on user preferences
         bool ReportPreFlightCheck();
+        /*!
+         * \brief MessageBox Display a message box
+         * \param title Title of message box
+         * \param text What is displayed in a message
+         */
+        int MessageBox(QString title, QString text, MessageBoxStyle st = MessageBoxStyleNormal);
         //! Display a message box telling user that function is not allowed during developer mode
         void DeveloperError();
         /*!
@@ -51,9 +69,11 @@ namespace Huggle
          * \return Text of wiki page or error message
          */
         QString EvaluateWikiPageContents(ApiQuery *query, bool *failed, QString *ts = nullptr, QString *comment = nullptr,
-                                         QString *user = nullptr, int *revid = nullptr, int *reason = nullptr,
+                                         QString *user = nullptr, long *revid = nullptr, int *reason = nullptr,
                                          QString *title = nullptr);
+        //! \obsolete RetrieveWikiPageContents(WikiPage *page, bool parse = false);
         ApiQuery *RetrieveWikiPageContents(QString page, bool parse = false);
+        ApiQuery *RetrieveWikiPageContents(WikiPage *page, bool parse = false);
         QString ShrinkText(QString text, int size, bool html = true);
     }
 }

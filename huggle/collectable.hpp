@@ -16,11 +16,6 @@
 #define COLLECTABLE_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QMutex>
 #include <QList>
@@ -108,7 +103,19 @@ namespace Huggle
              * \param consumer Unique string that unlock the object
              */
             void UnregisterConsumer(const QString consumer);
+            /*!
+             * \brief IncRef This function will add 1 to reference counter and change the collectable to managed in case it wasn't
+             *
+             * This function is thread safe, it's highly recommended to use Collectable_SmartPtr which
+             * will handle the reference counter for you!
+             */
             void IncRef();
+            /*!
+             * \brief DecRef Decrease reference counter
+             *
+             * If collectable isn't managed or reference counter is 0 it will throw exception, it's highly recommended to use
+             * Collectable_SmartPtr which will handle the reference counter for you
+             */
             void DecRef();
             /*!
              * \brief DebugHgc

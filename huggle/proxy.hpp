@@ -12,9 +12,6 @@
 #define PROXY_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 
@@ -25,6 +22,7 @@ namespace Ui
 
 namespace Huggle
 {
+    //! \todo make it
     //! Proxy
     class Proxy : public QDialog
     {

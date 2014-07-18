@@ -16,11 +16,35 @@
 #include "exception.hpp"
 #include "localization.hpp"
 #include "wikiedit.hpp"
+#include "wikipage.hpp"
+
+#ifdef MessageBox
+    // fix GCC for windows headers port
+    #undef MessageBox
+#endif
 
 using namespace Huggle;
 
 // we need to preload this thing so that we don't need to create this string so frequently and toast teh PC
 static QString options_ = QUrl::toPercentEncoding("timestamp|user|comment|content");
+
+QString Generic::Bool2String(bool b)
+{
+    if (b)
+    {
+        return "true";
+    }
+    return "false";
+}
+
+bool Generic::SafeBool(QString value, bool defaultvalue)
+{
+    if (value.toLower() == "true")
+    {
+        return true;
+    }
+    return defaultvalue;
+}
 
 bool Generic::ReportPreFlightCheck()
 {
@@ -32,16 +56,22 @@ bool Generic::ReportPreFlightCheck()
 
 ApiQuery *Generic::RetrieveWikiPageContents(QString page, bool parse)
 {
-    ApiQuery *query = new ApiQuery(ActionQuery);
-    query->Target = "Retrieving contents of " + page;
-    query->Parameters = "prop=revisions&rvlimit=1&rvprop=" + options_ + "&titles=" + QUrl::toPercentEncoding(page);
+    WikiPage pt(page);
+    return RetrieveWikiPageContents(&pt, parse);
+}
+
+ApiQuery *Generic::RetrieveWikiPageContents(WikiPage *page, bool parse)
+{
+    ApiQuery *query = new ApiQuery(ActionQuery, page->Site);
+    query->Target = "Retrieving contents of " + page->PageName;
+    query->Parameters = "prop=revisions&rvlimit=1&rvprop=" + options_ + "&titles=" + QUrl::toPercentEncoding(page->PageName);
     if (parse)
         query->Parameters += "&rvparse";
     return query;
 }
 
 QString Generic::EvaluateWikiPageContents(ApiQuery *query, bool *failed, QString *ts, QString *comment, QString *user,
-                                          int *revid, int *reason, QString *title)
+                                          long *revid, int *reason, QString *title)
 {
     if (!failed)
     {
@@ -103,9 +133,12 @@ QString Generic::EvaluateWikiPageContents(ApiQuery *query, bool *failed, QString
     {
         *ts = e.attribute("timestamp");
     }
-    if (revid && e.attributes().contains("revid"))
+    if (revid)
     {
-        *revid = e.attribute("revid").toInt();
+        if (e.attributes().contains("revid"))
+            *revid = e.attribute("revid").toInt();
+        else
+            *revid = WIKI_UNKNOWN_REVID;
     }
     *failed = false;
     return e.text();
@@ -113,11 +146,8 @@ QString Generic::EvaluateWikiPageContents(ApiQuery *query, bool *failed, QString
 
 void Generic::DeveloperError()
 {
-    QMessageBox *mb = new QMessageBox();
-    mb->setWindowTitle("Function is restricted now");
-    mb->setText("You can't perform this action in developer mode, because you aren't logged into the wiki");
-    mb->exec();
-    delete mb;
+    Generic::MessageBox("Function is restricted now", "You can't perform this action in"\
+                        " developer mode, because you aren't logged into the wiki");
 }
 
 QString Generic::ShrinkText(QString text, int size, bool html)
@@ -143,4 +173,23 @@ QString Generic::ShrinkText(QString text, int size, bool html)
         text_.replace(" ", "&nbsp;");
     }
     return text_;
+}
+
+int Generic::MessageBox(QString title, QString text, MessageBoxStyle st)
+{
+    QMessageBox mb;
+    mb.setWindowTitle(title);
+    mb.setText(text);
+    switch (st)
+    {
+        case MessageBoxStyleQuestion:
+            mb.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+            mb.setDefaultButton(QMessageBox::Yes);
+            break;
+        case MessageBoxStyleNormal:
+        case MessageBoxStyleError:
+        case MessageBoxStyleWarning:
+            break;
+    }
+    return mb.exec();
 }

@@ -12,9 +12,6 @@
 #define EDITQUERY_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include "apiquery.hpp"
@@ -24,6 +21,7 @@
 namespace Huggle
 {
     class ApiQuery;
+    class WikiPage;
 
     //! Modifications of mediawiki pages can be done using this query
     class EditQuery : public Query
@@ -36,7 +34,7 @@ namespace Huggle
             bool Append = false;
             bool InsertTargetToWatchlist = false;
             //! Page that is going to be edited
-            QString Page;
+            WikiPage *Page = nullptr;
             //! Text a page will be replaced with
             QString text;
             //! Edit summary

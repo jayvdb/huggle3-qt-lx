@@ -12,10 +12,6 @@
 #define REVERTQUERY_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it simply suck
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QDateTime>
@@ -24,17 +20,19 @@
 #include "wikiedit.hpp"
 #include "apiquery.hpp"
 #include "collectable_smartptr.hpp"
+#include "mediawikiobject.hpp"
 
 namespace Huggle
 {
     class ApiQuery;
     class EditQuery;
     class WikiEdit;
+    class WikiSite;
 
     /*!
      * \brief The RevertQuery class can be used to rollback any edit
      */
-    class RevertQuery : public QObject, public Query
+    class RevertQuery : public QObject, public Query, public MediaWikiObject
     {
             Q_OBJECT
         public:
@@ -42,6 +40,7 @@ namespace Huggle
 
             RevertQuery();
             RevertQuery(WikiEdit *Edit);
+            RevertQuery(WikiEdit *Edit, WikiSite *site);
             ~RevertQuery();
             void Process();
             //! In case you want to revert only last edit, set this to true
@@ -51,6 +50,7 @@ namespace Huggle
             bool IsProcessed();
             void SetUsingSR(bool software_rollback);
             bool IsUsingSR();
+            WikiSite *GetSite();
             //! Time when a query was issued (this is set externaly)
             QDateTime Date;
             QString Summary = "";
@@ -87,6 +87,17 @@ namespace Huggle
             int SR_Depth;
             QString SR_Target = "";
     };
+
+    inline WikiSite *RevertQuery::GetSite()
+    {
+        if (this->Site == nullptr)
+            return (this->edit->GetSite());
+
+        // we know the site and despite it may be inconsistent we return it because that is what
+        // programmer wanted (by inconsistent I mean the query could have different site
+        // than the edit now had) :o
+        return this->Site;
+    }
 }
 
 #endif // REVERTQUERY_H

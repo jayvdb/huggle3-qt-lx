@@ -10,14 +10,15 @@
 
 #include "querypool.hpp"
 #include "configuration.hpp"
+#include "editquery.hpp"
+#include "exception.hpp"
+#include "hugglefeed.hpp"
 #include "query.hpp"
 #include "processlist.hpp"
 #include "message.hpp"
-#include "hugglefeed.hpp"
-#include "wikiedit.hpp"
-#include "editquery.hpp"
-#include "exception.hpp"
 #include "syslog.hpp"
+#include "wikiedit.hpp"
+#include "wikiuser.hpp"
 #include "wikiutil.hpp"
 
 using namespace Huggle;
@@ -67,11 +68,13 @@ void QueryPool::AppendQuery(Query *item)
 void QueryPool::PreProcessEdit(WikiEdit *edit)
 {
     if (edit == nullptr)
-        throw new Huggle::Exception("NULL edit", "void QueryPool::PreProcessEdit(WikiEdit *edit)");
+        throw new Huggle::NullPointerException("edit", "void QueryPool::PreProcessEdit(WikiEdit *edit)");
     if (edit->Status == StatusProcessed)
         return;
+    if (edit->Status == StatusPostProcessed)
+        throw new Huggle::Exception("Pre process of edit that was already post processed");
     if (edit->User == nullptr)
-        throw new Huggle::Exception("Edit user was NULL in Core::PreProcessEdit");
+        throw new Huggle::NullPointerException("edit->User", "void QueryPool::PreProcessEdit(WikiEdit *edit)");
     if (edit->Bot)
         edit->User->SetBot(true);
 

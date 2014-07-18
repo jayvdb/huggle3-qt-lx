@@ -12,15 +12,17 @@
 #include <QMessageBox>
 #include <QtXml>
 #include <QWebView>
-#include "wikiutil.hpp"
+#include "configuration.hpp"
+#include "exception.hpp"
 #include "generic.hpp"
 #include "huggleweb.hpp"
 #include "syslog.hpp"
 #include "localization.hpp"
-#include "configuration.hpp"
 #include "resources.hpp"
 #include "blockuser.hpp"
+#include "wikisite.hpp"
 #include "wikiuser.hpp"
+#include "wikiutil.hpp"
 #include "ui_reportuser.h"
 using namespace Huggle;
 
@@ -94,23 +96,27 @@ ReportUser::~ReportUser()
 
 bool ReportUser::SetUser(WikiUser *user)
 {
+    if (!user)
+        throw new Huggle::NullPointerException("user", "bool ReportUser::SetUser(WikiUser *user)");
+
     this->ReportedUser = user;
+    this->setWindowTitle(_l("report-title", this->ReportedUser->Username));
     this->ui->label->setText(_l("report-intro", user->Username));
-    this->qHistory = new ApiQuery(ActionQuery);
+    this->qHistory = new ApiQuery(ActionQuery, this->ReportedUser->Site);
     this->qHistory->Parameters = "list=recentchanges&rcuser=" + QUrl::toPercentEncoding(user->Username) +
             "&rcprop=user%7Ccomment%7Ctimestamp%7Ctitle%7Cids%7Csizes&rclimit=20&rctype=edit%7Cnew";
     this->qHistory->Process();
-    if (!Configuration::HuggleConfiguration->Rights.contains("block"))
+    if (!Configuration::HuggleConfiguration->ProjectConfig->Rights.contains("block"))
     {
         this->ui->pushButton_4->setEnabled(false);
     }
-    this->qBlockHistory = new ApiQuery(ActionQuery);
+    this->qBlockHistory = new ApiQuery(ActionQuery, this->ReportedUser->GetSite());
     this->qBlockHistory->Parameters = "list=logevents&leprop=ids%7Ctitle%7Ctype%7Cuser%7Ctimestamp%7Ccomment%7Cdetails%7Ctags&letype"\
                                       "=block&ledir=newer&letitle=User:" + QUrl::toPercentEncoding(this->ReportedUser->Username);
     this->qBlockHistory->Process();
     this->tReportUser = new QTimer(this);
     connect(this->tReportUser, SIGNAL(timeout()), this, SLOT(Tick()));
-    this->tReportUser->start(200);
+    this->tReportUser->start(HUGGLE_TIMER);
     return true;
 }
 
@@ -262,12 +268,11 @@ void ReportUser::Tick()
             // everything is ok we report user
             QString summary = Configuration::HuggleConfiguration->ProjectConfig->ReportSummary;
             summary = summary.replace("$1",this->ReportedUser->Username);
-            this->qEdit = WikiUtil::EditPage(Configuration::HuggleConfiguration->AIVP, this->ReportContent, summary,
+            this->qEdit = WikiUtil::EditPage(Configuration::HuggleConfiguration->ProjectConfig->AIVP, this->ReportContent, summary,
                                              false, this->ReportTs);
             /// \todo LOCALIZE ME
             this->ui->pushButton->setText("Writing");
             this->qHistory.Delete();
-            return;
         }
         return;
     }
@@ -478,10 +483,12 @@ void ReportUser::on_pushButton_clicked()
     // obtain current page
     this->Loading = true;
     this->ui->pushButton->setText(_l("report-retrieving"));
-    this->qHistory = Generic::RetrieveWikiPageContents(Configuration::HuggleConfiguration->ProjectConfig->ReportAIV);
+    WikiSite *site = this->ReportedUser->GetSite();
+    this->qHistory = Generic::RetrieveWikiPageContents(site->GetProjectConfig()->ReportAIV);
+    this->qHistory->Site = this->ReportedUser->GetSite();
     this->qHistory->Process();
     this->ReportText = reports;
-    this->tReportUser->start(800);
+    this->tReportUser->start(HUGGLE_TIMER);
     return;
 }
 
@@ -499,13 +506,13 @@ void ReportUser::on_tableWidget_clicked(const QModelIndex &index)
     if (this->qDiff != nullptr)
         this->qDiff->Kill();
 
-    this->qDiff = new ApiQuery(ActionQuery);
+    this->qDiff = new ApiQuery(ActionQuery, this->ReportedUser->GetSite());
     this->qDiff->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
                       "&rvlimit=1&rvtoken=rollback&rvstartid=" + this->ui->tableWidget->item(index.row(), 3)->text() +
                       "&rvendid=" + this->ui->tableWidget->item(index.row(), 3)->text() + "&rvdiffto=prev&titles=" +
                       QUrl::toPercentEncoding(ui->tableWidget->item(index.row(), 0)->text());
     this->qDiff->Process();
-    this->tPageDiff->start(200);
+    this->tPageDiff->start(HUGGLE_TIMER);
 }
 
 void Huggle::ReportUser::on_pushButton_5_clicked()
@@ -578,7 +585,7 @@ void ReportUser::on_pushButton_3_clicked()
     this->ui->pushButton_3->setEnabled(false);
     this->qReport = Generic::RetrieveWikiPageContents(Configuration::HuggleConfiguration->ProjectConfig->ReportAIV);
     this->qReport->Process();
-    this->tReportPageCheck->start(60);
+    this->tReportPageCheck->start(HUGGLE_TIMER);
 }
 
 void Huggle::ReportUser::on_pushButton_4_clicked()
@@ -595,7 +602,7 @@ void Huggle::ReportUser::on_pushButton_4_clicked()
 void Huggle::ReportUser::on_pushButton_7_clicked()
 {
     this->ui->pushButton_7->setEnabled(false);
-    this->qCheckIfBlocked = new ApiQuery(ActionQuery);
+    this->qCheckIfBlocked = new ApiQuery(ActionQuery, this->ReportedUser->GetSite());
     this->qCheckIfBlocked->Target = "user";
     this->qCheckIfBlocked->Parameters = "list=blocks&";
     if (!this->ReportedUser->IsIP())
@@ -606,5 +613,5 @@ void Huggle::ReportUser::on_pushButton_7_clicked()
         this->qCheckIfBlocked->Parameters += "bkip=" + QUrl::toPercentEncoding(this->ReportedUser->Username);
     }
     this->qCheckIfBlocked->Process();
-    this->tReportPageCheck->start(60);
+    this->tReportPageCheck->start(HUGGLE_TIMER);
 }

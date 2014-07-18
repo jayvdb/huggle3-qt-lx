@@ -12,10 +12,6 @@
 #define WIKIEDIT_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QThread>
@@ -45,9 +41,11 @@ namespace Huggle
 
     class Query;
     class ApiQuery;
+    class MainWindow;
     class WikiPage;
     class WikiEdit;
     class WikiUser;
+    class WikiSite;
 
     //! Edits are post processed in this thread
     class ProcessorThread :  public QThread
@@ -63,7 +61,15 @@ namespace Huggle
 
     //! Wiki edit
 
-    //! Basically all changes to pages can be represented by this class
+    //! Basically all changes to pages can be represented by this class.
+    //! Edits are representing an edit made to a page on a wiki, they
+    //! have a 3 basic statuses:
+    //! None - edit was just created and is not suitable for use
+    //! Processed - edit was pre processed, the basic information were properly set. This
+    //!             is a very quick serial operation that is handled by Core::Process
+    //! Postprocessed - edit was processed by processor thread and the detailed information
+    //!                 were downloaded using separate queries, in this phase the edit
+    //!                 structure contains all possible needed information we want.
     //! \image html ../documentation/providers.png
     class WikiEdit : public Collectable
     {
@@ -71,6 +77,7 @@ namespace Huggle
             //! This function will return a constant (which needs to be generated runtime)
             //! which is used as "unknown time" in case we don't know the edit's time
             static QDateTime GetUnknownEditTime();
+            static Collectable_SmartPtr<WikiEdit> FromCacheByRevID(int revid);
             //! This list contains reference to all existing edits in memory
             static QList<WikiEdit*> EditList;
             static QMutex *Lock_EditList;
@@ -78,14 +85,14 @@ namespace Huggle
             //! Creates a new empty wiki edit
             WikiEdit();
             ~WikiEdit();
-            //! This function is called by core
-            bool FinalizePostProcessing();
             //! This function is called by internals of huggle
             void PostProcess();
+            WikiSite *GetSite();
             //! Return a full url to edit
             QString GetFullUrl();
             //! Return true in case this edit was post processed already
             bool IsPostProcessed();
+            //! Processes all score words in text
             void ProcessWords();
             void RemoveFromHistoryChain();
             //! Page that was changed by edit
@@ -98,8 +105,9 @@ namespace Huggle
             bool Bot;
             //! Edit is a new page
             bool NewPage;
-            //! Size of change of edit
-            int Size;
+            bool SizeIsKnown = false;
+            void SetSize(long size);
+            long GetSize();
             //! Diff id
             int Diff;
             //! Priority in queue
@@ -108,7 +116,7 @@ namespace Huggle
             int OldID;
             bool IsRevert;
             //! Revision ID
-            int RevID;
+            long RevID;
             //! Indicator whether the edit was processed or not
             WEStatus Status;
             //! Current warning level
@@ -147,6 +155,10 @@ namespace Huggle
             //! This variable is used by worker thread and needs to be public so that it is working
             bool ProcessedByWorkerThread;
         private:
+            //! This function is called by core
+            bool FinalizePostProcessing();
+            friend class ProcessorThread;
+            friend class MainWindow;
             bool ProcessingByWorkerThread;
             bool ProcessingRevs;
             bool ProcessingDiff;
@@ -155,6 +167,8 @@ namespace Huggle
             Collectable_SmartPtr<ApiQuery> qUser;
             Collectable_SmartPtr<ApiQuery> qDifference;
             Collectable_SmartPtr<ApiQuery> qText;
+            //! Size of change of edit
+            long Size;
     };
 
     inline QDateTime WikiEdit::GetUnknownEditTime()
@@ -165,6 +179,17 @@ namespace Huggle
     inline bool WikiEdit::IsPostProcessed()
     {
         return (this->Status == StatusPostProcessed);
+    }
+
+    inline long WikiEdit::GetSize()
+    {
+        return this->Size;
+    }
+
+    inline void WikiEdit::SetSize(long size)
+    {
+        this->SizeIsKnown = true;
+        this->Size = size;
     }
 }
 

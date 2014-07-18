@@ -15,6 +15,7 @@
 #include "configuration.hpp"
 #include "exception.hpp"
 #include "exceptionwindow.hpp"
+#include "generic.hpp"
 #include "hooks.hpp"
 #include "hugglefeed.hpp"
 #include "hugglequeuefilter.hpp"
@@ -27,6 +28,7 @@
 #include "querypool.hpp"
 #include "syslog.hpp"
 #include "wikipage.hpp"
+#include "wikisite.hpp"
 #include "wikiuser.hpp"
 
 using namespace Huggle;
@@ -84,7 +86,7 @@ void Core::Init()
     HuggleQueueFilter::Filters.append(HuggleQueueFilter::DefaultFilter);
     if (!Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
-#ifdef PYTHONENGINE
+#ifdef HUGGLE_PYTHON
         Syslog::HuggleLogs->Log("Loading python engine");
         this->Python = new Python::PythonEngine(Configuration::GetExtensionsRootPath());
 #endif
@@ -103,7 +105,7 @@ void Core::Init()
 
 Core::Core()
 {
-#ifdef PYTHONENGINE
+#ifdef HUGGLE_PYTHON
     this->Python = nullptr;
 #endif
     this->Main = nullptr;
@@ -179,13 +181,13 @@ void Core::LoadDB()
         if (e.attributes().contains("script"))
             site->ScriptPath = e.attribute("script");
         if (e.attributes().contains("https"))
-            site->SupportHttps = Configuration::SafeBool(e.attribute("https"));
+            site->SupportHttps = Generic::SafeBool(e.attribute("https"));
         if (e.attributes().contains("oauth"))
-            site->SupportOAuth = Configuration::SafeBool(e.attribute("oauth"));
+            site->SupportOAuth = Generic::SafeBool(e.attribute("oauth"));
         if (e.attributes().contains("channel"))
             site->IRCChannel = e.attribute("channel");
         if (e.attributes().contains("rtl"))
-            site->IsRightToLeft = Configuration::SafeBool(e.attribute("rtl"));
+            site->IsRightToLeft = Generic::SafeBool(e.attribute("rtl"));
         Configuration::HuggleConfiguration->ProjectList.append(site);
         xx++;
     }
@@ -349,7 +351,7 @@ void Core::ExtensionLoad()
                 }
             } else if (name.endsWith(".py"))
             {
-#ifdef PYTHONENGINE
+#ifdef HUGGLE_PYTHON
                 name = extensions.at(xx);
                 if (Core::Python->LoadScript(name))
                 {
@@ -366,7 +368,7 @@ void Core::ExtensionLoad()
     {
         Huggle::Syslog::HuggleLogs->Log("There is no extensions folder, skipping load");
     }
-#ifndef PYTHONENGINE
+#ifndef HUGGLE_PYTHON
     Huggle::Syslog::HuggleLogs->Log("Extensions: " + QString::number(Core::Extensions.count()));
 #else
     Huggle::Syslog::HuggleLogs->Log("Extensions: " + QString::number(Core::Python->Count() + Core::Extensions.count()));
@@ -410,7 +412,7 @@ void Core::Shutdown()
     }
     Core::SaveDefs();
     Configuration::SaveSystemConfig();
-#ifdef PYTHONENGINE
+#ifdef HUGGLE_PYTHON
     if (!Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
         Huggle::Syslog::HuggleLogs->Log("Unloading python");

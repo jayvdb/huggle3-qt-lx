@@ -13,14 +13,17 @@
 #include <QUrl>
 #include <QDesktopServices>
 #include <QtXml>
+#include "core.hpp"
+#include "configuration.hpp"
 #include "syslog.hpp"
 #include "mainwindow.hpp"
 #include "mediawiki.hpp"
 #include "localization.hpp"
+#include "loadingform.hpp"
+#include "wikisite.hpp"
 #include "wikiutil.hpp"
-#include "core.hpp"
-#include "configuration.hpp"
 #include "ui_login.h"
+#include "updateform.hpp"
 
 #define LOGINFORM_LOGIN 0
 #define LOGINFORM_SITEINFO 1
@@ -57,7 +60,7 @@ Login::Login(QWidget *parent) :   QDialog(parent), ui(new Ui::Login)
         }
         l++;
     }
-    QString title = "Huggle 3 QT";
+    QString title = "Huggle 3 QT-LX";
     if (Configuration::HuggleConfiguration->Verbosity > 0)
     {
         // add debug lang "qqx" last
@@ -290,7 +293,7 @@ void Login::PressOK()
     this->Disable();
     this->loadingForm->show();
     // First of all, we need to login to the site
-    this->timer->start(200);
+    this->timer->start(HUGGLE_TIMER);
     this->loadingForm->Insert(LOGINFORM_LOGIN, _l("login-progress-start", Configuration::HuggleConfiguration->Project->Name), LoadingForm_Icon_Loading);
     this->loadingForm->Insert(LOGINFORM_SITEINFO, _l("login-progress-retrieve-mw", Configuration::HuggleConfiguration->Project->Name), LoadingForm_Icon_Waiting);
     this->loadingForm->Insert(LOGINFORM_GLOBALCONFIG, _l("login-progress-global"), LoadingForm_Icon_Waiting);
@@ -462,7 +465,7 @@ void Login::RetrieveProjectConfig()
             }
             this->LoginQuery = nullptr;
             QDomElement data = l.at(0).toElement();
-            if (Configuration::HuggleConfiguration->ParseProjectConfig(data.text()))
+            if (Configuration::HuggleConfiguration->ProjectConfig->Parse(data.text()))
             {
                 if (!Configuration::HuggleConfiguration->ProjectConfig->EnableAll)
                 {
@@ -595,18 +598,18 @@ void Login::RetrieveUserInfo()
             int c=0;
             while(c<lRights_.count())
             {
-                Configuration::HuggleConfiguration->Rights.append(lRights_.at(c).toElement().text());
+                Configuration::HuggleConfiguration->ProjectConfig->Rights.append(lRights_.at(c).toElement().text());
                 c++;
             }
             if (Configuration::HuggleConfiguration->ProjectConfig->RequireRollback &&
-                !Configuration::HuggleConfiguration->Rights.contains("rollback"))
+                !Configuration::HuggleConfiguration->ProjectConfig->Rights.contains("rollback"))
             {
                 this->Update(_l("login-fail-rollback-rights"));
                 this->Kill();
                 return;
             }
             if (Configuration::HuggleConfiguration->ProjectConfig->RequireAutoconfirmed &&
-                !Configuration::HuggleConfiguration->Rights.contains("autoconfirmed"))
+                !Configuration::HuggleConfiguration->ProjectConfig->Rights.contains("autoconfirmed"))
                 //sometimes there is something like manually "confirmed", thats currently not included here
             {
                 this->Update(_l("login-failed-autoconfirm-rights"));
@@ -888,7 +891,7 @@ void Login::on_pushButton_clicked()
     this->LoginQuery = new ApiQuery(ActionQuery);
     this->_Status = Refreshing;
     Configuration::HuggleConfiguration->SystemConfig_UsingSSL = this->ui->checkBox->isChecked();
-    this->timer->start(200);
+    this->timer->start(HUGGLE_TIMER);
     this->LoginQuery->OverrideWiki = Configuration::HuggleConfiguration->GlobalConfigurationWikiAddress;
     this->ui->ButtonOK->setText(_l("[[cancel]]"));
     this->LoginQuery->Parameters = "prop=revisions&format=xml&rvprop=content&rvlimit=1&titles="

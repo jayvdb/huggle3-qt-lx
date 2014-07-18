@@ -15,6 +15,7 @@
 #include "../../configuration.hpp"
 #include "../../wikiedit.hpp"
 #include "../../wikipage.hpp"
+#include "../../wikisite.hpp"
 #include "../../sleeper.hpp"
 #include "../../terminalparser.hpp"
 #include "../../wikiuser.hpp"
@@ -59,7 +60,7 @@ HuggleTest::HuggleTest()
     f.open(QIODevice::ReadOnly);
     Huggle::Configuration::HuggleConfiguration->Project = new Huggle::WikiSite("en", "en.wikipedia");
     Huggle::Configuration::HuggleConfiguration->Verbosity=10;
-    Huggle::Configuration::HuggleConfiguration->ParseProjectConfig(f.readAll());
+    Huggle::Configuration::HuggleConfiguration->ProjectConfig->Parse(f.readAll());
     f.close();
 }
 

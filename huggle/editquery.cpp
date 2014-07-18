@@ -12,9 +12,11 @@
 #include <QUrl>
 #include <QtXml>
 #include "configuration.hpp"
+#include "exception.hpp"
 #include "historyitem.hpp"
 #include "localization.hpp"
 #include "history.hpp"
+#include "wikipage.hpp"
 #include "mainwindow.hpp"
 #include "generic.hpp"
 #include "syslog.hpp"
@@ -26,7 +28,6 @@ EditQuery::EditQuery()
 {
     this->Summary = "";
     this->Minor = false;
-    this->Page = "";
     this->Section = 0;
     this->BaseTimestamp = "";
     this->StartTimestamp = "";
@@ -36,19 +37,25 @@ EditQuery::EditQuery()
 
 EditQuery::~EditQuery()
 {
+    delete this->Page;
     this->HI.Delete();
 }
 
 void EditQuery::Process()
 {
+    if (this->Page == nullptr)
+    {
+        throw new Huggle::NullPointerException("EditQuery::Page", "void EditQuery::Process()");
+    }
+
     this->Status = StatusProcessing;
     this->StartTime = QDateTime::currentDateTime();
     if (Configuration::HuggleConfiguration->TemporaryConfig_EditToken.isEmpty())
     {
-        this->qToken = new ApiQuery(ActionQuery);
-        this->qToken->Parameters = "prop=info&intoken=edit&titles=" + QUrl::toPercentEncoding(this->Page);
-        this->qToken->Target = _l("editquery-token", this->Page);
-        QueryPool::HugglePool->AppendQuery(this->qToken.GetPtr());
+        this->qToken = new ApiQuery(ActionQuery, this->Page->Site);
+        this->qToken->Parameters = "prop=info&intoken=edit&titles=" + QUrl::toPercentEncoding(this->Page->PageName);
+        this->qToken->Target = _l("editquery-token", this->Page->PageName);
+        QueryPool::HugglePool->AppendQuery(this->qToken);
         this->qToken->Process();
     } else
     {
@@ -174,12 +181,12 @@ bool EditQuery::IsProcessed()
                         HistoryItem *item = new HistoryItem();
                         item->Result = _l("successful");
                         item->Type = HistoryEdit;
-                        item->Target = this->Page;
+                        item->Target = this->Page->PageName;
                         this->HI = item;
                         MainWindow::HuggleMain->_History->Prepend(item);
                     }
                     this->ProcessCallback();
-                    Huggle::Syslog::HuggleLogs->Log(_l("editquery-success", this->Page));
+                    Huggle::Syslog::HuggleLogs->Log(_l("editquery-success", this->Page->PageName));
                 }
             }
         }
@@ -205,8 +212,8 @@ void EditQuery::EditPage()
         this->qRetrieve->Process();
         return;
     }
-    this->qEdit = new ApiQuery(ActionEdit);
-    this->qEdit->Target = "Writing " + this->Page;
+    this->qEdit = new ApiQuery(ActionEdit, this->Page->Site);
+    this->qEdit->Target = "Writing " + this->Page->PageName;
     this->qEdit->UsingPOST = true;
     QString t;
     if (this->Append)
@@ -232,7 +239,7 @@ void EditQuery::EditPage()
         base = "&basetimestamp=" + QUrl::toPercentEncoding(this->BaseTimestamp);
     if (!this->StartTimestamp.isEmpty())
         start_ = "&starttimestamp=" + QUrl::toPercentEncoding(this->StartTimestamp);
-    this->qEdit->Parameters = "title=" + QUrl::toPercentEncoding(this->Page) + "&text=" + QUrl::toPercentEncoding(this->text) + section +
+    this->qEdit->Parameters = "title=" + QUrl::toPercentEncoding(this->Page->PageName) + "&text=" + QUrl::toPercentEncoding(this->text) + section +
                               wl + "&summary=" + QUrl::toPercentEncoding(this->Summary) + base + start_ + "&token=" +
                               QUrl::toPercentEncoding(Configuration::HuggleConfiguration->TemporaryConfig_EditToken);
     QueryPool::HugglePool->AppendQuery(this->qEdit);

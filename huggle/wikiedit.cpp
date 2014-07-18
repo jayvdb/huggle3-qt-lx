@@ -11,14 +11,16 @@
 #include "wikiedit.hpp"
 #include <QtXml>
 #include <QMutex>
-#include "wikiuser.hpp"
-#include "wikipage.hpp"
 #include "configuration.hpp"
 #include "generic.hpp"
 #include "core.hpp"
 #include "querypool.hpp"
+#include "exception.hpp"
 #include "syslog.hpp"
 #include "mediawiki.hpp"
+#include "wikipage.hpp"
+#include "wikisite.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 QList<WikiEdit*> WikiEdit::EditList;
@@ -414,14 +416,19 @@ void WikiEdit::PostProcess()
     if (this->PostProcessing)
         return;
 
+    if (this->Status != Huggle::StatusProcessed)
+        throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status");
+    if (this->Page == nullptr)
+        throw new Huggle::NullPointerException("Page", "void WikiEdit::PostProcess()");
     this->PostProcessing = true;
     this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk());
+    this->qTalkpage->Site = this->GetSite();
     QueryPool::HugglePool->AppendQuery(this->qTalkpage);
     this->qTalkpage->Target = "Retrieving tp " + this->User->GetTalk();
     this->qTalkpage->Process();
     if (!this->NewPage)
     {
-        this->qDifference = new ApiQuery(ActionQuery);
+        this->qDifference = new ApiQuery(ActionQuery, this->GetSite());
         if (this->RevID != WIKI_UNKNOWN_REVID)
         {
             // &rvprop=content can't be used because of fuck up of mediawiki
@@ -439,9 +446,9 @@ void WikiEdit::PostProcess()
         QueryPool::HugglePool->AppendQuery(this->qDifference);
         this->qDifference->Process();
         this->ProcessingDiff = true;
-    } else if (!this->Page->Contents.size())
+    } else if (this->Page->Contents.isEmpty())
     {
-        this->qText = Generic::RetrieveWikiPageContents(this->Page->PageName, true);
+        this->qText = Generic::RetrieveWikiPageContents(this->Page, true);
         this->qText->Target = "Retrieving content of " + this->Page->PageName;
         QueryPool::HugglePool->AppendQuery(this->qText);
         this->qText->Process();
@@ -449,15 +456,50 @@ void WikiEdit::PostProcess()
     this->ProcessingRevs = true;
     if (this->User->IsIP())
         return;
-    this->qUser = new ApiQuery(ActionQuery);
+    this->qUser = new ApiQuery(ActionQuery, this->GetSite());
     this->qUser->Parameters = "list=users&usprop=blockinfo%7Cgroups%7Ceditcount%7Cregistration&ususers="
                                 + QUrl::toPercentEncoding(this->User->Username);
     this->qUser->Process();
 }
 
+Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid)
+{
+    Collectable_SmartPtr<WikiEdit> e;
+    if (revid == WIKI_UNKNOWN_REVID)
+    {
+        // there is no such an edit
+        return e;
+    }
+    WikiEdit::Lock_EditList->lock();
+    int x = 0;
+    while (x < WikiEdit::EditList.count())
+    {
+        WikiEdit *edit = WikiEdit::EditList.at(x);
+        x++;
+        if (edit->RevID == revid)
+        {
+            e = edit;
+            // let's return it
+            break;
+        }
+    }
+    WikiEdit::Lock_EditList->unlock();
+    return e;
+}
+
+WikiSite *WikiEdit::GetSite()
+{
+    if (this->Page == nullptr)
+    {
+        // this must never happen
+        throw new Huggle::Exception("NULL site", "WikiSite *WikiEdit::GetSite()");
+    }
+    return this->Page->Site;
+}
+
 QString WikiEdit::GetFullUrl()
 {
-    return Configuration::GetProjectScriptURL() + "index.php?title=" + QUrl::toPercentEncoding(this->Page->PageName) +
+    return Configuration::GetProjectScriptURL(this->GetSite()) + "index.php?title=" + QUrl::toPercentEncoding(this->Page->PageName) +
             "&diff=" + QString::number(this->RevID);
 }
 

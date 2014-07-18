@@ -12,16 +12,18 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QTimer>
+#include "configuration.hpp"
 #include "revertquery.hpp"
-#include "localization.hpp"
-#include "syslog.hpp"
 #include "exception.hpp"
 #include "huggleparser.hpp"
+#include "localization.hpp"
+#include "mainwindow.hpp"
+#include "syslog.hpp"
 #include "generic.hpp"
-#include "wikiutil.hpp"
 #include "querypool.hpp"
 #include "ui_history.h"
-#include "configuration.hpp"
+#include "wikiuser.hpp"
+#include "wikiutil.hpp"
 
 using namespace Huggle;
 
@@ -47,6 +49,8 @@ History::History(QWidget *parent) : QDockWidget(parent), ui(new Ui::History)
 // Qt4 code
     this->ui->tableWidget->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
 #endif
+    this->timerDisplayEditFromHistLs = new QTimer();
+    connect(this->timerDisplayEditFromHistLs, SIGNAL(timeout()), this, SLOT(Display()));
     this->ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     this->ui->tableWidget->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
     this->ui->tableWidget->setShowGrid(false);
@@ -54,13 +58,9 @@ History::History(QWidget *parent) : QDockWidget(parent), ui(new Ui::History)
 
 History::~History()
 {
-    while (this->Items.count() > 0)
-    {
-        HistoryItem *hi = this->Items.at(0);
-        this->Items.removeAt(0);
-        hi->DecRef();
-    }
+    this->DeleteItems();
     delete this->ui;
+    delete this->timerDisplayEditFromHistLs;
     delete this->timerRetrievePageInformation;
 }
 
@@ -76,6 +76,7 @@ void History::Undo(HistoryItem *hist)
         // we need to get a currently selected item
         if (this->CurrentItem < 0)
         {
+            //! \todo LOCALIZE ME
             Syslog::HuggleLogs->ErrorLog("Nothing was found to undo");
             return;
         }
@@ -83,6 +84,7 @@ void History::Undo(HistoryItem *hist)
     }
     if (hist->Undone)
     {
+        //! \todo LOCALIZE ME
         Syslog::HuggleLogs->ErrorLog("This was already undone");
         return;
     }
@@ -103,21 +105,20 @@ void History::Undo(HistoryItem *hist)
             if (hist->ReferencedBy)
             {
                 QMessageBox::StandardButton reply;
-                reply = QMessageBox::question(this, "You really want to undo just message?",
-                                              "This was a message that is referenced by a rollback, are you sure you want to undo only "\
-                                              "template and not even your edit to page? (you need to undo the rollback in case you "\
-                                              "want to revert both of these)", QMessageBox::Yes|QMessageBox::No);
+                // let's ask user if they really want to undo just message because that is weird to do
+                reply = QMessageBox::question(this, _l("history-message-revert-title"), _l("history-message-revert-body"),
+                                              QMessageBox::Yes|QMessageBox::No);
                 if (reply == QMessageBox::No)
-                {
                     return;
-                }
+
                 hist->ReferencedBy->UndoDependency = nullptr;
                 hist->ReferencedBy = nullptr;
             }
             this->RevertingItem = hist;
             this->qEdit = Generic::RetrieveWikiPageContents("User_talk:" + hist->Target);
+            this->qEdit->Site = hist->GetSite();
             this->qEdit->Process();
-            QueryPool::HugglePool->AppendQuery(this->qEdit.GetPtr());
+            QueryPool::HugglePool->AppendQuery(this->qEdit);
             this->timerRetrievePageInformation->start(20);
             break;
         case HistoryRollback:
@@ -125,8 +126,9 @@ void History::Undo(HistoryItem *hist)
             // we need to revert both warning of user as well as page we rolled back
             this->RevertingItem = hist;
             this->qEdit = Generic::RetrieveWikiPageContents(hist->Target);
+            this->qEdit->Site = hist->GetSite();
             this->qEdit->Process();
-            QueryPool::HugglePool->AppendQuery(this->qEdit.GetPtr());
+            QueryPool::HugglePool->AppendQuery(this->qEdit);
             this->timerRetrievePageInformation->start(20);
             break;
         case HistoryUnknown:
@@ -136,18 +138,79 @@ void History::Undo(HistoryItem *hist)
             mb.exec();
             break;
     }
+    //! \todo LOCALIZE ME
+    Syslog::HuggleLogs->Log("Undoing own edit made to " + hist->Target);
 }
 
 void History::ContextMenu(const QPoint &position)
 {
     QPoint g_ = this->ui->tableWidget->mapToGlobal(position);
     QMenu menu;
+    //! \todo LOCALIZE ME
+    QAction *clean = new QAction("Clear", &menu);
+    QAction *show = new QAction("Show", &menu);
     QAction *undo = new QAction("Undo", &menu);
+    menu.addAction(show);
     menu.addAction(undo);
+    menu.addAction(clean);
     QAction *selection = menu.exec(g_);
     if (selection == undo)
     {
         this->Undo(nullptr);
+    } else if (selection == show)
+    {
+        if (this->DisplayedEdit != nullptr)
+        {
+            this->timerDisplayEditFromHistLs->stop();
+        }
+        // now the tricky part is here, we need to get an undo item and display it
+        HistoryItem *hi;
+        if (this->CurrentItem < 0)
+        {
+            Syslog::HuggleLogs->ErrorLog("No item is selected in history widget");
+            return;
+        }
+        hi = this->Items.at(this->CurrentItem);
+        QString page = hi->Target;
+        Collectable_SmartPtr<WikiEdit> edit;
+        switch (hi->Type)
+        {
+            case HistoryMessage:
+                page = "User_talk:" + page;
+            case HistoryEdit:
+            case HistoryRollback:
+                // let's see if we know this edit
+                edit = WikiEdit::FromCacheByRevID(hi->RevID);
+                if (edit == nullptr)
+                {
+                    // if we don't know it we need to create it
+                    edit = new WikiEdit();
+                    edit->Page = new WikiPage(page);
+                    edit->Page->Site = hi->GetSite();
+                    edit->User = new WikiUser(Configuration::HuggleConfiguration->SystemConfig_Username);
+                    edit->User->Site = hi->GetSite();
+                    edit->RevID = hi->RevID;
+                }
+                break;
+            case HistoryUnknown:
+                return;
+        }
+        if (!edit->IsPostProcessed())
+        {
+            // now we need to display it
+            QueryPool::HugglePool->PreProcessEdit(edit);
+            QueryPool::HugglePool->PostProcessEdit(edit);
+            this->DisplayedEdit = edit;
+            // we need to enable the timer and display this edit as soon as it is post processed
+            this->timerDisplayEditFromHistLs->start(200);
+        } else
+        {
+            // let's display it
+            MainWindow::HuggleMain->ProcessEdit(edit);
+        }
+    } else if (selection == clean)
+    {
+        this->DeleteItems();
     }
 }
 
@@ -157,15 +220,13 @@ void History::Tick()
     {
         if (this->qSelf != nullptr && this->qSelf->IsFailed())
         {
-            Syslog::HuggleLogs->ErrorLog("Unable to undo your edit to " + this->RevertingItem->Target
-                                         + " error during revert: " + this->qSelf->Result->ErrorMessage);
+            Syslog::HuggleLogs->ErrorLog(_l("history-revert-fail", this->RevertingItem->Target, this->qSelf->Result->ErrorMessage));
             this->Fail();
             return;
         }
         if (this->qTalk != nullptr && this->qTalk->IsFailed())
         {
-            Syslog::HuggleLogs->ErrorLog("Unable to undo your edit to " + this->RevertingItem->Target
-                                         + " error during revert: " + this->qTalk->Result->ErrorMessage);
+            Syslog::HuggleLogs->ErrorLog(_l("history-revert-fail", this->RevertingItem->Target, this->qTalk->Result->ErrorMessage));
             this->Fail();
             return;
         }
@@ -197,8 +258,8 @@ void History::Tick()
     {
         bool failed = false;
         QString user, title;
-        int revid;
-        QString result = Generic::EvaluateWikiPageContents(this->qEdit.GetPtr(), &failed, nullptr, nullptr, &user, &revid, nullptr, &title);
+        long revid;
+        QString result = Generic::EvaluateWikiPageContents(this->qEdit, &failed, nullptr, nullptr, &user, &revid, nullptr, &title);
         this->qEdit.Delete();
         if (failed)
         {
@@ -220,12 +281,9 @@ void History::Tick()
         edit->RevID = revid;
         if (this->RevertingItem->NewPage && this->RevertingItem->Type == HistoryMessage)
         {
-            QMessageBox mb;
-            mb.setWindowTitle("Send welcome message instead?");
-            mb.setText("You created this talk page, so it can't be undone, do you want to replace it with a welcome template?");
-            mb.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-            mb.setDefaultButton(QMessageBox::Yes);
-            if (mb.exec() == QMessageBox::Yes)
+            int message = Generic::MessageBox("Send welcome message instead?", "You created this talk page, so it can't be undone"\
+                                              ", do you want to replace it with a welcome template?", MessageBoxStyleQuestion);
+            if (message == QMessageBox::Yes)
             {
                 if (Configuration::HuggleConfiguration->ProjectConfig->WelcomeTypes.count() == 0)
                 {
@@ -260,6 +318,19 @@ void History::Tick()
     }
 }
 
+void History::Display()
+{
+    if (this->DisplayedEdit == nullptr)
+        return;
+
+    if (!this->DisplayedEdit->IsPostProcessed())
+        return;
+
+    MainWindow::HuggleMain->ProcessEdit(this->DisplayedEdit);
+    this->DisplayedEdit.Delete();
+    this->timerDisplayEditFromHistLs->stop();
+}
+
 void History::Prepend(HistoryItem *item)
 {
     // first of all check all items we have in a list
@@ -281,6 +352,17 @@ void History::Prepend(HistoryItem *item)
 void Huggle::History::on_tableWidget_clicked(const QModelIndex &index)
 {
     this->CurrentItem = index.row();
+}
+
+void History::DeleteItems()
+{
+    while (this->Items.count() > 0)
+    {
+        this->ui->tableWidget->removeRow(0);
+        HistoryItem *hi = this->Items.at(0);
+        this->Items.removeAt(0);
+        hi->DecRef();
+    }
 }
 
 void History::Fail()

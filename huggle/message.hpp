@@ -12,19 +12,16 @@
 #define MESSAGE_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
-#include "collectable_smartptr.hpp"
 #include "apiquery.hpp"
-#include "wikiuser.hpp"
+#include "collectable_smartptr.hpp"
+#include "query.hpp"
 
 namespace Huggle
 {
     class ApiQuery;
-    class Query;
+    class WikiUser;
 
     enum MessageStatus
     {
@@ -69,7 +66,7 @@ namespace Huggle
             //! Set this to false to remove huggle suffix from summary
             bool Suffix;
             //! User to deliver a message to
-            WikiUser *user;
+            WikiUser *User;
             //! This is a time for base revision which is used to resolve edit conflicts of edit
             QString BaseTimestamp;
             //! Timestamp when you started editing the page

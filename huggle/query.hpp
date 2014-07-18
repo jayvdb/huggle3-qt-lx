@@ -12,19 +12,17 @@
 #define QUERY_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDateTime>
 #include <QString>
 #include <QStringList>
-#include <QNetworkAccessManager>
 #include "historyitem.hpp"
 #include "queryresult.hpp"
 #include "collectable_smartptr.hpp"
 #include "collectable.hpp"
+
+// we need to predefine this
+class QNetworkAccessManager;
 
 namespace Huggle
 {

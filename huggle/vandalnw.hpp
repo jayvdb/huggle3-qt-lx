@@ -12,11 +12,6 @@
 #define VANDALNW_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, don't believe it? See this:
-// http://stackoverflow.com/questions/20300201/why-python-h-of-python-3-2-must-be-included-as-first-together-with-qt4
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDockWidget>
 #include <QTimer>
@@ -98,6 +93,7 @@ namespace Huggle
             /// \todo Share a version of your huggle with others in sane way
             /// \todo Hook to VERSION
         public:
+            static QString SafeHtml(QString text);
             explicit VandalNw(QWidget *parent = 0);
             ~VandalNw();
             /*!

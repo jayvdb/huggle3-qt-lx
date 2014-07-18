@@ -12,21 +12,18 @@
 #define APIQUERY_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QObject>
 #include <QtNetwork>
 #include "collectable_smartptr.hpp"
 #include "query.hpp"
+#include "mediawikiobject.hpp"
 
 namespace Huggle
 {
     class RevertQuery;
+    class WikiSite;
 
     enum Action
     {
@@ -55,13 +52,14 @@ namespace Huggle
     };
 
     //! This class can be used to execute any kind of api query on any wiki
-    class ApiQuery : public QObject, public Query
+    class ApiQuery : public QObject, public Query, public MediaWikiObject
     {
             Q_OBJECT
         public:
             //! Creates a new instance of this class and set the defaults
             explicit ApiQuery();
-            explicit ApiQuery(Action a);
+            explicit ApiQuery(Action action);
+            explicit ApiQuery(Action action, WikiSite *site);
             //! Run
             void Process();
             //! Change the action type
