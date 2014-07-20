@@ -1,3 +1,9 @@
+huggle (3.0.6.0-ppa1) precise; urgency=medium
+
+  * new 3.0.6 production
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 20 Jul 2014 14:57:43 +0200
+
 huggle (3.0.5.0-ppa1) precise; urgency=medium
 
   * new 3.0.5 released
