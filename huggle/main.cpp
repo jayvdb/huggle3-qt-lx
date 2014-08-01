@@ -12,15 +12,11 @@
 // see http://stackoverflow.com/questions/20300201/why-python-h-of-python-3-2-must-be-included-as-first-together-with-qt4
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
-// we can finally include the normal, unbroken headers now
+
 #include <QApplication>
 #include <QStringList>
 #include <QString>
+#include "configuration.hpp"
 #include "syslog.hpp"
 #include "core.hpp"
 #include "terminalparser.hpp"
@@ -28,17 +24,8 @@
 #include "exception.hpp"
 
 //! This function just read the parameters and return true if we can continue or not
-bool TerminalParse(int argc, char *argv[])
+bool TerminalParse(Huggle::TerminalParser *p)
 {
-    QStringList args;
-    int i=0;
-    while (i<argc)
-    {
-        args.append(QString(argv[i]));
-        i++;
-    }
-    // we create a new terminal parser
-    Huggle::TerminalParser *p = new Huggle::TerminalParser(args);
     // if parser get an argument which requires app to exit (like --help or --version)
     // we can terminate it now
     if (p->Parse())
@@ -57,29 +44,40 @@ int Fatal(Huggle::Exception *fail)
                                          + "\nSource: " + fail->Source);
     delete Huggle::Core::HuggleCore;
     Huggle::Exception::ExitBreakpad();
-    return fail->ErrorCode;;
+    return fail->ErrorCode;
 }
 
 int main(int argc, char *argv[])
 {
     int ReturnCode = 0;
     Huggle::Exception::InitBreakpad();
-    QApplication::setApplicationName("Huggle");
-    QApplication::setOrganizationName("Wikimedia");
-    Huggle::Configuration::HuggleConfiguration = new Huggle::Configuration();
     try
     {
+        // we need to create terminal parser now and rest later
+        Huggle::TerminalParser *parser = new Huggle::TerminalParser(argc, argv);
+        if (parser->Init())
+        {
+            // we need to do this before we init the qapp because otherwise it would not work on systems
+            // that don't have an X org
+            delete parser;
+            Huggle::Exception::ExitBreakpad();
+            return 0;
+        }
+        Huggle::HgApplication a(argc, argv);
+        QApplication::setApplicationName("Huggle");
+        QApplication::setOrganizationName("Wikimedia");
+        Huggle::Configuration::HuggleConfiguration = new Huggle::Configuration();
         // check if arguments don't need to exit program
-        if (!TerminalParse(argc, argv))
+        if (!TerminalParse(parser))
         {
             Huggle::Exception::ExitBreakpad();
+            delete Huggle::Configuration::HuggleConfiguration;
             return 0;
         }
         // we load the core
         Huggle::Core::HuggleCore = new Huggle::Core();
         Huggle::Core::HuggleCore->Init();
         // now we can start the huggle :o
-        Huggle::HgApplication a(argc, argv);
         Huggle::Core::HuggleCore->fLogin = new Huggle::Login();
         Huggle::Core::HuggleCore->fLogin->show();
         ReturnCode = a.exec();

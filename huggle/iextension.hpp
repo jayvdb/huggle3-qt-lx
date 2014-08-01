@@ -12,10 +12,6 @@
 #define IEXTENSION_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QtPlugin>
 #include <QList>
@@ -56,6 +52,8 @@ namespace Huggle
              * \param edit is a pointer to edit in question
              */
             virtual void Hook_EditPreProcess(void *edit) {}
+            virtual void Hook_SpeedyFinished(void *edit, QString tags, bool successfull) {}
+            virtual void Hook_Shutdown() {}
             /*!
              * \brief Hook_EditScore is called after edit score is calculated
              * \param edit
@@ -80,6 +78,7 @@ namespace Huggle
             void *HuggleCore;
             //! Pointer to global system configuration
             void *Configuration;
+            void *Localization;
             QNetworkAccessManager *Networking;
     };
 }

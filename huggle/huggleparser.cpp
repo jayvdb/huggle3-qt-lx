@@ -10,30 +10,60 @@
 
 #include "huggleparser.hpp"
 #include "configuration.hpp"
+#include "projectconfiguration.hpp"
+#include "syslog.hpp"
 
 using namespace Huggle;
 
-QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key)
+QString HuggleParser::ConfigurationParse(QString key, QString content, QString missing)
+{
+    /// \todo this parses the config a lot different than HG2 (here only one line, mising replaces...)
+    /// \todo maybe move it to Huggle::HuggleParser like ConfigurationParse_QL
+    // if first line in config
+    if (content.startsWith(key + ":"))
+    {
+        QString value = content.mid(key.length() + 1);
+        if (value.contains("\n"))
+        {
+            value = value.mid(0, value.indexOf("\n"));
+        }
+        return value;
+    }
+
+    // make sure it's not inside of some string
+    if (content.contains("\n" + key + ":"))
+    {
+        QString value = content.mid(content.indexOf("\n" + key + ":") + key.length() + 2);
+        if (value.contains("\n"))
+        {
+            value = value.mid(0, value.indexOf("\n"));
+        }
+        return value;
+    }
+    return missing;
+}
+
+QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
     int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig_RevertSummaries.count())
+    while (id < project_conf->RevertSummaries.count())
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig_RevertSummaries.at(id);
+        QString line = project_conf->RevertSummaries.at(id);
         if (line.startsWith(key + ";"))
         {
             return HuggleParser::GetValueFromKey(line);
         }
         id++;
     }
-    return Configuration::HuggleConfiguration->ProjectConfig_DefaultSummary;
+    return project_conf->DefaultSummary;
 }
 
-QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key)
+QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
     int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.count())
+    while (id<project_conf->WarningTypes.count())
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.at(id);
+        QString line = project_conf->WarningTypes.at(id);
         if (line.startsWith(key) + ";")
         {
             return HuggleParser::GetValueFromKey(line);
@@ -43,12 +73,12 @@ QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key)
     return key;
 }
 
-QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id)
+QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id, ProjectConfiguration *project_conf)
 {
     int i=0;
-    while (i<Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.count())
+    while (i<project_conf->WarningTypes.count())
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.at(i);
+        QString line = project_conf->WarningTypes.at(i);
         if (line.endsWith(id) || line.endsWith(id + ","))
         {
             return HuggleParser::GetKeyFromValue(line);
@@ -60,7 +90,7 @@ QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id)
 
 void HuggleParser::ParsePats(QString text)
 {
-    Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.clear();
+    Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.clear();
     while (text.contains("score-parts("))
     {
         text = text.mid(text.indexOf("score-parts(") + 12);
@@ -106,7 +136,7 @@ void HuggleParser::ParsePats(QString text)
         line = 0;
         while (line < word.count())
         {
-            Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.append(ScoreWord(word.at(line), score));
+            Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.append(ScoreWord(word.at(line), score));
             line++;
         }
     }
@@ -114,7 +144,7 @@ void HuggleParser::ParsePats(QString text)
 
 void HuggleParser::ParseWords(QString text)
 {
-    Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.clear();
+    Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.clear();
     while (text.contains("score-words("))
     {
         text = text.mid(text.indexOf("score-words(") + 12);
@@ -151,7 +181,7 @@ void HuggleParser::ParseWords(QString text)
                 word.append(w);
                 CurrentItem++;
             }
-            if (!l.endsWith(",") || l.trimmed().length() == 0)
+            if (l.trimmed().isEmpty() || !l.endsWith(","))
             {
                 break;
             }
@@ -160,7 +190,7 @@ void HuggleParser::ParseWords(QString text)
         line = 0;
         while (line < word.count())
         {
-            Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.append(ScoreWord(word.at(line), score));
+            Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.append(ScoreWord(word.at(line), score));
             line++;
         }
     }
@@ -268,7 +298,7 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
             if (time.length() < 2)
             {
                 // what the fuck
-                Syslog::HuggleLogs->DebugLog("Negative position: " + time);
+                HUGGLE_DEBUG("Negative position: " + time, 1);
                 CurrentIndex++;
                 continue;
             }
@@ -281,27 +311,36 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
             if (parts_time.count() < 3)
             {
                 // this is invalid string
-                Syslog::HuggleLogs->DebugLog("Unable to convert month to number: " + time, 12);
+                HUGGLE_DEBUG("Unable to split month: " + time, 12);
                 CurrentIndex++;
                 continue;
             }
+            QString day = parts_time.at(0);
+            // e.g. dewiki's days end with dot
+            if(day.endsWith('.')){
+                day = day.mid(0, day.length() - 1);
+            }
             month_name = parts_time.at(1);
-            int month = HuggleParser::GetIDOfMonth(month_name);
+            byte_ht month = HuggleParser::GetIDOfMonth(month_name);
+
+             // let's create a new time string from converted one, just to make sure it will be parsed properly
             if (month > 0)
             {
-                // let's create a new time string from converted one, just to make sure it will be parsed properly
-                time = parts_time.at(0) + " " + QString::number(month) + " " + parts_time.at(2);
+                time = day + " " + QString::number(month) + " " + parts_time.at(2);
+            } else
+            {
+                time = day + " " + parts_time.at(1); + " " + parts_time.at(2);
             }
             QDate date = QDate::fromString(time, "d M yyyy");
             if (!date.isValid())
             {
-                Syslog::HuggleLogs->DebugLog("Invalid date: " + time);
+                HUGGLE_DEBUG("Invalid date: " + time, 1);
                 CurrentIndex++;
                 continue;
             } else
             {
                 // now check if it's at least 1 month old
-                if (bt.addDays(Configuration::HuggleConfiguration->ProjectConfig_TemplateAge) > date)
+                if (bt.addDays(Configuration::HuggleConfiguration->ProjectConfig->TemplateAge) > date)
                 {
                     // we don't want to parse this thing
                     CurrentIndex++;
@@ -316,9 +355,9 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
     while (level > 0)
     {
         int xx=0;
-        while (xx<Configuration::HuggleConfiguration->ProjectConfig_WarningDefs.count())
+        while (xx<Configuration::HuggleConfiguration->ProjectConfig->WarningDefs.count())
         {
-            QString defs=Configuration::HuggleConfiguration->ProjectConfig_WarningDefs.at(xx);
+            QString defs=Configuration::HuggleConfiguration->ProjectConfig->WarningDefs.at(xx);
             if (HuggleParser::GetKeyFromValue(defs).toInt() == level)
             {
                 if (page.contains(HuggleParser::GetValueFromKey(defs)))
@@ -546,6 +585,11 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
                     filter->setIgnoreFriends(F2B(val));
                     continue;
                 }
+                if (key == "filter-talk")
+                {
+                    filter->setIgnoreTalk(F2B(val));
+                    continue;
+                }
                 if (key == "filter-ip")
                 {
                     filter->setIgnoreIP(F2B(val));
@@ -586,23 +630,22 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
     return ReturnValue;
 }
 
-
-int HuggleParser::GetIDOfMonth(QString month)
+byte_ht HuggleParser::GetIDOfMonth(QString month)
 {
     int i = 0;
     month = month.toLower();
-    while (i < Configuration::HuggleConfiguration->Months.count())
+    while (i < Configuration::HuggleConfiguration->ProjectConfig->Months.count())
     {
-        if (Configuration::HuggleConfiguration->Months.at(i).toLower() == month)
+        if (Configuration::HuggleConfiguration->ProjectConfig->Months.at(i).toLower() == month)
             return i+1;
         i++;
     }
     i = 1;
     while (i < 13)
     {
-        if (Configuration::HuggleConfiguration->ProjectConfig_AlternativeMonths[i].contains(month))
+        if (Configuration::HuggleConfiguration->ProjectConfig->AlternativeMonths[i].contains(month, Qt::CaseInsensitive))
             return i;
         i++;
     }
-    return -800;
+    return -6;
 }

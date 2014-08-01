@@ -12,6 +12,9 @@
 #include "exception.hpp"
 #include "mainwindow.hpp"
 #include "ui_hugglequeueitemlabel.h"
+#include "wikipage.hpp"
+#include "wikisite.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
@@ -29,7 +32,7 @@ HuggleQueueItemLabel::~HuggleQueueItemLabel()
 void HuggleQueueItemLabel::SetName(QString name)
 {
     this->ui->label_2->setText(name);
-    if (this->Page != NULL)
+    if (this->Page != nullptr)
     {
         int id = this->Page->Page->GetNS()->GetID();
         if (id != 0)
@@ -119,6 +122,7 @@ void HuggleQueueItemLabel::Remove(QLayoutItem *qi)
     if (this->ParentQueue->Items.contains(this))
     {
         this->ParentQueue->Items.removeAll(this);
+        this->ParentQueue->RedrawTitle();
     }
     this->ParentQueue->Delete(this, qi);
 }

@@ -9,10 +9,20 @@
 //GNU General Public License for more details.
 
 #include "warnings.hpp"
+#include <QtXml>
 #include "configuration.hpp"
+#include "exception.hpp"
+#include "huggleparser.hpp"
 #include "mainwindow.hpp"
 #include "querypool.hpp"
+#include "message.hpp"
+#include "reportuser.hpp"
+#include "revertquery.hpp"
+#include "wikiuser.hpp"
 #include "generic.hpp"
+#include "localization.hpp"
+#include "hooks.hpp"
+#include "syslog.hpp"
 #include "wikiutil.hpp"
 
 using namespace Huggle;
@@ -29,14 +39,11 @@ PendingWarning::PendingWarning(Message *message, QString warning, WikiEdit *edit
     // we register a unique consumer here in case that multiple warnings pointer to same
     edit->RegisterConsumer("PendingWarning" + QString::number(gcid));
     this->Warning = message;
-    this->Query = nullptr;
 }
 
 PendingWarning::~PendingWarning()
 {
     this->RelatedEdit->UnregisterConsumer("PendingWarning" + QString::number(gcid));
-    if (this->Query != nullptr)
-        this->Query->DecRef();
     this->Warning->UnregisterConsumer(HUGGLECONSUMER_CORE_MESSAGE);
 }
 
@@ -45,9 +52,8 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
     *Report = false;
     if (Edit == nullptr)
     {
-        throw new Huggle::Exception("WikiEdit *Edit must not be nullptr",
-                                    "PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency, "\
-                                    "WikiEdit *Edit, bool *Report)");
+        throw new Huggle::NullPointerException("Edit", "PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency, "\
+                                                         "WikiEdit *Edit, bool *Report)");
     }
     if (Configuration::HuggleConfiguration->Restricted)
     {
@@ -60,7 +66,7 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
     // get a template
     Edit->User->WarningLevel++;
 
-    if (Edit->User->WarningLevel > Configuration::HuggleConfiguration->ProjectConfig_WarningLevel)
+    if (Edit->User->WarningLevel > Configuration::HuggleConfiguration->ProjectConfig->WarningLevel)
     {
         // we should report this user instead
         if (Edit->User->IsReported)
@@ -69,7 +75,7 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
             return nullptr;
         }
 
-        if (!Configuration::HuggleConfiguration->ProjectConfig_AIV)
+        if (!Configuration::HuggleConfiguration->ProjectConfig->AIV)
         {
             // there is no AIV function for this wiki
             Syslog::HuggleLogs->WarningLog("This user has already reached level 4 warning and there is no AIV "\
@@ -89,8 +95,7 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
 
     if (!MessageText_.size())
     {
-        // This is very rare error, no need to localize it
-        Syslog::HuggleLogs->Log("There is no such warning template " + Template_);
+        Syslog::HuggleLogs->Log(_l("missing-warning",Template_));
         return nullptr;
     }
 
@@ -101,39 +106,39 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
     switch (Edit->User->WarningLevel)
     {
         case 1:
-            Summary_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary;
+            Summary_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary;
             break;
         case 2:
-            Summary_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary2;
+            Summary_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary2;
             break;
         case 3:
-            Summary_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary3;
+            Summary_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary3;
             break;
         case 4:
-            Summary_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary4;
+            Summary_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary4;
             break;
     }
 
     Summary_ = Summary_.replace("$1", Edit->Page->PageName);
     /// \todo This really needs to be localized somehow (in config only)
     QString HeadingText_ = "Your edits to " + Edit->Page->PageName;
-    if (Configuration::HuggleConfiguration->ProjectConfig_Headings == HeadingsStandard)
+    if (Configuration::HuggleConfiguration->ProjectConfig->MessageHeadings == HeadingsStandard)
     {
         QDateTime d = Configuration::HuggleConfiguration->ServerTime();
         HeadingText_ = WikiUtil::MonthText(d.date().month()) + " " + QString::number(d.date().year());
-    } else if (Configuration::HuggleConfiguration->ProjectConfig_Headings == HeadingsNone)
+    } else if (Configuration::HuggleConfiguration->ProjectConfig->MessageHeadings == HeadingsNone)
     {
         HeadingText_ = "";
     }
 
     MessageText_ = Warnings::UpdateSharedIPTemplate(Edit->User, MessageText_);
     bool CreateOnly = false;
-    if (Edit->User->TalkPage_GetContents() == "")
+    if (Edit->User->TalkPage_GetContents().isEmpty())
     {
         CreateOnly = true;
     }
     PendingWarning *pw = new PendingWarning(WikiUtil::MessageUser(Edit->User, MessageText_, HeadingText_, Summary_, true, Dependency, false,
-                                                                  Configuration::HuggleConfiguration->UserConfig_SectionKeep, false,
+                                                                  Configuration::HuggleConfiguration->UserConfig->SectionKeep, false,
                                                                   Edit->TPRevBaseTime, CreateOnly, true), WarningType, Edit);
     Hooks::OnWarning(Edit->User);
     return pw;
@@ -155,7 +160,7 @@ void Warnings::ResendWarnings()
                 {
                     // there was some error, which suck, we print it to console and delete this warning, there is a little point
                     // in doing anything else to fix it.
-                    Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user " + warning->Warning->user->Username
+                    Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user " + warning->Warning->User->Username
                                      + " the warning will not be delivered to this user");
                     PendingWarning::PendingWarnings.removeAt(x);
                     delete warning;
@@ -174,7 +179,7 @@ void Warnings::ResendWarnings()
                     {
                         // the talk page which existed was probably deleted by someone
                         Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user "
-                                                     + warning->Warning->user->Username
+                                                     + warning->Warning->User->Username
                                                      + " because it was deleted meanwhile, the warning will not be delivered to this user");
                         PendingWarning::PendingWarnings.removeAt(x);
                         delete warning;
@@ -189,7 +194,7 @@ void Warnings::ResendWarnings()
                     {
                         if (!e.attributes().contains("timestamp"))
                         {
-                            Huggle::Syslog::HuggleLogs->ErrorLog("Talk page timestamp of " + warning->Warning->user->Username +
+                            Huggle::Syslog::HuggleLogs->ErrorLog("Talk page timestamp of " + warning->Warning->User->Username +
                                                                  " couldn't be retrieved, mediawiki returned no data for it");
                             PendingWarning::PendingWarnings.removeAt(x);
                             delete warning;
@@ -198,13 +203,13 @@ void Warnings::ResendWarnings()
                         {
                             TPRevBaseTime = e.attribute("timestamp");
                         }
-                        warning->Warning->user->TalkPage_SetContents(e.text());
+                        warning->Warning->User->TalkPage_SetContents(e.text());
                     } else
                     {
                         // there was some error, which suck, we print it to console and delete this warning, there is a little point
                         // in doing anything else to fix it.
                         Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user "
-                                                     + warning->Warning->user->Username
+                                                     + warning->Warning->User->Username
                                                      + " the warning will not be delivered to this user, check debug logs for more");
                         Syslog::HuggleLogs->DebugLog(warning->Query->Result->Data);
                         PendingWarning::PendingWarnings.removeAt(x);
@@ -215,8 +220,8 @@ void Warnings::ResendWarnings()
                 {
                     // there was some error, which suck, we print it to console and delete this warning, there is a little point
                     // in doing anything else to fix it.
-                    Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user " + warning->Warning->user->Username
-                                     + " the warning will not be delivered to this user, check debug logs for more");
+                    Syslog::HuggleLogs->ErrorLog("Unable to retrieve a new version of talk page for user " + warning->Warning->User->Username
+                                        + " the warning will not be delivered to this user, check debug logs for more");
                     Syslog::HuggleLogs->DebugLog(warning->Query->Result->Data);
                     PendingWarning::PendingWarnings.removeAt(x);
                     delete warning;
@@ -224,8 +229,8 @@ void Warnings::ResendWarnings()
                 }
 
                 // so we now have the new talk page content so we need to reclassify the user
-                warning->Warning->user->ParseTP(QDate::currentDate());
-                warning->Warning->user->Update(true);
+                warning->Warning->User->ParseTP(QDate::currentDate());
+                warning->Warning->User->Update(true);
 
                 // now when we have the new level of warning we can try to send a new warning and hope that talk page wasn't
                 // changed meanwhile again lol :D
@@ -257,7 +262,7 @@ void Warnings::ResendWarnings()
                 delete warning;
                 continue;
             }
-            Syslog::HuggleLogs->DebugLog("Failed to deliver message to " + warning->Warning->user->Username);
+            Syslog::HuggleLogs->DebugLog("Failed to deliver message to " + warning->Warning->User->Username);
             // we need to decrease the warning level of that user because we didn't deliver the warning message
             if (warning->RelatedEdit->User->WarningLevel > 0)
             {
@@ -267,37 +272,29 @@ void Warnings::ResendWarnings()
             // check if the warning wasn't delivered because someone edited the page
             if (warning->Warning->Error == Huggle::MessageError_Obsolete || warning->Warning->Error == Huggle::MessageError_ArticleExist)
             {
-                Syslog::HuggleLogs->DebugLog("Someone changed the content of " + warning->Warning->user->Username + " reparsing it now");
+                Syslog::HuggleLogs->DebugLog("Someone changed the content of " + warning->Warning->User->Username + " reparsing it now");
                 // we need to fetch the talk page again and later we need to issue new warning
                 if (warning->Query != nullptr)
                 {
                     Syslog::HuggleLogs->DebugLog("Possible memory leak in MainWindow::ResendWarning: warning->Query != nullptr");
                 }
-                warning->Query = new Huggle::ApiQuery();
-                warning->Query->SetAction(ActionQuery);
+                warning->Query = new Huggle::ApiQuery(ActionQuery, warning->RelatedEdit->GetSite());
                 warning->Query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
-                                             "&titles=" + QUrl::toPercentEncoding(warning->Warning->user->GetTalk());
-                warning->Query->IncRef();
+                                             "&titles=" + QUrl::toPercentEncoding(warning->Warning->User->GetTalk());
                 QueryPool::HugglePool->AppendQuery(warning->Query);
                 //! \todo LOCALIZE ME
-                warning->Query->Target = "Retrieving tp of " + warning->Warning->user->GetTalk();
+                warning->Query->Target = "Retrieving tp of " + warning->Warning->User->GetTalk();
                 warning->Query->Process();
             } else if (warning->Warning->Error == Huggle::MessageError_Expired)
             {
-                Syslog::HuggleLogs->DebugLog("Expired " + warning->Warning->user->Username + " reparsing it now");
+                Syslog::HuggleLogs->DebugLog("Expired " + warning->Warning->User->Username + " reparsing it now");
                 // we need to fetch the talk page again and later we need to issue new warning
-                if (warning->Query != nullptr)
-                {
-                    Syslog::HuggleLogs->DebugLog("Possible memory leak in MainWindow::ResendWarning: warning->Query != NULL");
-                }
-                warning->Query = new Huggle::ApiQuery();
-                warning->Query->SetAction(ActionQuery);
+                warning->Query = new Huggle::ApiQuery(ActionQuery, warning->RelatedEdit->GetSite());
                 warning->Query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
-                                             "&titles=" + QUrl::toPercentEncoding(warning->Warning->user->GetTalk());
-                warning->Query->IncRef();
+                                             "&titles=" + QUrl::toPercentEncoding(warning->Warning->User->GetTalk());
                 QueryPool::HugglePool->AppendQuery(warning->Query);
                 //! \todo LOCALIZE ME
-                warning->Query->Target = "Retrieving tp of " + warning->Warning->user->GetTalk();
+                warning->Query->Target = "Retrieving tp of " + warning->Warning->User->GetTalk();
                 warning->Query->Process();
             } else
             {
@@ -333,45 +330,45 @@ void Warnings::ForceWarn(int Level, WikiEdit *Edit)
     }
 
     MessageText_ = MessageText_.replace("$2", Edit->GetFullUrl()).replace("$1", Edit->Page->PageName);
-    QString MessageTitle_ = "Message re " + Configuration::HuggleConfiguration->ProjectConfig_EditSuffixOfHuggle;
+    QString MessageTitle_ = "Message re " + Configuration::HuggleConfiguration->ProjectConfig->EditSuffixOfHuggle;
 
     switch (Level)
     {
         case 1:
-            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary;
+            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary;
             break;
         case 2:
-            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary2;
+            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary2;
             break;
         case 3:
-            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary3;
+            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary3;
             break;
         case 4:
-            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig_WarnSummary4;
+            MessageTitle_ = Configuration::HuggleConfiguration->ProjectConfig->WarnSummary4;
             break;
     }
 
     MessageTitle_ = MessageTitle_.replace("$1", Edit->Page->PageName);
     QString id = "Your edits to " + Edit->Page->PageName;
-    if (Configuration::HuggleConfiguration->UserConfig_EnforceMonthsAsHeaders)
+    if (Configuration::HuggleConfiguration->UserConfig->EnforceMonthsAsHeaders)
     {
         QDateTime date_ = Configuration::HuggleConfiguration->ServerTime();
         id = WikiUtil::MonthText(date_.date().month()) + " " + QString::number(date_.date().year());
     }
     MessageText_ = Warnings::UpdateSharedIPTemplate(Edit->User, MessageText_);
     WikiUtil::MessageUser(Edit->User, MessageText_, id, MessageTitle_, true, nullptr, false,
-                              Configuration::HuggleConfiguration->UserConfig_SectionKeep,
+                              Configuration::HuggleConfiguration->UserConfig->SectionKeep,
                               true, Edit->TPRevBaseTime);
 }
 
 QString Warnings::RetrieveTemplateToWarn(QString type)
 {
     int x=0;
-    while (x < Configuration::HuggleConfiguration->ProjectConfig_WarningTemplates.count())
+    while (x < Configuration::HuggleConfiguration->ProjectConfig->WarningTemplates.count())
     {
-        if (HuggleParser::GetKeyFromValue(Configuration::HuggleConfiguration->ProjectConfig_WarningTemplates.at(x)) == type)
+        if (HuggleParser::GetKeyFromValue(Configuration::HuggleConfiguration->ProjectConfig->WarningTemplates.at(x)) == type)
         {
-            return HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig_WarningTemplates.at(x));
+            return HuggleParser::GetValueFromKey(Configuration::HuggleConfiguration->ProjectConfig->WarningTemplates.at(x));
         }
         x++;
     }
@@ -380,13 +377,13 @@ QString Warnings::RetrieveTemplateToWarn(QString type)
 
 QString Warnings::UpdateSharedIPTemplate(WikiUser *User, QString Text)
 {
-    if (!User->IsIP() || Configuration::HuggleConfiguration->ProjectConfig_SharedIPTemplate == "")
+    if (!User->IsIP() || Configuration::HuggleConfiguration->ProjectConfig->SharedIPTemplate.isEmpty())
     {
         return Text;
     }
     if (!User->TalkPage_ContainsSharedIPTemplate())
     {
-        Text += "\n" + Configuration::HuggleConfiguration->ProjectConfig_SharedIPTemplate + "\n";
+        Text += "\n" + Configuration::HuggleConfiguration->ProjectConfig->SharedIPTemplate + "\n";
     }
     return Text;
 }

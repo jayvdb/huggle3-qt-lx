@@ -12,19 +12,12 @@
 #define NETWORKIRC_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QHash>
 #include <QString>
 #include <QtNetwork>
 #include <QThread>
 #include <QMutex>
-#include "configuration.hpp"
-#include "localization.hpp"
-#include "syslog.hpp"
 #include "sleeper.hpp"
 #include "exception.hpp"
 

@@ -9,6 +9,17 @@
 //GNU General Public License for more details.
 
 #include "editquery.hpp"
+#include <QUrl>
+#include <QtXml>
+#include "configuration.hpp"
+#include "exception.hpp"
+#include "historyitem.hpp"
+#include "localization.hpp"
+#include "history.hpp"
+#include "wikipage.hpp"
+#include "mainwindow.hpp"
+#include "generic.hpp"
+#include "syslog.hpp"
 #include "querypool.hpp"
 
 using namespace Huggle;
@@ -16,11 +27,7 @@ using namespace Huggle;
 EditQuery::EditQuery()
 {
     this->Summary = "";
-    this->Result = NULL;
-    this->qEdit = NULL;
     this->Minor = false;
-    this->Page = "";
-    this->qToken = NULL;
     this->Section = 0;
     this->BaseTimestamp = "";
     this->StartTimestamp = "";
@@ -30,21 +37,25 @@ EditQuery::EditQuery()
 
 EditQuery::~EditQuery()
 {
-    if (this->qToken != NULL)
-        this->qToken->UnregisterConsumer(HUGGLECONSUMER_EDITQUERY);
+    delete this->Page;
+    this->HI.Delete();
 }
 
 void EditQuery::Process()
 {
+    if (this->Page == nullptr)
+    {
+        throw new Huggle::NullPointerException("EditQuery::Page", "void EditQuery::Process()");
+    }
+
     this->Status = StatusProcessing;
     this->StartTime = QDateTime::currentDateTime();
-    if (Configuration::HuggleConfiguration->TemporaryConfig_EditToken == "")
+    if (Configuration::HuggleConfiguration->TemporaryConfig_EditToken.isEmpty())
     {
-        this->qToken = new ApiQuery(ActionQuery);
-        this->qToken->Parameters = "prop=info&intoken=edit&titles=" + QUrl::toPercentEncoding(Page);
-        this->qToken->Target = Localizations::HuggleLocalizations->Localize("editquery-token", Page);
-        this->qToken->RegisterConsumer(HUGGLECONSUMER_EDITQUERY);
-        QueryPool::HugglePool->AppendQuery(qToken);
+        this->qToken = new ApiQuery(ActionQuery, this->Page->Site);
+        this->qToken->Parameters = "prop=info&intoken=edit&titles=" + QUrl::toPercentEncoding(this->Page->PageName);
+        this->qToken->Target = _l("editquery-token", this->Page->PageName);
+        QueryPool::HugglePool->AppendQuery(this->qToken);
         this->qToken->Process();
     } else
     {
@@ -54,24 +65,46 @@ void EditQuery::Process()
 
 bool EditQuery::IsProcessed()
 {
-    if (this->Result != NULL)
-    {
+    if (this->Result != nullptr)
         return true;
+
+    if (this->qRetrieve != nullptr && this->qRetrieve->IsProcessed())
+    {
+        if (this->qRetrieve->IsFailed())
+        {
+            this->Result = new QueryResult(true);
+            this->Result->SetError("Unable to retrieve the previous content of page: " + this->qRetrieve->Result->ErrorMessage);
+            this->qRetrieve.Delete();
+            this->ProcessFailure();
+            return true;
+        }
+        bool failed = false;
+        QString ts;
+        this->OriginalText = Generic::EvaluateWikiPageContents(this->qRetrieve, &failed, &ts);
+        this->qRetrieve.Delete();
+        if (failed)
+        {
+            this->Result = new QueryResult(true);
+            this->Result->SetError("Unable to retrieve the previous content of page: " + this->OriginalText);
+            this->ProcessFailure();
+            return true;
+        }
+        this->HasPreviousPageText = true;
+        this->BaseTimestamp = ts;
+        this->EditPage();
+        return false;
     }
-    if (this->qToken != NULL)
+    if (this->qToken != nullptr)
     {
         if (!this->qToken->IsProcessed())
-        {
             return false;
-        }
-        if (this->qToken->Result->Failed)
+
+        if (this->qToken->Result->IsFailed())
         {
             this->Result = new QueryResult();
-            this->Result->Failed = true;
-            this->Result->ErrorMessage = Localizations::HuggleLocalizations->Localize("editquery-token-error") + ": " +
-                                         this->qToken->Result->ErrorMessage;
-            this->qToken->UnregisterConsumer(HUGGLECONSUMER_EDITQUERY);
-            this->qToken = NULL;
+            this->Result->SetError(_l("editquery-token-error") + ": " + this->qToken->Result->ErrorMessage);
+            this->qToken.Delete();
+            this->ProcessFailure();
             return true;
         }
         QDomDocument dToken_;
@@ -80,40 +113,61 @@ bool EditQuery::IsProcessed()
         if (l.count() == 0)
         {
             this->Result = new QueryResult();
-            this->Result->Failed = true;
-            this->Result->ErrorMessage = Localizations::HuggleLocalizations->Localize("editquery-token-error");
-            Huggle::Syslog::HuggleLogs->DebugLog("Debug message for edit: " + qToken->Result->Data);
-            this->qToken->UnregisterConsumer(HUGGLECONSUMER_EDITQUERY);
-            this->qToken = NULL;
+            this->Result->SetError(_l("editquery-token-error"));
+            HUGGLE_DEBUG1("Debug message for edit: " + this->qToken->Result->Data);
+            this->qToken.Delete();
+            this->ProcessFailure();
             return true;
         }
         QDomElement element = l.at(0).toElement();
         if (!element.attributes().contains("edittoken"))
         {
             this->Result = new QueryResult();
-            this->Result->Failed = true;
-            this->Result->ErrorMessage = Localizations::HuggleLocalizations->Localize("editquery-token-error");
-            Huggle::Syslog::HuggleLogs->DebugLog("Debug message for edit: " + this->qToken->Result->Data);
-            this->qToken->UnregisterConsumer(HUGGLECONSUMER_EDITQUERY);
-            this->qToken = NULL;
+            this->Result->SetError(_l("editquery-token-error"));
+            HUGGLE_DEBUG1("Debug message for edit: " + this->qToken->Result->Data);
+            this->qToken.Delete();
+            this->ProcessFailure();
             return true;
         }
         Configuration::HuggleConfiguration->TemporaryConfig_EditToken = element.attribute("edittoken");
-        this->qToken->UnregisterConsumer(HUGGLECONSUMER_EDITQUERY);
-        this->qToken = NULL;
+        this->qToken.Delete();
         this->EditPage();
         return false;
     }
-    if (this->qEdit != NULL)
+    if (this->qEdit != nullptr)
     {
         if (!this->qEdit->IsProcessed())
-        {
             return false;
-        }
+
         QDomDocument dEdit_;
         dEdit_.setContent(this->qEdit->Result->Data);
         QDomNodeList edits_ = dEdit_.elementsByTagName("edit");
+        QDomNodeList error_ = dEdit_.elementsByTagName("error");
         bool failed = true;
+        if (error_.count() > 0)
+        {
+            QDomElement element = edits_.at(0).toElement();
+            if (element.attributes().contains("code"))
+            {
+                QString ec = element.attribute("code");
+                int hec = HUGGLE_EUNKNOWN;
+                QString reason = ec;
+                if (ec == "assertuserfailed")
+                {
+                    reason = "Not logged in";
+                    hec = HUGGLE_ENOTLOGGEDIN;
+                    // this is some fine hacking here :)
+                    // we use this later in main form
+                    HUGGLE_DEBUG("Session expired requesting a new login", 3);
+                    Configuration::HuggleConfiguration->ProjectConfig->RequestLogin();
+                }
+                this->Result = new QueryResult(true);
+                this->Result->SetError(hec, reason);
+                this->qEdit = nullptr;
+                this->ProcessFailure();
+                return true;
+            }
+        }
         if (edits_.count() > 0)
         {
             QDomElement element = edits_.at(0).toElement();
@@ -122,15 +176,17 @@ bool EditQuery::IsProcessed()
                 if (element.attribute("result") == "Success")
                 {
                     failed = false;
-                    if (MainWindow::HuggleMain != NULL)
+                    if (MainWindow::HuggleMain != nullptr)
                     {
-                        HistoryItem item;
-                        item.Result = Localizations::HuggleLocalizations->Localize("successful");
-                        item.Type = HistoryEdit;
-                        item.Target = this->Page;
+                        HistoryItem *item = new HistoryItem();
+                        item->Result = _l("successful");
+                        item->Type = HistoryEdit;
+                        item->Target = this->Page->PageName;
+                        this->HI = item;
                         MainWindow::HuggleMain->_History->Prepend(item);
                     }
-                    Huggle::Syslog::HuggleLogs->Log(Localizations::HuggleLocalizations->Localize("editquery-success", Page));
+                    this->ProcessCallback();
+                    Huggle::Syslog::HuggleLogs->Log(_l("editquery-success", this->Page->PageName));
                 }
             }
         }
@@ -139,34 +195,53 @@ bool EditQuery::IsProcessed()
         {
             this->Result->Failed = true;
             this->Result->ErrorMessage = this->qEdit->Result->Data;
+            this->ProcessFailure();
         }
-        this->qEdit->UnregisterConsumer(HUGGLECONSUMER_EDITQUERY);
-        this->qEdit = NULL;
+        this->qEdit = nullptr;
     }
-    return true;
+    return false;
 }
 
 void EditQuery::EditPage()
 {
-    this->qEdit = new ApiQuery();
-    this->qEdit->Target = "Writing " + this->Page;
+    if (this->Append && !this->HasPreviousPageText)
+    {
+        // we first need to get a text of current page
+        this->qRetrieve = Generic::RetrieveWikiPageContents(this->Page);
+        QueryPool::HugglePool->AppendQuery(this->qRetrieve);
+        this->qRetrieve->Process();
+        return;
+    }
+    this->qEdit = new ApiQuery(ActionEdit, this->Page->Site);
+    this->qEdit->Target = "Writing " + this->Page->PageName;
     this->qEdit->UsingPOST = true;
-    this->qEdit->RegisterConsumer(HUGGLECONSUMER_EDITQUERY);
-    this->qEdit->SetAction(ActionEdit);
+    QString t;
+    if (this->Append)
+    {
+        // we append new text now
+        this->Section = 0;
+        t = this->OriginalText + this->text;
+    } else
+    {
+        t = this->text;
+    }
     QString base = "";
     QString start_ = "";
     QString section = "";
+    QString wl = "&watchlist=nochange";
+    if (this->InsertTargetToWatchlist)
+        wl = "";
     if (this->Section > 0)
     {
         section = "&section=" + QString::number(this->Section);
     }
-    if (this->BaseTimestamp.length())
+    if (!this->BaseTimestamp.isEmpty())
         base = "&basetimestamp=" + QUrl::toPercentEncoding(this->BaseTimestamp);
-    if (this->StartTimestamp.length())
+    if (!this->StartTimestamp.isEmpty())
         start_ = "&starttimestamp=" + QUrl::toPercentEncoding(this->StartTimestamp);
-    this->qEdit->Parameters = "title=" + QUrl::toPercentEncoding(Page) + "&text=" + QUrl::toPercentEncoding(this->text) + section +
-                              "&summary=" + QUrl::toPercentEncoding(this->Summary) + base + start_ + "&token=" +
+    this->qEdit->Parameters = "title=" + QUrl::toPercentEncoding(this->Page->PageName) + "&text=" + QUrl::toPercentEncoding(this->text) + section +
+                              wl + "&summary=" + QUrl::toPercentEncoding(this->Summary) + base + start_ + "&token=" +
                               QUrl::toPercentEncoding(Configuration::HuggleConfiguration->TemporaryConfig_EditToken);
-    QueryPool::HugglePool->AppendQuery(qEdit);
+    QueryPool::HugglePool->AppendQuery(this->qEdit);
     this->qEdit->Process();
 }

@@ -12,12 +12,10 @@
 #define HUGGLEFEED_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
-#include <qdatetime.h>
+#include <QDateTime>
+#include <QList>
+#include "mediawikiobject.hpp"
 
 namespace Huggle
 {
@@ -25,13 +23,14 @@ namespace Huggle
     class WikiEdit;
 
     //! Feed provider stub class every provider must be derived from this one
-    class HuggleFeed
+    class HuggleFeed : public MediaWikiObject
     {
         public:
             //! Pointer to primary feed provider
             static HuggleFeed *PrimaryFeedProvider;
             //! Pointer to secondary feed provider
             static HuggleFeed *SecondaryFeedProvider;
+            static QList<HuggleFeed*> Providers;
 
             HuggleFeed();
             virtual ~HuggleFeed();
@@ -50,13 +49,16 @@ namespace Huggle
             //! Check if feed is containing some edits in buffer
             virtual bool ContainsEdit() { return false; }
             virtual bool IsPaused() { return false; }
+            //! If provider is not to be automatically inserted to a list of providers
+            //! Builtin providers have hardcoded menus, so they are ignored.
+            virtual bool IsBuiltin() { return true; }
             //! Returns true in case that a provider is stopped and can be safely deleted
 
             //! This is useful in case we are running some background threads and we need to
             //! wait for them to finish before we can delete the object
             virtual bool IsStopped() { return true; }
             //! Return a last edit from cache or NULL
-            virtual WikiEdit *RetrieveEdit() { return NULL; }
+            virtual WikiEdit *RetrieveEdit() { return nullptr; }
             virtual QString ToString() = 0;
             double GetUptime();
             HuggleQueueFilter *Filter;

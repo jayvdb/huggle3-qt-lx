@@ -9,9 +9,16 @@
 //GNU General Public License for more details.
 
 #include "userinfoform.hpp"
+#include <QtXml>
+#include "configuration.hpp"
 #include "exception.hpp"
 #include "querypool.hpp"
+#include "localization.hpp"
+#include "huggleweb.hpp"
 #include "mainwindow.hpp"
+#include "syslog.hpp"
+#include "wikiuser.hpp"
+#include "wikipage.hpp"
 #include "ui_userinfoform.h"
 
 using namespace Huggle;
@@ -19,18 +26,14 @@ using namespace Huggle;
 UserinfoForm::UserinfoForm(QWidget *parent) : QDockWidget(parent), ui(new Ui::UserinfoForm)
 {
     this->timer = new QTimer(this);
-    this->qContributions = NULL;
-    this->edit = NULL;
-    this->User = NULL;
+    this->User = nullptr;
     this->ui->setupUi(this);
     this->ui->pushButton->setEnabled(false);
     connect(this->timer, SIGNAL(timeout()), this, SLOT(OnTick()));
     QStringList header;
-    this->setWindowTitle(Localizations::HuggleLocalizations->Localize("userinfo-generic"));
+    this->setWindowTitle(_l("userinfo-generic"));
     this->ui->tableWidget->setColumnCount(3);
-    header << Localizations::HuggleLocalizations->Localize("page") <<
-              Localizations::HuggleLocalizations->Localize("time") <<
-              Localizations::HuggleLocalizations->Localize("id");
+    header << _l("page") << _l("time") << _l("id");
     this->ui->tableWidget->setHorizontalHeaderLabels(header);
     this->ui->tableWidget->verticalHeader()->setVisible(false);
     if (Configuration::HuggleConfiguration->SystemConfig_DynamicColsInList)
@@ -54,11 +57,6 @@ UserinfoForm::UserinfoForm(QWidget *parent) : QDockWidget(parent), ui(new Ui::Us
 
 UserinfoForm::~UserinfoForm()
 {
-    if (this->edit != NULL)
-    {
-        this->edit->DecRef();
-        this->edit = NULL;
-    }
     delete this->User;
     delete this->timer;
     delete this->ui;
@@ -66,29 +64,17 @@ UserinfoForm::~UserinfoForm()
 
 void UserinfoForm::ChangeUser(WikiUser *user)
 {
-    if (user == NULL)
-    {
-        throw new Exception("WikiUser *user can't be NULL in this fc", "void UserinfoForm::ChangeUser(WikiUser *user)");
-    }
-    if (this->User != NULL)
-    {
+    if (user == nullptr)
+        throw new Huggle::NullPointerException("user", "void UserinfoForm::ChangeUser(WikiUser *user)");
+    if (this->User != nullptr)
         delete this->User;
-    }
     // we create a copy of this wiki user so that we ensure it doesn't get deleted meanwhile
     this->User = new WikiUser(user);
     this->ui->pushButton->show();
     this->ui->pushButton->setEnabled(true);
-    this->ui->pushButton->setText("Retrieve info");
-    if (this->edit != NULL)
-    {
-        this->edit->DecRef();
-        this->edit = NULL;
-    }
-    if (this->qContributions != NULL)
-    {
-        this->qContributions->DecRef();
-        this->qContributions = NULL;
-    }
+    this->ui->pushButton->setText(_l("userinfo-retrieve"));
+    this->edit = nullptr;
+    this->qContributions = nullptr;
     while (this->ui->tableWidget->rowCount() > 0)
     {
         this->ui->tableWidget->removeRow(0);
@@ -104,16 +90,14 @@ void UserinfoForm::ChangeUser(WikiUser *user)
 
 void UserinfoForm::Read()
 {
-    this->qContributions = new ApiQuery();
+    this->qContributions = new ApiQuery(ActionQuery, this->User->GetSite());
     this->qContributions->Target = "Retrieving contributions of " + this->User->Username;
-    this->qContributions->SetAction(ActionQuery);
     this->qContributions->Parameters = "list=usercontribs&ucuser=" + QUrl::toPercentEncoding(this->User->Username) +
                                        "&ucprop=flags%7Ccomment%7Ctimestamp%7Ctitle%7Cids%7Csize&uclimit=20";
     QueryPool::HugglePool->AppendQuery(this->qContributions);
-    this->qContributions->IncRef();
     ui->pushButton->hide();
     this->qContributions->Process();
-    this->timer->start(600);
+    this->timer->start(HUGGLE_TIMER);
 }
 
 void UserinfoForm::on_pushButton_clicked()
@@ -123,29 +107,27 @@ void UserinfoForm::on_pushButton_clicked()
 
 void UserinfoForm::OnTick()
 {
-    if (this->edit != NULL)
+    if (this->edit != nullptr)
     {
         if (this->edit->IsPostProcessed())
         {
             MainWindow::HuggleMain->ProcessEdit(this->edit, false, false, true);
-            this->edit->DecRef();
-            this->edit = NULL;
+            this->edit.Delete();
         }
         return;
     }
-    if (this->qContributions == NULL)
+    if (this->qContributions == nullptr)
     {
         this->timer->stop();
         return;
     }
     if (this->qContributions->IsProcessed())
     {
-        if (this->qContributions->Result->Failed)
+        if (this->qContributions->Result->IsFailed())
         {
-            this->qContributions->DecRef();
-            Syslog::HuggleLogs->ErrorLog("unable to retrieve history for user: " + this->User->Username);
-            this->qContributions = NULL;
+            Syslog::HuggleLogs->ErrorLog(_l("user-history-fail", this->User->Username));
             this->timer->stop();
+            this->qContributions.Delete();
             return;
         }
         QDomDocument d;
@@ -207,10 +189,9 @@ void UserinfoForm::OnTick()
                 xx++;
             }
         } else
-            Syslog::HuggleLogs->ErrorLog("unable to retrieve history for user: " + this->User->Username);
+            Syslog::HuggleLogs->ErrorLog(_l("user-history-retr-fail", this->User->Username));
         this->ui->tableWidget->resizeRowsToContents();
-        this->qContributions->DecRef();
-        this->qContributions = NULL;
+        this->qContributions = nullptr;
     }
     this->timer->stop();
 }
@@ -219,7 +200,7 @@ void UserinfoForm::on_tableWidget_clicked(const QModelIndex &index)
 {
     // in case there are no edits we can safely quit here, there is also check because
     // we must not retrieve edit until previous operation did finish
-    if (this->qContributions != NULL || this->ui->tableWidget->rowCount() == 0)
+    if (this->qContributions != nullptr || this->ui->tableWidget->rowCount() == 0)
         return;
 
     // check if we don't have this edit in a buffer
@@ -245,11 +226,12 @@ void UserinfoForm::on_tableWidget_clicked(const QModelIndex &index)
     WikiEdit::Lock_EditList->unlock();
     // there is no such edit, let's get it
     this->edit = new WikiEdit();
-    this->edit->User = new WikiUser(this->User->Username);
+    this->edit->User = new WikiUser(this->User);
     this->edit->Page = new WikiPage(this->ui->tableWidget->item(index.row(), 0)->text());
     this->edit->RevID = revid;
-    this->edit->IncRef();
+    this->edit->Page->Site = this->User->GetSite();
+    QueryPool::HugglePool->PreProcessEdit(this->edit);
     QueryPool::HugglePool->PostProcessEdit(this->edit);
-    MainWindow::HuggleMain->Browser->RenderHtml(Localizations::HuggleLocalizations->Localize("wait"));
-    this->timer->start(800);
+    MainWindow::HuggleMain->Browser->RenderHtml(_l("wait"));
+    this->timer->start(HUGGLE_TIMER);
 }

@@ -12,21 +12,18 @@
 #define BLOCKUSER_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 #include <QString>
-#include <QTimer>
 #include "apiquery.hpp"
-#include "wikiuser.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Ui
 {
     class BlockUser;
 }
+
+class QTimer;
 
 namespace Huggle
 {
@@ -38,7 +35,7 @@ namespace Huggle
     {
             Q_OBJECT
         public:
-            explicit BlockUser(QWidget *parent = 0);
+            explicit BlockUser(QWidget *parent = nullptr);
             ~BlockUser();
             void SetWikiUser(WikiUser *User);
             void CheckToken();
@@ -58,8 +55,8 @@ namespace Huggle
             QTimer *t0;
             WikiUser *user;
             //! Query to exec api to block user
-            ApiQuery *qUser;
-            ApiQuery *qTokenApi;
+            Collectable_SmartPtr<ApiQuery> qUser;
+            Collectable_SmartPtr<ApiQuery> qTokenApi;
             QString BlockToken;
             int QueryPhase;
     };

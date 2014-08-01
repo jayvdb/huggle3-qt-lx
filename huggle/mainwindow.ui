@@ -63,7 +63,7 @@
      <x>0</x>
      <y>0</y>
      <width>794</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -83,6 +83,8 @@
     <addaction name="actionAbort_2"/>
     <addaction name="separator"/>
     <addaction name="menuChange_provider"/>
+    <addaction name="actionStop_provider"/>
+    <addaction name="actionResume_provider"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -100,6 +102,8 @@
      <addaction name="actionHtml_dump"/>
      <addaction name="actionEnforce_sysop_rights"/>
      <addaction name="actionRelog"/>
+     <addaction name="actionDryMode"/>
+     <addaction name="actionReload_menus"/>
     </widget>
     <addaction name="actionContents"/>
     <addaction name="separator"/>
@@ -118,9 +122,11 @@
     <addaction name="actionRevert_currently_displayed_edit_and_warn_the_user"/>
     <addaction name="actionRevert_currently_displayed_edit_warn_user_and_stay_on_page"/>
     <addaction name="actionRevert_AGF"/>
+    <addaction name="actionRevert_only_this_revision"/>
     <addaction name="actionWarn_the_user"/>
     <addaction name="separator"/>
     <addaction name="actionDisplay_this_page_in_browser"/>
+    <addaction name="actionDisplay_this_page"/>
     <addaction name="actionDisplay_history_in_browser"/>
     <addaction name="actionEdit_page_in_browser"/>
     <addaction name="separator"/>
@@ -135,6 +141,7 @@
     <addaction name="actionProtect"/>
     <addaction name="actionRequest_protection"/>
     <addaction name="actionRestore_this_revision"/>
+    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -312,7 +319,7 @@
   </action>
   <action name="actionNext">
    <property name="icon">
-    <iconset>
+    <iconset resource="pictures.qrc">
      <normaloff>:/huggle/pictures/Resources/diff-next.png</normaloff>:/huggle/pictures/Resources/diff-next.png</iconset>
    </property>
    <property name="text">
@@ -881,10 +888,16 @@
    <property name="text">
     <string>Remove edits made by whitelisted users</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+W</string>
+   </property>
   </action>
   <action name="actionDelete_all_edits_with_score_lower_than_200">
    <property name="text">
     <string>Delete edits with score lower than -200</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+D</string>
    </property>
   </action>
   <action name="actionRelog">
@@ -908,6 +921,45 @@
   <action name="actionUser_contributions">
    <property name="text">
     <string>User contributions</string>
+   </property>
+  </action>
+  <action name="actionDisplay_this_page">
+   <property name="text">
+    <string>Display this page</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+O</string>
+   </property>
+  </action>
+  <action name="actionStop_provider">
+   <property name="text">
+    <string>Stop provider</string>
+   </property>
+  </action>
+  <action name="actionResume_provider">
+   <property name="text">
+    <string>Resume provider</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionDryMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>DryMode</string>
+   </property>
+  </action>
+  <action name="actionRevert_only_this_revision">
+   <property name="text">
+    <string>Revert only this revision</string>
+   </property>
+  </action>
+  <action name="actionReload_menus">
+   <property name="text">
+    <string>Reload menus</string>
    </property>
   </action>
  </widget>

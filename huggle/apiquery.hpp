@@ -12,25 +12,18 @@
 #define APIQUERY_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QObject>
-#include <QtNetwork/QtNetwork>
-#include <QThread>
+#include <QtNetwork>
+#include "collectable_smartptr.hpp"
 #include "query.hpp"
-#include "revertquery.hpp"
+#include "mediawikiobject.hpp"
 
 namespace Huggle
 {
     class RevertQuery;
-    class Exception;
-    class Core;
-    class Configuration;
+    class WikiSite;
 
     enum Action
     {
@@ -44,6 +37,7 @@ namespace Huggle
         ActionUndelete,
         ActionBlock,
         ActionPatrol,
+        ActionReview, // FlaggedRevs
         ActionProtect,
         ActionEdit
     };
@@ -58,13 +52,14 @@ namespace Huggle
     };
 
     //! This class can be used to execute any kind of api query on any wiki
-    class ApiQuery : public QObject, public Query
+    class ApiQuery : public QObject, public Query, public MediaWikiObject
     {
             Q_OBJECT
         public:
             //! Creates a new instance of this class and set the defaults
             explicit ApiQuery();
-            explicit ApiQuery(Action a);
+            explicit ApiQuery(Action action);
+            explicit ApiQuery(Action action, WikiSite *site);
             //! Run
             void Process();
             //! Change the action type
@@ -77,19 +72,22 @@ namespace Huggle
             QString QueryTargetToString();
             //! Returns a type of query as a string
             QString QueryTypeToString();
+            bool EnforceLogin = true;
+            //! Whether the query is going to edit any data in wiki
+            bool EditingQuery = false;
             //! Whether the query will submit parameters using POST data
-            bool UsingPOST;
+            bool UsingPOST = false;
             //! This is a requested format in which the result should be written in
             Format RequestFormat;
             //! This is an url of api request, you probably don't want to change it unless
             //! you want to construct whole api request yourself
-            QString URL;
+            QString URL = "";
             //! Parameters for action, for example page title
-            QString Parameters;
+            QString Parameters = "";
             //! This is optional property which contains a label of target this query is for
-            QString Target;
+            QString Target = "none";
             //! You can change this to url of different wiki than a project
-            QString OverrideWiki;
+            QString OverrideWiki = "";
         private slots:
             void ReadData();
             void Finished();
@@ -97,6 +95,7 @@ namespace Huggle
             //! Generate api url
             void ConstructUrl();
             QString ConstructParameterLessUrl();
+            QString GetAssertPartSuffix();
             //! Check if return format is supported by huggle
             bool FormatIsCurrentlySupported();
             //! This is only needed when you are using rollback
@@ -105,6 +104,33 @@ namespace Huggle
             //! Reply from qnet
             QNetworkReply *reply;
     };
+
+    inline bool ApiQuery::FormatIsCurrentlySupported()
+    {
+        // other formats will be supported later
+        return (this->RequestFormat == XML);
+    }
+
+    inline void ApiQuery::SetAction(const QString action)
+    {
+        this->ActionPart = action;
+    }
+
+    inline void ApiQuery::Kill()
+    {
+        if (this->reply != nullptr)
+            this->reply->abort();
+    }
+
+    inline QString ApiQuery::QueryTargetToString()
+    {
+        return this->Target;
+    }
+
+    inline QString ApiQuery::QueryTypeToString()
+    {
+        return "ApiQuery (" + this->ActionPart + ")";
+    }
 }
 
 #endif // APIQUERY_H

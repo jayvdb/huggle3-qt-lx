@@ -12,18 +12,10 @@
 #define HUGGLEWEB_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first. Don't believe? See this:
-// http://stackoverflow.com/questions/20300201/why-python-h-of-python-3-2-must-be-included-as-first-together-with-qt4
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QFrame>
 #include <QWebHistory>
 #include <QWebFrame>
-#include "wikipage.hpp"
-#include "wikiedit.hpp"
-#include "resources.hpp"
 
 namespace Ui
 {
@@ -35,15 +27,13 @@ namespace Huggle
     class WikiEdit;
     class WikiPage;
     class Resources;
-    class Exception;
 
     //! Web browser
     class HuggleWeb : public QFrame
     {
             Q_OBJECT
-
         public:
-            explicit HuggleWeb(QWidget *parent = 0);
+            explicit HuggleWeb(QWidget *parent = nullptr);
             ~HuggleWeb();
             QString CurrentPageName();
             /*!

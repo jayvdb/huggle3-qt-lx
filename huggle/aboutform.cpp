@@ -10,6 +10,7 @@
 
 #include "aboutform.hpp"
 #include <QDesktopServices>
+#include <QUrl>
 #include "configuration.hpp"
 #include "localization.hpp"
 #include "ui_aboutform.h"
@@ -64,6 +65,21 @@ void Huggle::AboutForm::on_label_10_linkActivated(const QString &link)
 }
 
 void Huggle::AboutForm::on_label_9_linkActivated(const QString &link)
+{
+    QDesktopServices::openUrl(link);
+}
+
+void Huggle::AboutForm::on_label_11_linkActivated(const QString &link)
+{
+    QDesktopServices::openUrl(link);
+}
+
+void Huggle::AboutForm::on_label_12_linkActivated(const QString &link)
+{
+    QDesktopServices::openUrl(link);
+}
+
+void Huggle::AboutForm::on_label_13_linkActivated(const QString &link)
 {
     QDesktopServices::openUrl(link);
 }

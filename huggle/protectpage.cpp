@@ -11,7 +11,9 @@
 #include "protectpage.hpp"
 #include <QMessageBox>
 #include "configuration.hpp"
+#include "localization.hpp"
 #include "querypool.hpp"
+#include "syslog.hpp"
 #include "ui_protectpage.h"
 
 using namespace Huggle;
@@ -19,21 +21,18 @@ using namespace Huggle;
 ProtectPage::ProtectPage(QWidget *parent) : QDialog(parent), ui(new Ui::ProtectPage)
 {
     this->ui->setupUi(this);
-    this->qToken = NULL;
-    this->PageToProtect = NULL;
-    this->qProtection = NULL;
-    this->ui->comboBox_3->addItem(Localizations::HuggleLocalizations->Localize("protect-none"));
-    this->ui->comboBox_3->addItem(Localizations::HuggleLocalizations->Localize("protect-semiprotection"));
-    this->ui->comboBox_3->addItem(Localizations::HuggleLocalizations->Localize("protect-fullprotection"));
+    this->PageToProtect = nullptr;
+    this->ui->comboBox_3->addItem(_l("protect-none"));
+    this->ui->comboBox_3->addItem(_l("protect-semiprotection"));
+    this->ui->comboBox_3->addItem(_l("protect-fullprotection"));
     this->ui->comboBox_3->setCurrentIndex(2);
     this->ProtectToken = "";
-    this->tt = NULL;
-    this->ui->comboBox->addItem(Configuration::HuggleConfiguration->ProjectConfig_ProtectReason);
+    this->tt = nullptr;
+    this->ui->comboBox->addItem(Configuration::HuggleConfiguration->ProjectConfig->ProtectReason);
 }
 
 ProtectPage::~ProtectPage()
 {
-    this->DelRefs();
     delete this->ui;
     delete this->PageToProtect;
     delete this->tt;
@@ -46,23 +45,15 @@ void ProtectPage::setPageToProtect(WikiPage *Page)
 
 void ProtectPage::getTokenToProtect()
 {
-    this->qToken = new ApiQuery();
-    this->qToken->SetAction(ActionQuery);
+    this->qToken = new ApiQuery(ActionQuery, this->PageToProtect->GetSite());
     this->qToken->Parameters = "prop=info&intoken=protect&titles=" + QUrl::toPercentEncoding(this->PageToProtect->PageName);
-    this->qToken->Target = Localizations::HuggleLocalizations->Localize("protection-ft");
-    this->qToken->IncRef();
-    QueryPool::HugglePool->AppendQuery(qToken);
+    this->qToken->Target = _l("protection-ft");
+    QueryPool::HugglePool->AppendQuery(this->qToken);
     this->qToken->Process();
     this->tt = new QTimer(this);
     connect(this->tt, SIGNAL(timeout()), this, SLOT(onTick()));
     this->PtQueryPhase = 0;
-    this->tt->start(200);
-}
-
-void ProtectPage::DelRefs()
-{
-    GC_DECREF(this->qToken);
-    GC_DECREF(this->qProtection);
+    this->tt->start(HUGGLE_TIMER);
 }
 
 void ProtectPage::onTick()
@@ -81,22 +72,20 @@ void ProtectPage::onTick()
 
 void ProtectPage::checkTokenToProtect()
 {
-    if (this->qToken == NULL || !this->qToken->IsProcessed())
+    if (this->qToken == nullptr || !this->qToken->IsProcessed())
         return;
-    if (this->qToken->Result->Failed)
+    if (this->qToken->Result->IsFailed())
     {
-        /// \todo LOCALIZE ME
-        this->Failed("ERROR: Token cannot be retrieved. The reason was: " + this->qToken->Result->ErrorMessage);
+        this->Failed(_l("protect-token", this->qToken->Result->ErrorMessage));
         return;
     }
     QDomDocument r;
-    r.setContent(qToken->Result->Data);
+    r.setContent(this->qToken->Result->Data);
     QDomNodeList l = r.elementsByTagName("page");
     if (l.count() == 0)
     {
         Huggle::Syslog::HuggleLogs->DebugLog(this->qToken->Result->Data);
-        /// \todo LOCALIZE ME
-        this->Failed("No page info was available (are you an admin?)");
+        this->Failed(_l("protect-fail-no-info"));
         return;
     }
     QDomElement element = l.at(0).toElement();
@@ -107,11 +96,9 @@ void ProtectPage::checkTokenToProtect()
     }
     this->ProtectToken = element.attribute("protecttoken");
     this->PtQueryPhase++;
-    this->qToken->DecRef();
-    this->qToken = NULL;
+    this->qToken.Delete();
     Huggle::Syslog::HuggleLogs->DebugLog("Protection token for " + this->PageToProtect->PageName + ": " + this->ProtectToken);
-    this->qProtection = new ApiQuery();
-    this->qProtection->SetAction(ActionProtect);
+    this->qProtection = new ApiQuery(ActionProtect, this->PageToProtect->GetSite());
     QString protection = "edit=sysop|move=sysop";
     switch (this->ui->comboBox_3->currentIndex())
     {
@@ -123,12 +110,11 @@ void ProtectPage::checkTokenToProtect()
             break;
     }
     this->qProtection->Parameters = "title=" + QUrl::toPercentEncoding(this->PageToProtect->PageName)
-            + "&reason=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->ProjectConfig_ProtectReason)
+            + "&reason=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->ProjectConfig->ProtectReason)
             + "&expiry=" + QUrl::toPercentEncoding(this->ui->comboBox_2->currentText())
             + "&protections=" + QUrl::toPercentEncoding(protection)
             + "&token=" + QUrl::toPercentEncoding(this->ProtectToken);
     this->qProtection->Target = "Protecting " + this->PageToProtect->PageName;
-    this->qProtection->IncRef();
     QueryPool::HugglePool->AppendQuery(this->qProtection);
     this->qProtection->Process();
 }
@@ -147,30 +133,26 @@ void ProtectPage::on_pushButton_2_clicked()
 void ProtectPage::Failed(QString reason)
 {
     QMessageBox *_pmb = new QMessageBox();
-    /// \todo LOCALIZE ME
-    _pmb->setWindowTitle("Unable to protect page");
+    _pmb->setWindowTitle(_l("protect-message-title-fail"));
     /// \todo LOCALIZE ME
     _pmb->setText("Unable to protect the page because " + reason);
     _pmb->exec();
     delete _pmb;
     this->tt->stop();
     delete this->tt;
-    this->DelRefs();
-    this->tt = NULL;
+    this->qProtection.Delete();
+    this->tt = nullptr;
+    this->qToken.Delete();
     ui->pushButton->setEnabled(true);
 }
 
 void ProtectPage::Protect()
 {
-    if (!this->qProtection->IsProcessed())
+    if (!this->qProtection->IsProcessed() || this->qProtection == nullptr)
     {
         return;
     }
-    if (this->qProtection == NULL)
-    {
-        return;
-    }
-    if (this->qProtection->Result->Failed)
+    if (this->qProtection->Result->IsFailed())
     {
         Failed("The API query failed. Reason supplied was: " + qProtection->Result->ErrorMessage);
         return;
@@ -179,6 +161,6 @@ void ProtectPage::Protect()
     Huggle::Syslog::HuggleLogs->DebugLog("The page " + PageToProtect->PageName + " has successfully been protected");
     this->qProtection->DecRef();
     this->tt->stop();
-    this->qProtection = NULL;
+    this->qProtection = nullptr;
 }
 

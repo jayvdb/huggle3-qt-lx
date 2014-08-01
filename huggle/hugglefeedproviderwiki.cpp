@@ -10,20 +10,22 @@
 
 #include "hugglefeedproviderwiki.hpp"
 #include <QtXml>
-#include "mediawiki.hpp"
-#include "exception.hpp"
-#include "mainwindow.hpp"
-#include "localization.hpp"
 #include "configuration.hpp"
+#include "exception.hpp"
+#include "localization.hpp"
+#include "mainwindow.hpp"
+#include "mediawiki.hpp"
+#include "hugglequeue.hpp"
 #include "querypool.hpp"
+#include "syslog.hpp"
+#include "wikipage.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
-
 HuggleFeedProviderWiki::HuggleFeedProviderWiki()
 {
     this->Buffer = new QList<WikiEdit*>();
     this->Refreshing = false;
-    this->qReload = NULL;
     // we set the latest time to yesterday so that we don't get in troubles with time offset
     this->LatestTime = QDateTime::currentDateTime().addDays(-1);
     this->LastRefresh = QDateTime::currentDateTime().addDays(-1);
@@ -37,10 +39,6 @@ HuggleFeedProviderWiki::~HuggleFeedProviderWiki()
         this->Buffer->removeAt(0);
     }
     delete this->Buffer;
-    if (this->qReload != NULL)
-    {
-        this->qReload->DecRef();
-    }
 }
 
 bool HuggleFeedProviderWiki::Start()
@@ -76,33 +74,31 @@ bool HuggleFeedProviderWiki::ContainsEdit()
 
 void HuggleFeedProviderWiki::Refresh()
 {
+    if (this->Paused)
+        return;
     if (this->Refreshing)
     {
         // the query is still in progress now
         if (!this->qReload->IsProcessed())
             return;
-        if (this->qReload->Result->Failed)
+        if (this->qReload->Result->IsFailed())
         {
             // failed to obtain the data
-            Huggle::Syslog::HuggleLogs->Log(Localizations::HuggleLocalizations->Localize("rc-error",
-                                                              this->qReload->Result->ErrorMessage));
-            this->qReload->DecRef();
-            this->qReload = NULL;
+            Huggle::Syslog::HuggleLogs->Log(_l("rc-error", this->qReload->Result->ErrorMessage));
+            this->qReload = nullptr;
             this->Refreshing = false;
             return;
         }
         this->Process(qReload->Result->Data);
-        this->qReload->DecRef();
-        this->qReload = NULL;
+        this->qReload = nullptr;
         this->Refreshing = false;
         return;
     }
     this->Refreshing = true;
-    this->qReload = new ApiQuery(ActionQuery);
+    this->qReload = new ApiQuery(ActionQuery, this->GetSite());
     this->qReload->Parameters = "list=recentchanges&rcprop=" + QUrl::toPercentEncoding("user|userid|comment|flags|timestamp|title|ids|sizes|loginfo") +
-                                "&rcshow=" + QUrl::toPercentEncoding("!bot") + "&rclimit=200";
+                                "&rclimit=" + QString::number(Configuration::HuggleConfiguration->SystemConfig_WikiRC);
     this->qReload->Target = "Recent changes refresh";
-    this->qReload->IncRef();
     QueryPool::HugglePool->AppendQuery(this->qReload);
     this->qReload->Process();
 }
@@ -111,7 +107,7 @@ WikiEdit *HuggleFeedProviderWiki::RetrieveEdit()
 {
     if (this->Buffer->size() < 1)
     {
-        return NULL;
+        return nullptr;
     }
     WikiEdit *edit = this->Buffer->at(0);
     this->Buffer->removeAt(0);
@@ -143,22 +139,15 @@ void HuggleFeedProviderWiki::Process(QString data)
         CurrentNode--;
         // get a time of rc change
         QDomElement item = l.at(CurrentNode).toElement();
-        if (item.nodeName() != "rc")
-        {
-            CurrentNode--;
-            continue;
-        }
         if (!item.attributes().contains("timestamp"))
         {
             Huggle::Syslog::HuggleLogs->Log("RC Feed: Item was missing timestamp attribute: " + item.toElement().nodeName());
-            CurrentNode--;
             continue;
         }
         QDateTime time = MediaWiki::FromMWTimestamp(item.attribute("timestamp"));
         if (time < t)
         {
             // this record is older than latest parsed record, so we don't want to parse it
-            CurrentNode--;
             continue;
         } else
         {
@@ -168,13 +157,11 @@ void HuggleFeedProviderWiki::Process(QString data)
         if (!item.attributes().contains("type"))
         {
             Huggle::Syslog::HuggleLogs->Log("RC Feed: Item was missing type attribute: " + item.text());
-            CurrentNode--;
             continue;
         }
         if (!item.attributes().contains("title"))
         {
             Huggle::Syslog::HuggleLogs->Log("RC Feed: Item was missing title attribute: " + item.text());
-            CurrentNode--;
             continue;
         }
         QString type = item.attribute("type");
@@ -186,7 +173,6 @@ void HuggleFeedProviderWiki::Process(QString data)
         {
             ProcessLog(item);
         }
-        CurrentNode--;
     }
     if (Changed)
     {
@@ -202,7 +188,7 @@ void HuggleFeedProviderWiki::ProcessEdit(QDomElement item)
     if (type == "new")
         edit->NewPage = true;
     if (item.attributes().contains("newlen") && item.attributes().contains("oldlen"))
-        edit->Size = item.attribute("newlen").toInt() - item.attribute("oldlen").toInt();
+        edit->SetSize(item.attribute("newlen").toLong() - item.attribute("oldlen").toLong());
     if (item.attributes().contains("user"))
         edit->User = new WikiUser(item.attribute("user"));
     if (item.attributes().contains("comment"))
@@ -214,10 +200,9 @@ void HuggleFeedProviderWiki::ProcessEdit(QDomElement item)
     if (item.attributes().contains("revid"))
     {
         edit->RevID = QString(item.attribute("revid")).toInt();
-        if (edit->RevID == 0)
-        {
+        if (!edit->RevID)
             edit->RevID = WIKI_UNKNOWN_REVID;
-        }
+
     }
     if (item.attributes().contains("minor"))
         edit->Minor = true;
@@ -235,7 +220,7 @@ void HuggleFeedProviderWiki::ProcessLog(QDomElement item)
     QString logtype = item.attribute("logtype");
     QString logaction = item.attribute("logaction");
 
-    if (logtype == "block" && (logaction == "block" || logaction == "reblock") )
+    if (logtype == "block" && (logaction == "block" || logaction == "reblock"))
     {
         QString admin = item.attribute("user");
         QString blockeduser = item.attribute("title"); // including User-namespaceprefix
@@ -245,13 +230,12 @@ void HuggleFeedProviderWiki::ProcessLog(QDomElement item)
             QDomElement blockinfo = item.elementsByTagName("block").at(0).toElement(); // nested element "block"
             //QString flags = blockinfo.attribute("flags");
             QString duration = blockinfo.attribute("duration");
-
-            Huggle::Syslog::HuggleLogs->DebugLog("RC Feed: ProcessLog: " + blockeduser + " was blocked by " + admin +
-                                                 " for the duration \"" + duration + "\": " + reason);
+            HUGGLE_DEBUG("RC Feed: ProcessLog: " + blockeduser + " was blocked by " + admin +
+                          " for the duration \"" + duration + "\": " + reason, 1);
         }
         else if (logaction == "unblock")
         {
-            Huggle::Syslog::HuggleLogs->DebugLog("RC Feed: ProcessLog: " + blockeduser + " was unblocked by " + admin + ": " + reason);
+            HUGGLE_DEBUG("RC Feed: ProcessLog: " + blockeduser + " was unblocked by " + admin + ": " + reason, 1);
         }
         // TODO: process it further to the user so edits get displayed as blob-blocked.png or not any longer
     }
@@ -260,7 +244,7 @@ void HuggleFeedProviderWiki::ProcessLog(QDomElement item)
         QString page = item.attribute("title");
         QString admin = item.attribute("user");
         QString reason = item.attribute("comment");
-        Huggle::Syslog::HuggleLogs->DebugLog("RC Feed: ProcessLog: page \"" + page + "\" was deleted by " + admin + ": " + reason);
+        HUGGLE_DEBUG("RC Feed: ProcessLog: page \"" + page + "\" was deleted by " + admin + ": " + reason, 1);
         // TODO: process page deletes further (e.g. remove page from queue)
     }
 }

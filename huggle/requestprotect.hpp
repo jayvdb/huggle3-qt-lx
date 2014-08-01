@@ -8,15 +8,10 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
-
 #ifndef REQUESTPROTECT_H
 #define REQUESTPROTECT_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QTimer>
 #include <QDialog>
@@ -24,6 +19,7 @@
 #include "wikipage.hpp"
 #include "apiquery.hpp"
 #include "editquery.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Ui
 {
@@ -41,7 +37,7 @@ namespace Huggle
         Q_OBJECT
 
         public:
-            explicit RequestProtect(WikiPage *wikiPage, QWidget *parent = 0);
+            explicit RequestProtect(WikiPage *wikiPage, QWidget *parent = nullptr);
             ~RequestProtect();
         private slots:
             void Tick();
@@ -50,13 +46,12 @@ namespace Huggle
         private:
             QString ProtectionType();
             void Fail(QString message);
-            void DelRef();
             QString Timestamp;
             WikiPage *page;
             QTimer *tm;
             Ui::RequestProtect *ui;
-            ApiQuery *qRFPPage;
-            EditQuery *qEditRFP;
+            Collectable_SmartPtr<ApiQuery> qRFPPage;
+            Collectable_SmartPtr<EditQuery> qEditRFP;
     };
 }
 

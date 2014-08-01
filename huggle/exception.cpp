@@ -9,6 +9,10 @@
 //GNU General Public License for more details.
 
 #include "exception.hpp"
+#include <iostream>
+#include <QDir>
+#include "configuration.hpp"
+#include "syslog.hpp"
 
 #ifdef __linux__
     //linux code goes here
@@ -63,27 +67,48 @@ google_breakpad::ExceptionHandler *Exception::GoogleBP_handler = NULL;
     #endif
 #endif
 
-Exception::Exception(QString Text, bool __IsRecoverable)
+Exception::Exception(QString text, bool isRecoverable)
 {
-    std::cerr << "FATAL Exception thrown: " + Text.toStdString() << std::endl;
-    this->Message = Text;
+    std::cerr << "FATAL Exception thrown: " + text.toStdString() << std::endl;
+    this->Message = text;
     this->ErrorCode = 2;
     this->Source = "{hidden}";
-    this->_IsRecoverable = __IsRecoverable;
+    this->_IsRecoverable = isRecoverable;
 }
 
-Exception::Exception(QString Text, QString _Source, bool __IsRecoverable)
+Exception::Exception(QString text, QString source, bool isRecoverable)
 {
-    std::cerr << "FATAL Exception thrown: " + Text.toStdString() << std::endl;
-    this->Source = _Source;
-    this->Message = Text;
-    this->ErrorCode = 2;
-    this->_IsRecoverable = __IsRecoverable;
+    this->construct(text, source, isRecoverable);
+}
+
+Exception::Exception(QString text, const char *source)
+{
+    this->construct(text, QString(source), true);
 }
 
 bool Exception::IsRecoverable() const
 {
     return this->_IsRecoverable;
+}
+
+void Exception::construct(QString text, QString source, bool isRecoverable)
+{
+    std::cerr << "FATAL Exception thrown: " + text.toStdString() << std::endl;
+    this->Source = source;
+    this->Message = text;
+    this->ErrorCode = 2;
+    this->_IsRecoverable = isRecoverable;
+}
+
+void Exception::ThrowSoftException(QString Text, QString Source)
+{
+    if (Configuration::HuggleConfiguration->Verbosity > 0)
+    {
+        throw new Huggle::Exception(Text, Source);
+    } else
+    {
+        Syslog::HuggleLogs->WarningLog("Soft exception: " + Text + " source: " + Source);
+    }
 }
 
 void Exception::InitBreakpad()
@@ -112,4 +137,11 @@ void Exception::ExitBreakpad()
     #endif
     delete Exception::GoogleBP_handler;
 #endif
+}
+
+
+NullPointerException::NullPointerException(QString name, QString source) : Exception("", source)
+{
+    this->ErrorCode = 1;
+    this->Message = QString("Null pointer exception. The variable you referenced (") + name + ") had null value.";
 }

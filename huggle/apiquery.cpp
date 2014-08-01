@@ -9,25 +9,27 @@
 //GNU General Public License for more details.
 
 #include "apiquery.hpp"
-#include <QtXml/QtXml>
+#include <QtXml>
 #include <QUrl>
-#include "syslog.hpp"
-#include "exception.hpp"
 #include "configuration.hpp"
+#include "syslog.hpp"
+#include "revertquery.hpp"
+#include "exception.hpp"
+#include "generic.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
 
 void ApiQuery::ConstructUrl()
 {
-    if (!this->ActionPart.length())
-        throw new Exception("No action provided for api request");
-    if (!this->OverrideWiki.length())
+    if (this->ActionPart.isEmpty())
+        throw new Huggle::Exception("No action provided for api request");
+    if (this->OverrideWiki.isEmpty())
     {
-        this->URL = Configuration::GetProjectScriptURL(Configuration::HuggleConfiguration->Project)
-                    + "api.php?action=" + this->ActionPart;
+        this->URL = Configuration::GetProjectScriptURL(this->GetSite()) + "api.php?action=" + this->ActionPart;
     } else
     {
-        this->URL = Configuration::GetURLProtocolPrefix() + this->OverrideWiki + "api.php?action=" + this->ActionPart;
+        this->URL = Configuration::GetURLProtocolPrefix(this->GetSite()) + this->OverrideWiki + "api.php?action=" + this->ActionPart;
     }
     if (this->Parameters.length() > 0)
         this->URL += "&" + this->Parameters;
@@ -43,6 +45,7 @@ void ApiQuery::ConstructUrl()
         case Default:
             break;
     }
+    this->URL += this->GetAssertPartSuffix();
 }
 
 QString ApiQuery::ConstructParameterLessUrl()
@@ -50,13 +53,13 @@ QString ApiQuery::ConstructParameterLessUrl()
     QString url;
     if (!this->ActionPart.length())
     {
-        throw new Exception("No action provided for api request", "void ApiQuery::ConstructParameterLessUrl()");
+        throw new Huggle::Exception("No action provided for api request", "void ApiQuery::ConstructParameterLessUrl()");
     }
     if (!this->OverrideWiki.size())
-        url = Configuration::GetProjectScriptURL(Configuration::HuggleConfiguration->Project)
+        url = Configuration::GetProjectScriptURL(this->GetSite())
                 + "api.php?action=" + this->ActionPart;
     else
-        url = Configuration::GetURLProtocolPrefix() + this->OverrideWiki + "api.php?action=" + this->ActionPart;
+        url = Configuration::GetURLProtocolPrefix(this->GetSite()) + this->OverrideWiki + "api.php?action=" + this->ActionPart;
 
     switch (this->RequestFormat)
     {
@@ -70,13 +73,17 @@ QString ApiQuery::ConstructParameterLessUrl()
         case Default:
             break;
     }
-    return url;
+    return url + this->GetAssertPartSuffix();
 }
 
-bool ApiQuery::FormatIsCurrentlySupported()
+QString ApiQuery::GetAssertPartSuffix()
 {
-    // other formats will be supported later
-    return (this->RequestFormat == XML);
+    if (this->EnforceLogin && !Configuration::HuggleConfiguration->Restricted)
+    {
+        // we need to use this so that mediawiki will fail if we aren't logged in
+        return "&assert=user";
+    }
+    return "";
 }
 
 // TODO: move this function to RevertQuery
@@ -84,34 +91,31 @@ void ApiQuery::FinishRollback()
 {
     this->CustomStatus = RevertQuery::GetCustomRevertStatus(this->Result->Data);
     if (this->CustomStatus != "Reverted")
-        this->Result->Failed = true;
+    {
+        this->Result->SetError();
+        this->ProcessFailure();
+    }
 }
 
 ApiQuery::ApiQuery()
 {
     this->RequestFormat = XML;
-    this->URL = "";
     this->Type = QueryApi;
-    this->ActionPart = "";
-    this->Result = NULL;
-    this->Parameters = "";
-    this->UsingPOST = false;
-    this->Target = "none";
-    this->OverrideWiki = "";
 }
 
-ApiQuery::ApiQuery(Action a)
+ApiQuery::ApiQuery(Action action)
 {
     this->RequestFormat = XML;
-    this->URL = "";
     this->Type = QueryApi;
-    this->ActionPart = "";
-    this->Result = NULL;
-    this->Parameters = "";
-    this->UsingPOST = false;
-    this->SetAction(a);
-    this->Target = "none";
-    this->OverrideWiki = "";
+    this->SetAction(action);
+}
+
+ApiQuery::ApiQuery(Action action, WikiSite *site)
+{
+    this->RequestFormat = XML;
+    this->Site = site;
+    this->Type = QueryApi;
+    this->SetAction(action);
 }
 
 void ApiQuery::Finished()
@@ -120,11 +124,11 @@ void ApiQuery::Finished()
     // now we need to check if request was successful or not
     if (this->reply->error())
     {
-        this->Result->ErrorMessage = reply->errorString();
-        this->Result->Failed = true;
+        this->Result->SetError(HUGGLE_EUNKNOWN, this->reply->errorString());
         this->reply->deleteLater();
-        this->reply = NULL;
+        this->reply = nullptr;
         this->Status = StatusDone;
+        this->ProcessFailure();
         return;
     }
     if (this->ActionPart == "rollback")
@@ -132,9 +136,9 @@ void ApiQuery::Finished()
         FinishRollback();
     }
     this->reply->deleteLater();
-    this->reply = NULL;
+    this->reply = nullptr;
     if (!this->HiddenQuery)
-        Huggle::Syslog::HuggleLogs->DebugLog("Finished request " + this->URL, 6);
+        HUGGLE_DEBUG("Finished request " + this->URL, 6);
     this->Status = StatusDone;
     this->ProcessCallback();
 }
@@ -143,7 +147,7 @@ void ApiQuery::Process()
 {
     if (this->Status != Huggle::StatusNull)
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Cowardly refusing to double process the query");
+        HUGGLE_DEBUG1("Cowardly refusing to double process the query");
         return;
     }
     this->StartTime = QDateTime::currentDateTime();
@@ -161,8 +165,19 @@ void ApiQuery::Process()
         url = QUrl::fromEncoded(this->URL.toUtf8());
     }
     QNetworkRequest request(url);
+    request.setRawHeader("User-Agent", Configuration::HuggleConfiguration->WebqueryAgent);
     if (this->UsingPOST)
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    if (Configuration::HuggleConfiguration->SystemConfig_DryMode && this->EditingQuery)
+    {
+        this->Result = new QueryResult();
+        this->Result->Data = "DM (didn't run a query)";
+        this->Status = StatusDone;
+        this->ProcessCallback();
+        Syslog::HuggleLogs->Log("If I wasn't in dry mode I would execute this query (post=" + Generic::Bool2String(this->UsingPOST) +
+                                ") " + this->URL + "\ndata: " + QUrl::fromPercentEncoding(this->Parameters.toUtf8()));
+        return;
+    }
     if (this->UsingPOST)
     {
         this->reply = Query::NetworkManager->post(request, this->Parameters.toUtf8());
@@ -171,7 +186,7 @@ void ApiQuery::Process()
         this->reply = Query::NetworkManager->get(request);
     }
     if (!this->HiddenQuery)
-        Huggle::Syslog::HuggleLogs->DebugLog("Processing api request " + this->URL, 6);
+        HUGGLE_DEBUG("Processing api request " + this->URL, 6);
     QObject::connect(this->reply, SIGNAL(finished()), this, SLOT(Finished()));
     QObject::connect(this->reply, SIGNAL(readyRead()), this, SLOT(ReadData()));
 }
@@ -187,9 +202,11 @@ void ApiQuery::SetAction(const Action action)
     {
         case ActionQuery:
             this->ActionPart = "query";
+            this->EnforceLogin = false;
             return;
         case ActionLogin:
             this->ActionPart = "login";
+            this->EnforceLogin = false;
             return;
         case ActionLogout:
             this->ActionPart = "logout";
@@ -202,45 +219,35 @@ void ApiQuery::SetAction(const Action action)
             return;
         case ActionRollback:
             this->ActionPart = "rollback";
+            this->EditingQuery = true;
             return;
         case ActionDelete:
             this->ActionPart = "delete";
+            this->EditingQuery = true;
             return;
         case ActionUndelete:
             this->ActionPart = "undelete";
+            this->EditingQuery = true;
             return;
         case ActionBlock:
             this->ActionPart = "block";
+            this->EditingQuery = true;
             return;
         case ActionProtect:
             this->ActionPart = "protect";
+            this->EditingQuery = true;
             return;
         case ActionEdit:
             this->ActionPart = "edit";
+            this->EditingQuery = true;
             return;
         case ActionPatrol:
             this->ActionPart = "patrol";
+            this->EditingQuery = true;
+            return;
+        case ActionReview: // FlaggedRevs
+            this->ActionPart = "review";
+            this->EditingQuery = true;
             return;
     }
-}
-
-void ApiQuery::SetAction(const QString action)
-{
-    this->ActionPart = action;
-}
-
-void ApiQuery::Kill()
-{
-    if (this->reply != NULL)
-        this->reply->abort();
-}
-
-QString ApiQuery::QueryTargetToString()
-{
-    return this->Target;
-}
-
-QString ApiQuery::QueryTypeToString()
-{
-    return "ApiQuery (" + this->ActionPart + ")";
 }

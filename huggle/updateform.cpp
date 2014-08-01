@@ -10,8 +10,13 @@
 
 #include "updateform.hpp"
 #include <QDesktopServices>
+#include <QtXml>
+#include <QNetworkReply>
 #include "configuration.hpp"
+#include "localization.hpp"
+#include "syslog.hpp"
 #include "ui_updateform.h"
+#include "webserverquery.hpp"
 
 using namespace Huggle;
 
@@ -20,12 +25,18 @@ UpdateForm::UpdateForm(QWidget *parent) : QDialog(parent), ui(new Ui::UpdateForm
     this->ui->setupUi(this);
     this->qData = NULL;
     this->timer = new QTimer(this);
+
+    this->setWindowTitle(_l("updater-title"));
+    this->ui->pushButton->setText(_l("updater-update"));
+    this->ui->pushButton_2->setText(_l("updater-close"));
+    this->ui->checkBox->setText(_l("updater-disable-notify"));
 }
 
 UpdateForm::~UpdateForm()
 {
     delete this->ui;
     delete this->timer;
+    delete this->manualDownloadpage;
 }
 
 void UpdateForm::Check()
@@ -39,12 +50,26 @@ void UpdateForm::Check()
     }
     this->qData->URL = "http://tools.wmflabs.org/huggle/updater/?version=" + QUrl::toPercentEncoding(version)
             + "&os=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->Platform);
+    if (Configuration::HuggleConfiguration->SystemConfig_NotifyBeta)
+    {
+       this->qData->URL += "&notifybeta";
+    }
+    Syslog::HuggleLogs->DebugLog("checking for update at "+this->qData->URL);
     this->qData->Process();
     connect(this->timer, SIGNAL(timeout()), this, SLOT(OnTick()));
     this->qData->IncRef();
     this->timer->start(60);
 }
 
+void Huggle::UpdateForm::on_pushButton_clicked()
+{
+    if (this->manualDownloadpage != nullptr)
+    {
+        QDesktopServices::openUrl(*(this->manualDownloadpage));
+    }
+    this->close();
+
+}
 void Huggle::UpdateForm::on_pushButton_2_clicked()
 {
     if (this->ui->checkBox->isChecked())
@@ -75,7 +100,7 @@ void UpdateForm::OnTick()
     {
         QString version = l.at(0).toElement().text();
         /// \todo LOCALIZE ME
-        QString info = "New version of huggle is available: version " + version;
+        QString info = "A newer version of Huggle is available: version " + version;
         l = r.elementsByTagName("info");
         if (l.count() > 0)
         {
@@ -84,6 +109,13 @@ void UpdateForm::OnTick()
             this->ui->pushButton->setEnabled(false);
             info = info.replace("$LATESTHUGGLE", version);
             this->ui->label->setText(info);
+            l = r.elementsByTagName("manualDownloadpage");
+            if(l.count() > 0)
+            {
+                this->manualDownloadpage = new QUrl(l.at(0).toElement().text());
+                this->ui->pushButton->setText(_l("updater-open-manualdownloadpage"));
+                this->ui->pushButton->setEnabled(true);
+            }
             this->show();
             this->qData->DecRef();
             this->timer->stop();
@@ -101,7 +133,7 @@ void UpdateForm::OnTick()
                 {
                     if (!element.attributes().contains("target"))
                     {
-                        Syslog::HuggleLogs->Log("WARNING: Invalid updater instruction: download is missing target, ingoring the update");
+                        Syslog::HuggleLogs->Log("WARNING: Invalid updater instruction: download is missing target, ignoring the update");
                         this->qData->DecRef();
                         this->timer->stop();
                         return;

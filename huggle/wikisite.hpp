@@ -12,19 +12,22 @@
 #define WIKISITE_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QHash>
+#include "projectconfiguration.hpp"
+#include "userconfiguration.hpp"
 
 namespace Huggle
 {
+    //! Namespace (mediawiki)
     class WikiPageNS
     {
         public:
             WikiPageNS(int id, QString name, QString canonical_name);
+            WikiPageNS(const WikiPageNS &k);
+            WikiPageNS(WikiPageNS *k);
+            ~WikiPageNS();
             //~WikiPageNS();
             QString GetName();
             QString GetCanonicalName();
@@ -36,6 +39,26 @@ namespace Huggle
             bool Talk;
             int ID;
     };
+
+    inline QString WikiPageNS::GetName()
+    {
+        return this->Name;
+    }
+
+    inline QString WikiPageNS::GetCanonicalName()
+    {
+        return this->CanonicalName;
+    }
+
+    inline bool WikiPageNS::IsTalkPage()
+    {
+        return this->Talk;
+    }
+
+    inline int WikiPageNS::GetID()
+    {
+        return this->ID;
+    }
 
     //! Site
     class WikiSite
@@ -58,12 +81,15 @@ namespace Huggle
               \param channel irc
               \param wl whitelist
             */
-            WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl);
+            WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl, bool isrtl = false);
             ~WikiSite();
             WikiPageNS *RetrieveNSFromTitle(QString title);
             WikiPageNS *RetrieveNSByCanonicalName(QString CanonicalName);
+            ProjectConfiguration *GetProjectConfig();
+            UserConfiguration    *GetUserConfig();
             void InsertNS(WikiPageNS *Ns);
             void RemoveNS(int ns);
+            void ClearNS();
             QHash<int, WikiPageNS*> NamespaceList;
             //! Name of wiki, used by huggle only
             QString Name;
@@ -77,11 +103,14 @@ namespace Huggle
             QString OAuthURL;
             //! IRC channel of this site, if it doesn't have a channel leave it empty
             QString IRCChannel;
+            ProjectConfiguration *Project = nullptr;
+            UserConfiguration    *User = nullptr;
             //! URL of whitelist, every site needs to have some, if your site doesn't have it
             //! leave it as test
             QString WhiteList;
             //! Whether the site supports the ssl
             bool SupportHttps;
+            bool IsRightToLeft = false;
             bool SupportOAuth;
     };
 }

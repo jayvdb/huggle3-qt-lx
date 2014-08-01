@@ -12,18 +12,12 @@
 #define DELETEFORM_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 #include <QTimer>
 #include <QString>
-#include <QUrl>
-#include "wikipage.hpp"
-#include "wikiuser.hpp"
 #include "apiquery.hpp"
+#include "collectable_smartptr.hpp"
 
 namespace Ui
 {
@@ -42,7 +36,7 @@ namespace Huggle
             Q_OBJECT
 
         public:
-            explicit DeleteForm(QWidget *parent = 0);
+            explicit DeleteForm(QWidget *parent = nullptr);
             ~DeleteForm();
             void SetPage(WikiPage *Page, WikiUser *User);
         private slots:
@@ -52,7 +46,6 @@ namespace Huggle
         private:
             void GetToken();
             void Delete();
-            void DelRef();
             void CheckDeleteToken();
             void Failed(QString Reason);
             Ui::DeleteForm *ui;
@@ -60,11 +53,11 @@ namespace Huggle
             QString DeleteToken;
             QString DeleteToken2;
             //! Query used to execute delete of a page
-            ApiQuery *qDelete;
-            ApiQuery *qTalk;
+            Collectable_SmartPtr<ApiQuery> qDelete;
+            Collectable_SmartPtr<ApiQuery> qTalk;
             //! This is used to retrieve a token
-            ApiQuery *qToken;
-            ApiQuery *qTokenOfTalkPage;
+            Collectable_SmartPtr<ApiQuery> qToken;
+            Collectable_SmartPtr<ApiQuery> qTokenOfTalkPage;
             //! Set the page to delete
             QTimer *tDelete;
             WikiPage *TalkPage;

@@ -12,15 +12,8 @@
 #define EXCEPTION_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
-#include <iostream>
 #include <QString>
-#include <QDir>
 
 //////////////////////////////////////////////////////////////////////////
 // Breakpad init
@@ -50,8 +43,17 @@ namespace Huggle
     class Exception
     {
         public:
+            /*!
+             * \brief ThrowSoftException Soft exceptions that crashes the application only in debugging mode
+             *This can be used in case you want to throw exception only when debugging the application because
+             *the exception itself is not critical enough to crash whole application to regular users
+             * \param Text
+             * \param Source
+             */
+            static void ThrowSoftException(QString Text, QString Source);
             static void InitBreakpad();
             static void ExitBreakpad();
+
             //! Error code
             int ErrorCode;
             //! Source
@@ -59,10 +61,12 @@ namespace Huggle
             //! Reason for crash
             QString Message;
             //! ctor
-            Exception(QString Text, bool __IsRecoverable = true);
-            Exception(QString Text, QString _Source, bool __IsRecoverable = true);
+            Exception(QString text, bool isRecoverable = true);
+            Exception(QString text, QString source, bool isRecoverable = true);
+            Exception(QString text, const char *source);
             bool IsRecoverable() const;
         private:
+            void construct(QString text, QString source, bool isRecoverable);
 #ifdef HUGGLE_BREAKPAD
 #if HUGGLE_BREAKPAD == 0
             static google_breakpad::MinidumpDescriptor *GoogleBP_descriptor;
@@ -70,6 +74,12 @@ namespace Huggle
             static google_breakpad::ExceptionHandler   *GoogleBP_handler;
 #endif
             bool _IsRecoverable;
+    };
+
+    class NullPointerException : public Exception
+    {
+        public:
+            NullPointerException(QString name, QString source);
     };
 }
 

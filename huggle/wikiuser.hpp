@@ -12,24 +12,22 @@
 #define WIKIUSER_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QList>
-#include <QMutex>
+#include <QStringList>
+#include <QDateTime>
 #include <QString>
 #include <QRegExp>
-#include "huggleparser.hpp"
-#include "wikiedit.hpp"
-#include "wikisite.hpp"
+#include "mediawikiobject.hpp"
+
+class QMutex;
 
 namespace Huggle
 {
-    class WikiEdit;
+    class WikiSite;
 
     //! User
-    class WikiUser
+    class WikiUser : public MediaWikiObject
     {
         public:
             //! Delete all users that have badness score 0 these users aren't necessary to be stored in a list
@@ -162,8 +160,48 @@ namespace Huggle
             QMutex *UserLock;
             bool Bot;
             bool IP;
-            WikiSite *Site;
     };
+
+    inline void WikiUser::Sanitize()
+    {
+        this->Username = this->Username.replace(" ", "_");
+    }
+
+    inline void WikiUser::ForceIP()
+    {
+        this->IP = true;
+    }
+
+    inline bool WikiUser::TalkPage_WasRetrieved()
+    {
+        return this->_talkPageWasRetrieved;
+    }
+
+    inline bool WikiUser::IsIP() const
+    {
+        return this->IP;
+    }
+
+    inline QDateTime WikiUser::TalkPage_RetrievalTime()
+    {
+        return this->DateOfTalkPage;
+    }
+
+    inline long WikiUser::GetBadnessScore(bool _resync)
+    {
+        if (_resync)
+        {
+            this->Resync();
+        }
+        return this->BadnessScore;
+    }
+
+    inline void WikiUser::SetBadnessScore(long value)
+    {
+        this->Resync();
+        this->BadnessScore = value;
+        this->Update(true);
+    }
 }
 
 #endif // WIKIUSER_H

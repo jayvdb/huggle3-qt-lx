@@ -12,19 +12,16 @@
 #define MESSAGE_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
-#include "history.hpp"
 #include "apiquery.hpp"
-#include "wikiuser.hpp"
+#include "collectable_smartptr.hpp"
+#include "query.hpp"
 
 namespace Huggle
 {
     class ApiQuery;
-    class Query;
+    class WikiUser;
 
     enum MessageStatus
     {
@@ -61,7 +58,7 @@ namespace Huggle
             bool IsFailed();
             MessageStatus _Status;
             //! If this dependency is not a NULL then a message is sent after it is Processed (see Query::Processed())
-            Query *Dependency;
+            Collectable_SmartPtr<Query> Dependency;
             //! Title
             QString Title;
             //! If edit will be created in new section
@@ -69,7 +66,7 @@ namespace Huggle
             //! Set this to false to remove huggle suffix from summary
             bool Suffix;
             //! User to deliver a message to
-            WikiUser *user;
+            WikiUser *User;
             //! This is a time for base revision which is used to resolve edit conflicts of edit
             QString BaseTimestamp;
             //! Timestamp when you started editing the page
@@ -110,8 +107,8 @@ namespace Huggle
             void ProcessSend();
             void ProcessTalk();
             QString Append(QString text, QString OriginalText, QString Label);
-            ApiQuery *qToken;
-            ApiQuery *query;
+            Collectable_SmartPtr<ApiQuery> qToken;
+            Collectable_SmartPtr<ApiQuery> query;
             //! This is a text of talk page that was present before we change it
             QString Page;
             bool PreviousTalkPageRetrieved;

@@ -8,23 +8,29 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
+#include "configuration.hpp"
 #include "hugglefeed.hpp"
 #include "exception.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
 
-HuggleFeed *HuggleFeed::PrimaryFeedProvider = NULL;
-HuggleFeed *HuggleFeed::SecondaryFeedProvider = NULL;
+HuggleFeed *HuggleFeed::PrimaryFeedProvider = nullptr;
+HuggleFeed *HuggleFeed::SecondaryFeedProvider = nullptr;
+QList<HuggleFeed*> HuggleFeed::Providers;
 
 HuggleFeed::HuggleFeed()
 {
     this->EditCounter = 0;
     this->RvCounter = 0;
     this->UptimeDate = QDateTime::currentDateTime();
+    Providers.append(this);
 }
 
 HuggleFeed::~HuggleFeed()
 {
+    if (Providers.contains(this))
+        Providers.removeOne(this);
 }
 
 double HuggleFeed::GetUptime()

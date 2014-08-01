@@ -9,21 +9,22 @@
 //GNU General Public License for more details.
 
 #include "wikiutil.hpp"
-#include "querypool.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
 #include "syslog.hpp"
+#include "querypool.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
 bool WikiUtil::IsRevert(QString Summary)
 {
-    if (Summary != "")
+    if (Summary.size() > 0)
     {
         int xx = 0;
-        while (xx < Configuration::HuggleConfiguration->RevertPatterns.count())
+        while (xx < Configuration::HuggleConfiguration->ProjectConfig->_revertPatterns.count())
         {
-            if (Summary.contains(Configuration::HuggleConfiguration->RevertPatterns.at(xx)))
+            if (Summary.contains(Configuration::HuggleConfiguration->ProjectConfig->_revertPatterns.at(xx)))
             {
                 return true;
             }
@@ -40,30 +41,27 @@ QString WikiUtil::MonthText(int n)
         throw new Huggle::Exception("Month must be between 1 and 12");
     }
     n--;
-    return Configuration::HuggleConfiguration->Months.at(n);
+    return Configuration::HuggleConfiguration->ProjectConfig->Months.at(n);
 }
 
-RevertQuery *WikiUtil::RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback, bool keep)
+Collectable_SmartPtr<RevertQuery> WikiUtil::RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback)
 {
-    if (_e == NULL)
-        throw new Exception("NULL edit in RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback, bool keep) is not a valid edit");
-    if (_e->User == NULL)
-        throw new Exception("Object user was NULL in Core::Revert");
-    _e->RegisterConsumer("Core::RevertEdit");
-    if (_e->Page == NULL)
-        throw new Exception("Object page was NULL");
+    if (_e == nullptr)
+        throw new Huggle::Exception("NULL edit in RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback, bool keep) is not a valid edit");
+    if (_e->User == nullptr)
+        throw new Huggle::Exception("Object user was NULL in Core::Revert");
+    if (_e->Page == nullptr)
+        throw new Huggle::Exception("Object page was NULL");
 
-    RevertQuery *query = new RevertQuery(_e);
+    Collectable_SmartPtr<RevertQuery> query = new RevertQuery(_e, _e->GetSite());
     if (summary.length())
         query->Summary = summary;
     query->MinorEdit = minor;
     QueryPool::HugglePool->AppendQuery(query);
     if (Configuration::HuggleConfiguration->EnforceManualSoftwareRollback)
-        query->UsingSR = true;
+        query->SetUsingSR(true);
     else
-        query->UsingSR = !rollback;
-    if (keep)
-        query->RegisterConsumer("keep");
+        query->SetUsingSR(!rollback);
     return query;
 }
 
@@ -71,15 +69,16 @@ Message *WikiUtil::MessageUser(WikiUser *User, QString Text, QString Title, QStr
                               Query *Dependency, bool NoSuffix, bool SectionKeep, bool autoremove,
                               QString BaseTimestamp, bool CreateOnly_, bool FreshOnly_)
 {
-    if (User == NULL)
+    if (User == nullptr)
     {
         Huggle::Syslog::HuggleLogs->Log("Cowardly refusing to message NULL user");
-        return NULL;
+        return nullptr;
     }
 
-    if (Title == "")
+    if (Title.isEmpty())
     {
         InsertSection = false;
+        SectionKeep = false;
     }
 
     Message *m = new Message(User, Text, Summary);
@@ -98,7 +97,7 @@ Message *WikiUtil::MessageUser(WikiUser *User, QString Text, QString Title, QStr
         m->RegisterConsumer(HUGGLECONSUMER_CORE_MESSAGE);
     }
     m->Send();
-    Huggle::Syslog::HuggleLogs->DebugLog("Sending message to user " + User->Username);
+    HUGGLE_DEBUG("Sending message to user " + User->Username, 1);
     return m;
 }
 
@@ -128,17 +127,41 @@ void WikiUtil::FinalizeMessages()
     }
 }
 
-EditQuery *WikiUtil::EditPage(QString page, QString text, QString summary, bool minor, QString BaseTimestamp, unsigned int section)
+Collectable_SmartPtr<EditQuery> WikiUtil::AppendTextToPage(QString page, QString text, QString summary, bool minor)
 {
-    // retrieve a token
-    EditQuery *eq = new EditQuery();
-    eq->IncRef();
-    if (!summary.endsWith(Configuration::HuggleConfiguration->ProjectConfig_EditSuffixOfHuggle))
+    Collectable_SmartPtr<EditQuery> eq = new EditQuery();
+    summary = Configuration::HuggleConfiguration->GenerateSuffix(summary);
+    eq->Page = new WikiPage(page);
+    eq->text = text;
+    eq->Summary = summary;
+    eq->Minor = minor;
+    eq->Append = true;
+    eq->RegisterConsumer(HUGGLECONSUMER_QP_MODS);
+    QueryPool::HugglePool->PendingMods.append(eq);
+    eq->Process();
+    return eq;
+}
+
+Collectable_SmartPtr<EditQuery> WikiUtil::EditPage(QString page, QString text, QString summary, bool minor, QString BaseTimestamp, unsigned int section)
+{
+    WikiPage tp(page);
+    return EditPage(&tp, text, summary, minor, BaseTimestamp, section);
+}
+
+Collectable_SmartPtr<EditQuery> WikiUtil::EditPage(WikiPage *page, QString text, QString summary, bool minor, QString BaseTimestamp, unsigned int section)
+{
+    if (page == nullptr)
     {
-        summary = summary + " " + Configuration::HuggleConfiguration->ProjectConfig_EditSuffixOfHuggle;
+        throw Huggle::Exception("Invalid page (NULL)", "EditQuery *WikiUtil::EditPage(WikiPage *page, QString text, QString"\
+                                " summary, bool minor, QString BaseTimestamp)");
+    }
+    Collectable_SmartPtr<EditQuery> eq = new EditQuery();
+    if (!summary.endsWith(Configuration::HuggleConfiguration->ProjectConfig->EditSuffixOfHuggle))
+    {
+        summary = summary + " " + Configuration::HuggleConfiguration->ProjectConfig->EditSuffixOfHuggle;
     }
     eq->RegisterConsumer(HUGGLECONSUMER_QP_MODS);
-    eq->Page = page;
+    eq->Page = new WikiPage(page);
     eq->BaseTimestamp = BaseTimestamp;
     QueryPool::HugglePool->PendingMods.append(eq);
     eq->text = text;
@@ -149,12 +172,13 @@ EditQuery *WikiUtil::EditPage(QString page, QString text, QString summary, bool 
     return eq;
 }
 
-EditQuery *WikiUtil::EditPage(WikiPage *page, QString text, QString summary, bool minor, QString BaseTimestamp)
+
+QString WikiUtil::SanitizeUser(QString username)
 {
-    if (page == NULL)
+    // ensure we don't modify the original string
+    if (username.contains(" "))
     {
-        throw Huggle::Exception("Invalid page (NULL)", "EditQuery *WikiUtil::EditPage(WikiPage *page, QString text, QString"\
-                                " summary, bool minor, QString BaseTimestamp)");
+        return QString(username).replace(" ", "_");
     }
-    return EditPage(page->PageName, text, summary, minor, BaseTimestamp);
+    return username;
 }

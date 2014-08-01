@@ -12,9 +12,6 @@
 #define SESSIONFORM_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 
@@ -33,7 +30,7 @@ namespace Huggle
             Q_OBJECT
 
         public:
-            explicit SessionForm(QWidget *parent = 0);
+            explicit SessionForm(QWidget *parent = nullptr);
             ~SessionForm();
 
         private slots:

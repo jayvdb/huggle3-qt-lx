@@ -12,9 +12,6 @@
 #define LOADINGFORM_HPP
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDialog>
 
@@ -33,11 +30,12 @@ namespace Huggle
         LoadingForm_Icon_Success
     };
 
+    //! Working form that is used for tasks that needs to perform multiple simultaneous things in same time
     class LoadingForm : public QDialog
     {
             Q_OBJECT
         public:
-            explicit LoadingForm(QWidget *parent = 0);
+            explicit LoadingForm(QWidget *parent = nullptr);
             void Info(QString text);
             void ModifyIcon(int row, LoadingForm_Icon it);
             void Insert(int row, QString text, LoadingForm_Icon icon);

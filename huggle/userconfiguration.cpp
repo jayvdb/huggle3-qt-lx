@@ -8,17 +8,16 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
-#include "hugglemassrollback.hpp"
-#include "ui_hugglemassrollback.h"
+#include "userconfiguration.hpp"
 
-using namespace Huggle;
-
-HuggleMassRollback::HuggleMassRollback(QWidget *parent) : QDialog(parent), ui(new Ui::HuggleMassRollback)
+Huggle::UserConfiguration::~UserConfiguration()
 {
-    this->ui->setupUi(this);
-}
-
-HuggleMassRollback::~HuggleMassRollback()
-{
-    delete this->ui;
+    QStringList ol = this->UserOptions.keys();
+    while (ol.count())
+    {
+        HuggleOption *option = this->UserOptions[ol[0]];
+        this->UserOptions.remove(ol[0]);
+        delete option;
+        ol.removeAt(0);
+    }
 }

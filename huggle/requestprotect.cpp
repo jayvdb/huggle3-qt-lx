@@ -10,9 +10,11 @@
 
 #include "requestprotect.hpp"
 #include <QMessageBox>
+#include <QtXml>
 #include "querypool.hpp"
 #include "generic.hpp"
 #include "core.hpp"
+#include "wikisite.hpp"
 #include "wikiutil.hpp"
 #include "localization.hpp"
 #include "configuration.hpp"
@@ -22,11 +24,9 @@ using namespace Huggle;
 
 RequestProtect::RequestProtect(WikiPage *wikiPage, QWidget *parent) : QDialog(parent), ui(new Ui::RequestProtect)
 {
-    this->qEditRFP = NULL;
-    this->qRFPPage = NULL;
     this->page = new Huggle::WikiPage(wikiPage);
     this->ui->setupUi(this);
-    this->setWindowTitle(Localizations::HuggleLocalizations->Localize("reqprotection-title", this->page->PageName));
+    this->setWindowTitle(_l("protect-request-title", this->page->PageName));
     this->tm = new QTimer(this);
     connect(this->tm, SIGNAL(timeout()), this, SLOT(Tick()));
 }
@@ -35,13 +35,12 @@ RequestProtect::~RequestProtect()
 {
     delete this->tm;
     delete this->page;
-    this->DelRef();
     delete this->ui;
 }
 
 void RequestProtect::Tick()
 {
-    if (this->qRFPPage != NULL && this->qRFPPage->IsProcessed())
+    if (this->qRFPPage != nullptr && this->qRFPPage->IsProcessed())
     {
         // we are reading the request page let's see if we got it
         if (this->qRFPPage->IsFailed())
@@ -66,50 +65,49 @@ void RequestProtect::Tick()
         this->Timestamp = e.attribute("timestamp");
         QString PageText = e.text();
         // make a regex out of the pattern string
-        QRegExp *rx = new QRegExp(Huggle::Configuration::HuggleConfiguration->ProjectConfig_RFPP_Regex);
+        QRegExp *rx = new QRegExp(Huggle::Configuration::HuggleConfiguration->ProjectConfig->RFPP_Regex);
         if (rx->exactMatch(PageText))
         {
-            this->Fail(Localizations::HuggleLocalizations->Localize("reqprotection-duplicate"));
+            this->Fail(_l("reqprotection-duplicate"));
             delete rx;
             return;
         }
         delete rx;
-        QString report = Configuration::HuggleConfiguration->ProjectConfig_RFPP_Template;
+        QString report = Configuration::HuggleConfiguration->ProjectConfig->RFPP_Template;
         if ((this->page->IsUserpage() || this->page->GetNS()->GetCanonicalName() == "User talk") &&
-            Configuration::HuggleConfiguration->ProjectConfig_RFPP_TemplateUser.size() > 0)
+            Configuration::HuggleConfiguration->ProjectConfig->RFPP_TemplateUser.size() > 0)
         {
-            report = Configuration::HuggleConfiguration->ProjectConfig_RFPP_TemplateUser;
+            report = Configuration::HuggleConfiguration->ProjectConfig->RFPP_TemplateUser;
         }
         report.replace("$title", this->page->PageName);
         report.replace("\\n", "\n");
         report.replace("$reason", this->ui->lineEdit->text());
         report.replace("$protection", this->ProtectionType());
-        if (!Configuration::HuggleConfiguration->ProjectConfig_RFPP_PlaceTop)
+        if (!Configuration::HuggleConfiguration->ProjectConfig->RFPP_PlaceTop)
             PageText += "\n\n" + report;
         else
             PageText = report + "\n\n" + PageText;
         // we no longer need the query we used
-        this->qRFPPage->DecRef();
-        this->qRFPPage = NULL;
-        QString summary_ = Configuration::HuggleConfiguration->ProjectConfig_RFPP_Summary;
+        this->qRFPPage = nullptr;
+        QString summary_ = Configuration::HuggleConfiguration->ProjectConfig->RFPP_Summary;
         summary_.replace("$1", this->ProtectionType());
         summary_.replace("$2", this->page->PageName);
         this->ui->pushButton->setText("Requesting");
         // let's edit the page now
-        if (Configuration::HuggleConfiguration->ProjectConfig_RFPP_Section == 0)
+        if (Configuration::HuggleConfiguration->ProjectConfig->RFPP_Section == 0)
         {
-            this->qEditRFP = WikiUtil::EditPage(Configuration::HuggleConfiguration->ProjectConfig_RFPP_Page, PageText,
+            this->qEditRFP = WikiUtil::EditPage(Configuration::HuggleConfiguration->ProjectConfig->RFPP_Page, PageText,
                                                 summary_, false, this->Timestamp);
         } else
         {
-            this->qEditRFP = WikiUtil::EditPage(Configuration::HuggleConfiguration->ProjectConfig_RFPP_Page, PageText,
+            this->qEditRFP = WikiUtil::EditPage(Configuration::HuggleConfiguration->ProjectConfig->RFPP_Page, PageText,
                                                 summary_, false, this->Timestamp,
-                                                Configuration::HuggleConfiguration->ProjectConfig_RFPP_Section);
+                                                Configuration::HuggleConfiguration->ProjectConfig->RFPP_Section);
         }
         return;
     }
 
-    if (this->qEditRFP != NULL && this->qEditRFP->IsProcessed())
+    if (this->qEditRFP != nullptr && this->qEditRFP->IsProcessed())
     {
         if (this->qEditRFP->IsFailed())
         {
@@ -123,23 +121,21 @@ void RequestProtect::Tick()
 
 void Huggle::RequestProtect::on_pushButton_clicked()
 {
-    this->DelRef();
     this->qRFPPage = new ApiQuery(ActionQuery);
-    this->qRFPPage->IncRef();
     // if this wiki has the requests in separate section, get it, if not, we get a whole page
-    if (Configuration::HuggleConfiguration->ProjectConfig_RFPP_Section == 0)
+    if (Configuration::HuggleConfiguration->ProjectConfig->RFPP_Section == 0)
     {
         this->qRFPPage->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
-                         "&titles=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->ProjectConfig_RFPP_Page);
+                         "&titles=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->ProjectConfig->RFPP_Page);
     } else
     {
         this->qRFPPage->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
-                         "&titles=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->ProjectConfig_RFPP_Page) +
-                         "&rvsection=" + QString::number(Configuration::HuggleConfiguration->ProjectConfig_RFPP_Section);
+                         "&titles=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->ProjectConfig->RFPP_Page) +
+                         "&rvsection=" + QString::number(Configuration::HuggleConfiguration->ProjectConfig->RFPP_Section);
     }
     QueryPool::HugglePool->AppendQuery(this->qRFPPage);
     this->qRFPPage->Process();
-    this->tm->start(800);
+    this->tm->start(HUGGLE_TIMER);
     this->ui->pushButton->setText("Retrieving");
     this->ui->pushButton->setEnabled(false);
 }
@@ -160,16 +156,11 @@ void RequestProtect::Fail(QString message)
     mb.setText(message);
     mb.exec();
     // delete the queries and stop
-    this->DelRef();
+    this->qEditRFP.Delete();
+    this->qRFPPage.Delete();
     this->tm->stop();
     this->ui->pushButton->setEnabled(true);
     this->ui->pushButton->setText("Request");
-}
-
-void RequestProtect::DelRef()
-{
-    GC_DECREF(this->qEditRFP);
-    GC_DECREF(this->qRFPPage);
 }
 
 void Huggle::RequestProtect::on_pushButton_2_clicked()

@@ -12,53 +12,15 @@
 #define MAINWINDOW_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QMainWindow>
-#include <QTimer>
-#include <QInputDialog>
-#include <QLabel>
-#include <QMutex>
-#include <QThread>
-#include <QSplitter>
-#include <QDockWidget>
-#include "aboutform.hpp"
-#include "blockuser.hpp"
-#include "deleteform.hpp"
+#include "collectable_smartptr.hpp"
 #include "editquery.hpp"
-#include "hooks.hpp"
-#include "history.hpp"
-#include "hugglefeedproviderwiki.hpp"
-#include "hugglefeedproviderirc.hpp"
-#include "hugglelog.hpp"
-#include "huggleparser.hpp"
-#include "hugglequeue.hpp"
-#include "huggletool.hpp"
-#include "huggleweb.hpp"
-#include "wikipage.hpp"
-#include "preferences.hpp"
-#include "processlist.hpp"
-#include "protectpage.hpp"
-#include "wikiuser.hpp"
-#include "ignorelist.hpp"
-#include "speedyform.hpp"
-#include "userinfoform.hpp"
-#include "vandalnw.hpp"
-#include "reportuser.hpp"
 #include "revertquery.hpp"
-#include "requestprotect.hpp"
-#include "whitelistform.hpp"
-#include "sessionform.hpp"
-#include "historyform.hpp"
-#include "scorewordsdbform.hpp"
-#include "warnings.hpp"
-#include "warninglist.hpp"
-#include "waitingform.hpp"
 #include "wlquery.hpp"
-#include "uaareport.hpp"
+class QLabel;
+class QTimer;
+class QToolButton;
 
 namespace Ui
 {
@@ -67,19 +29,19 @@ namespace Ui
 
 namespace Huggle
 {
+    class DeleteForm;
+    class BlockUser;
     class HuggleLog;
     class History;
     class HistoryForm;
     class UserinfoForm;
+    class HuggleFeed;
     class HuggleQueue;
     class HuggleTool;
     class AboutForm;
     class HuggleWeb;
     class SpeedyForm;
-    class WikiEdit;
     class RevertQuery;
-    class WlQuery;
-    class WikiPage;
     class EditQuery;
     class ProcessList;
     class WhitelistForm;
@@ -88,20 +50,22 @@ namespace Huggle
     class Preferences;
     class SessionForm;
     class IgnoreList;
-    class WaitingForm;
     class VandalNw;
     class Syslog;
-    class WikiUser;
+    class ReloginForm;
     class ReportUser;
     class RequestProtect;
-    class DeleteForm;
-    class BlockUser;
     class ProtectPage;
-    class WarningList;
-    class WLQuery;
     class UAAReport;
     class ScoreWordsDbForm;
-
+    class WaitingForm;
+    class WarningList;
+    class WLQuery;
+    class WikiEdit;
+    class WikiPage;
+    class WikiPageTagsForm;
+    class WikiSite;
+    class WikiUser;
     /*!
      * \brief The ShutdownOp enum contains a various parts of shutdown so that we can keep the track of what is going on
      */
@@ -124,9 +88,9 @@ namespace Huggle
         public:
             static MainWindow *HuggleMain;
 
-            explicit MainWindow(QWidget *parent = 0);
+            explicit MainWindow(QWidget *parent = nullptr);
             ~MainWindow();
-            void DisplayReportUserWindow(WikiUser *User = NULL);
+            void DisplayReportUserWindow(WikiUser *User = nullptr);
             /*!
              * \brief ProcessEdit Will display an edit in huggle window
              * \param e Edit
@@ -136,7 +100,14 @@ namespace Huggle
              * \param ForceJump
              */
             void ProcessEdit(WikiEdit *e, bool IgnoreHistory = false, bool KeepHistory = false, bool KeepUser = false, bool ForceJump = false);
-            RevertQuery *Revert(QString summary = "", bool nd = false, bool next = true);
+            /*!
+             * \brief Revert perform a revert of an edit
+             * \param summary Summary that you want to use for this revert
+             * \param next
+             * \param single_rv If you want to revert only one revision
+             * \return
+             */
+            Collectable_SmartPtr<RevertQuery> Revert(QString summary = "", bool next = true, bool single_rv = false);
             //! Warn a current user
             bool Warn(QString WarningType, RevertQuery *dependency);
             QString GetSummaryKey(QString item);
@@ -153,12 +124,14 @@ namespace Huggle
              */
             bool CheckEditableBrowserPage();
             void SuspiciousEdit();
-            void PatrolThis(WikiEdit *e = NULL);
+            void PatrolThis(WikiEdit *e = nullptr);
             void Localize();
             void _BlockUser();
-            void DisplayNext(Query *q = NULL);
+            void DisplayNext(Query *q = nullptr);
             void DeletePage();
             void DisplayTalk();
+            void WelcomeGood();
+            WikiSite *GetCurrentWikiSite();
             //! Make currently displayed page unchangeable (useful when you render non-diff pages where rollback wouldn't work)
             void LockPage();
             //! List of edits that are being saved
@@ -167,7 +140,7 @@ namespace Huggle
             HuggleLog *SystemLog;
             //! Pointer to queue
             HuggleQueue *Queue1;
-            QList<ApiQuery*> PatroledEdits;
+            QList<ApiQuery*> PatrolledEdits;
             //! Pointer to browser
             HuggleWeb *Browser;
             HistoryForm *wHistory;
@@ -181,25 +154,25 @@ namespace Huggle
             //! Pointer to about dialog (see aboutform.h)
             AboutForm *aboutForm = nullptr;
             //! Pointer to current edit, if it's NULL there is no edit being displayed
-            WikiEdit *CurrentEdit = nullptr;
+            Collectable_SmartPtr<WikiEdit> CurrentEdit;
             SpeedyForm* fSpeedyDelete = nullptr;
             //! Pointer to processes
             ProcessList *Queries;
             //! Pointer to history
             History *_History;
             //! Pointer to menu of revert warn button
-            QMenu *RevertWarn;
+            QMenu *RevertWarn = nullptr;
             //! Pointer to vandal network
             VandalNw *VandalDock;
             SessionForm *fSessionData = nullptr;
             //! Pointer to query that is used to store user config on exit of huggle
-            EditQuery *eq = nullptr;
+            Collectable_SmartPtr<EditQuery> eq;
             //! This query is used to refresh white list
-            WLQuery *wq = nullptr;
+            Collectable_SmartPtr<WLQuery> wq;
             //! Warning menu
-            QMenu *WarnMenu;
+            QMenu *WarnMenu = nullptr;
             //! Revert menu
-            QMenu *RevertSummaries;
+            QMenu *RevertSummaries = nullptr;
             ScoreWordsDbForm *fScoreWord = nullptr;
             Ui::MainWindow *ui;
             bool ShuttingDown;
@@ -218,11 +191,11 @@ namespace Huggle
             int LastTPRevID;
             //! This is a query for rollback of current edit which we need to keep in case
             //! that user wants to display their own revert instead of next page
-            Query *qNext = nullptr;
+            Collectable_SmartPtr<Query> qNext;
             //! Timer that is used to check if there are new messages on talk page
             QTimer *tCheck;
             //! Query that is used to check if talk page contains new messages
-            ApiQuery *qTalkPage = nullptr;
+            Collectable_SmartPtr<ApiQuery> qTalkPage;
         private slots:
             void on_actionExit_triggered();
             void on_actionPreferences_triggered();
@@ -305,6 +278,14 @@ namespace Huggle
             void on_actionRelog_triggered();
             void on_actionAbort_2_triggered();
             void on_actionUser_contributions_triggered();
+            void on_actionDisplay_this_page_triggered();
+            void on_actionResume_provider_triggered();
+            void on_actionStop_provider_triggered();
+            void on_actionDryMode_triggered();
+            void on_actionRevert_only_this_revision_triggered();
+            void on_actionTag_2_triggered();
+            void on_actionReload_menus_triggered();
+
         private:
             //! Check if huggle is shutting down or not, in case it is, message box is shown as well
             //! this function should be called before every action user can trigger
@@ -318,6 +299,7 @@ namespace Huggle
             //! Welcome user
             void Welcome();
             void ChangeProvider(HuggleFeed *provider);
+            void ReloadInterface();
             //! Recreate interface, should be called everytime you do anything with main form
             void Render();
             //! Request a page deletion csd or afd and so on
@@ -327,24 +309,38 @@ namespace Huggle
             void closeEvent(QCloseEvent *event);
             void FinishPatrols();
             void UpdateStatusBarData();
+            //! Perform all common tests that are needed before a page can be edited and return false if they fail
+            bool EditingChecks();
             void DecreaseBS();
             void IncreaseBS();
+            void ReloadSc();
+            void ReloadShort(QString id);
             void ProcessReverts();
+            QString WikiScriptURL();
+            QString ProjectURL();
+            QList<QAction*> RevertAndWarnItems;
+            QList<QAction*> RevertItems;
+            QList<QAction*> WarnItems;
             //! This timer periodically executes various jobs that needs to be executed in main thread loop
             QTimer *GeneralTimer;
+            QToolButton *warnToolButtonMenu = nullptr;
+            QToolButton *rtToolButtonMenu = nullptr;
+            QToolButton *rwToolButtonMenu = nullptr;
             QDateTime EditLoad;
             QString RestoreEdit_RevertReason;
+            ReloginForm *fRelogin = nullptr;
             QTimer *wlt = nullptr;
             //! Status bar
             QLabel *Status;
             bool EditablePage;
             WarningList *fWarningList = nullptr;
+            WikiPageTagsForm *fWikiPageTags = nullptr;
             WaitingForm *fWaiting = nullptr;
             RequestProtect *fRFProtection = nullptr;
             //! List of all edits that are kept in history, so that we can track them and delete them
             QList<WikiEdit*> Historical;
-            ApiQuery *RestoreQuery = nullptr;
-            WikiEdit *RestoreEdit = nullptr;
+            Collectable_SmartPtr<ApiQuery> RestoreQuery;
+            Collectable_SmartPtr<WikiEdit> RestoreEdit;
             QList<RevertQuery*> RevertStack;
             //! This is a page that is going to be displayed if users request their latest action to be
             //! reviewed when it's done (for example when they rollback an edit and they want to

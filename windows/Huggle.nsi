@@ -9,7 +9,7 @@
 !define APP_NAME "Huggle"
 !define COMP_NAME "Wikimedia Project"
 !define WEB_SITE "http://en.wikipedia.org/wiki/Wikipedia:Huggle"
-!define VERSION "3.0.0.0"
+!define VERSION "3.0.2.0"
 !define COPYRIGHT "GPL"
 !define DESCRIPTION "Application"
 !define LICENSE_TXT "gpl.txt"
@@ -89,6 +89,7 @@ SetOverwrite ifnewer
 SetOutPath "$INSTDIR"
 File "release\huggle.exe"
 File "release\huggle.ico"
+File "release\py_hug.exe"
 File "release\deps\ssleay32.dll"
 File "release\deps\libeay32.dll"
 File "release\deps\icuin51.dll"
@@ -130,6 +131,7 @@ WriteUninstaller "$INSTDIR\uninstall.exe"
 !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 CreateDirectory "$SMPROGRAMS\$SM_Folder"
 CreateShortCut "$SMPROGRAMS\$SM_Folder\${APP_NAME}.lnk" "$INSTDIR\${MAIN_APP_EXE}" "" "$INSTDIR\huggle.ico" 0
+CreateShortCut "$SMPROGRAMS\$SM_Folder\PyHuggle.lnk" "$INSTDIR\py_hug.exe" "" "$INSTDIR\huggle.ico" 0
 CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${MAIN_APP_EXE}" "" "$INSTDIR\huggle.ico" 0
 CreateShortCut "$SMPROGRAMS\$SM_Folder\Uninstall ${APP_NAME}.lnk" "$INSTDIR\uninstall.exe"
 
@@ -193,6 +195,7 @@ Delete "$INSTDIR\ssleay32.dll"
 Delete "$INSTDIR\libeay32.dll"
 Delete "$INSTDIR\Qt5Gui.dll"
 Delete "$INSTDIR\libwinpthread-1.dll"
+Delete "$INSTDIR\py_hug.exe"
 Delete "$INSTDIR\huggle.ico"
 Delete "$INSTDIR\libgcc_s_dw2-1.dll"
 Delete "$INSTDIR\uninstall.exe"

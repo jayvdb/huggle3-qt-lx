@@ -12,16 +12,9 @@
 #define VANDALNW_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, don't believe it? See this:
-// http://stackoverflow.com/questions/20300201/why-python-h-of-python-3-2-must-be-included-as-first-together-with-qt4
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QDockWidget>
 #include <QTimer>
-#include "networkirc.hpp"
-#include "wikiedit.hpp"
 
 namespace Ui
 {
@@ -30,11 +23,13 @@ namespace Ui
 
 namespace Huggle
 {
+    class WikiPage;
+    class WikiEdit;
+    class WikiUser;
     namespace IRC
     {
         class NetworkIrc;
     }
-
     //! This namespace contains HAN classes
 
     //! Huggle Antivandalism Network is a system that allows users of huggle and other tools
@@ -84,6 +79,8 @@ namespace Huggle
 
     }
 
+    class WikiEdit;
+
     //! Vandalism network
 
     //! Huggle 3 comes with a system that allows all clients to operate together in order
@@ -96,6 +93,7 @@ namespace Huggle
             /// \todo Share a version of your huggle with others in sane way
             /// \todo Hook to VERSION
         public:
+            static QString SafeHtml(QString text);
             explicit VandalNw(QWidget *parent = 0);
             ~VandalNw();
             /*!

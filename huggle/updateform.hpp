@@ -12,13 +12,10 @@
 #define UPDATEFORM_H
 
 #include "definitions.hpp"
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
+#include <QUrl>
 #include <QDialog>
 #include <QTimer>
-#include "webserverquery.hpp"
 
 namespace Ui
 {
@@ -38,12 +35,13 @@ namespace Huggle
             Q_OBJECT
 
         public:
-            explicit UpdateForm(QWidget *parent = 0);
+            explicit UpdateForm(QWidget *parent = nullptr);
             void Check();
             ~UpdateForm();
             WebserverQuery *qData;
 
         private slots:
+            void on_pushButton_clicked();
             void on_pushButton_2_clicked();
             void OnTick();
             void on_label_linkActivated(const QString &link);
@@ -52,6 +50,7 @@ namespace Huggle
             Ui::UpdateForm *ui;
             QStringList Instructions;
             QTimer *timer;
+            QUrl *manualDownloadpage = nullptr;
     };
 }
 #endif // UPDATEFORM_H

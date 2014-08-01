@@ -12,13 +12,11 @@
 #define QUERYRESULT_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
+
+#define HUGGLE_EUNKNOWN 1
+#define HUGGLE_ENOTLOGGEDIN 2
 
 namespace Huggle
 {
@@ -28,10 +26,16 @@ namespace Huggle
         public:
             //! Creates a new instance of query result
             QueryResult();
+            QueryResult(bool failed);
             //! Data retrieved by query
             QString Data;
+            void SetError();
+            void SetError(QString error);
+            void SetError(int error, QString details = "");
+            bool IsFailed() { return Failed; }
             //! If query is in error the reason for error is stored here
             QString ErrorMessage;
+            int ErrorCode = 0;
             bool Failed;
     };
 }

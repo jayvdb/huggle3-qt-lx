@@ -11,14 +11,30 @@
 #include "core.hpp"
 #include <QtXml>
 #include <QMessageBox>
-#include "syslog.hpp"
-#include "localization.hpp"
+#include <QPluginLoader>
 #include "configuration.hpp"
+#include "exception.hpp"
+#include "exceptionwindow.hpp"
+#include "generic.hpp"
+#include "hooks.hpp"
+#include "hugglefeed.hpp"
+#include "hugglequeuefilter.hpp"
+#include "iextension.hpp"
+#include "localization.hpp"
+#include "login.hpp"
+#include "mainwindow.hpp"
+#include "sleeper.hpp"
+#include "resources.hpp"
+#include "querypool.hpp"
+#include "syslog.hpp"
+#include "wikipage.hpp"
+#include "wikisite.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
 // definitions
-Core    *Core::HuggleCore = NULL;
+Core    *Core::HuggleCore = nullptr;
 
 void Core::Init()
 {
@@ -32,7 +48,7 @@ void Core::Init()
 #ifdef HUGGLE_BREAKPAD
     Syslog::HuggleLogs->Log("Dumping enabled using google breakpad");
 #endif
-    this->gc = new GC();
+    this->gc = new Huggle::GC();
     GC::gc = this->gc;
     Query::NetworkManager = new QNetworkAccessManager();
     QueryPool::HugglePool = new QueryPool();
@@ -58,11 +74,11 @@ void Core::Init()
     {
         Configuration::LoadSystemConfig(QCoreApplication::applicationDirPath() + HUGGLE_CONF);
     }
-    Syslog::HuggleLogs->DebugLog("Loading defs");
+    HUGGLE_DEBUG1("Loading defs");
     this->LoadDefs();
-    Syslog::HuggleLogs->DebugLog("Loading wikis");
+    HUGGLE_DEBUG1("Loading wikis");
     this->LoadDB();
-    Syslog::HuggleLogs->DebugLog("Loading queue");
+    HUGGLE_DEBUG1("Loading queue");
     // These are separators that we use to parse words, less we have, faster huggle will be,
     // despite it will fail more to detect vandals. Keep it low but precise enough!!
     Configuration::HuggleConfiguration->SystemConfig_WordSeparators << " " << "." << "," << "(" << ")" << ":" << ";" << "!"
@@ -70,11 +86,15 @@ void Core::Init()
     HuggleQueueFilter::Filters.append(HuggleQueueFilter::DefaultFilter);
     if (!Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
-#ifdef PYTHONENGINE
+#ifdef HUGGLE_PYTHON
         Syslog::HuggleLogs->Log("Loading python engine");
         this->Python = new Python::PythonEngine(Configuration::GetExtensionsRootPath());
 #endif
+#ifdef HUGGLE_GLOBAL_EXTENSION_PATH
+        Syslog::HuggleLogs->Log("Loading plugins in " + QString(HUGGLE_GLOBAL_EXTENSION_PATH) + " and " + Configuration::GetExtensionsRootPath());
+#else
         Syslog::HuggleLogs->Log("Loading plugins in " + Configuration::GetExtensionsRootPath());
+#endif
         this->ExtensionLoad();
     } else
     {
@@ -85,19 +105,18 @@ void Core::Init()
 
 Core::Core()
 {
-#ifdef PYTHONENGINE
-    this->Python = NULL;
+#ifdef HUGGLE_PYTHON
+    this->Python = nullptr;
 #endif
-    this->Main = NULL;
-    this->fLogin = NULL;
-    this->SecondaryFeedProvider = NULL;
-    this->PrimaryFeedProvider = NULL;
-    this->HuggleLocalizations = NULL;
-    this->Processor = NULL;
-    this->HuggleSyslog = NULL;
+    this->Main = nullptr;
+    this->fLogin = nullptr;
+    this->SecondaryFeedProvider = nullptr;
+    this->PrimaryFeedProvider = nullptr;
+    this->Processor = nullptr;
+    this->HuggleSyslog = nullptr;
     this->StartupTime = QDateTime::currentDateTime();
     this->Running = true;
-    this->gc = NULL;
+    this->gc = nullptr;
 }
 
 Core::~Core()
@@ -113,7 +132,7 @@ Core::~Core()
 void Core::LoadDB()
 {
     Configuration::HuggleConfiguration->ProjectList.clear();
-    if (Configuration::HuggleConfiguration->Project != NULL)
+    if (Configuration::HuggleConfiguration->Project != nullptr)
     {
         Configuration::HuggleConfiguration->ProjectList << Configuration::HuggleConfiguration->Project;
     }
@@ -130,7 +149,7 @@ void Core::LoadDB()
         db.close();
     }
 
-    if (!text.length())
+    if (text.isEmpty())
     {
         QFile vf(":/huggle/resources/Resources/Definitions.xml");
         vf.open(QIODevice::ReadOnly);
@@ -162,11 +181,13 @@ void Core::LoadDB()
         if (e.attributes().contains("script"))
             site->ScriptPath = e.attribute("script");
         if (e.attributes().contains("https"))
-            site->SupportHttps = Configuration::SafeBool(e.attribute("https"));
+            site->SupportHttps = Generic::SafeBool(e.attribute("https"));
         if (e.attributes().contains("oauth"))
-            site->SupportOAuth = Configuration::SafeBool(e.attribute("oauth"));
+            site->SupportOAuth = Generic::SafeBool(e.attribute("oauth"));
         if (e.attributes().contains("channel"))
             site->IRCChannel = e.attribute("channel");
+        if (e.attributes().contains("rtl"))
+            site->IsRightToLeft = Generic::SafeBool(e.attribute("rtl"));
         Configuration::HuggleConfiguration->ProjectList.append(site);
         xx++;
     }
@@ -248,7 +269,7 @@ void Core::LoadDefs()
             i++;
         }
     }
-    Syslog::HuggleLogs->DebugLog("Loaded " + QString::number(WikiUser::ProblematicUsers.count()) + " records from last session");
+    HUGGLE_DEBUG1("Loaded " + QString::number(WikiUser::ProblematicUsers.count()) + " records from last session");
     defs.close();
 }
 
@@ -258,14 +279,35 @@ void Core::ExtensionLoad()
     if (QDir().exists(path_))
     {
         QDir d(path_);
-        QStringList extensions = d.entryList();
+        QStringList extensions;
+        QStringList files = d.entryList();
+        foreach (QString e_, files)
+        {
+            // we need to prefix the files here so that we can track the full path
+            extensions << path_ + e_;
+        }
+#ifdef HUGGLE_GLOBAL_EXTENSION_PATH
+        if (QDir().exists(HUGGLE_GLOBAL_EXTENSION_PATH))
+        {
+            QString globalpath(HUGGLE_GLOBAL_EXTENSION_PATH);
+            // ensure it's finished with slash
+            globalpath += "/";
+            QDir g(globalpath);
+            files = g.entryList();
+            foreach (QString e_, files)
+            {
+                // we need to prefix the files here so that we can track the full path
+                extensions << globalpath + e_;
+            }
+        }
+#endif
         int xx = 0;
         while (xx < extensions.count())
         {
             QString name = extensions.at(xx).toLower();
             if (name.endsWith(".so") || name.endsWith(".dll"))
             {
-                name = QString(path_) + extensions.at(xx);
+                name = extensions.at(xx);
                 QPluginLoader *extension = new QPluginLoader(name);
                 if (extension->load())
                 {
@@ -276,7 +318,7 @@ void Core::ExtensionLoad()
                         if (!interface)
                         {
                             Huggle::Syslog::HuggleLogs->Log("Unable to cast the library to extension");
-                        }else
+                        } else
                         {
                             if (interface->RequestNetwork())
                             {
@@ -290,6 +332,7 @@ void Core::ExtensionLoad()
                             {
                                 interface->HuggleCore = Core::HuggleCore;
                             }
+                            interface->Localization = Localizations::HuggleLocalizations;
                             if (interface->Register())
                             {
                                 Core::Extensions.append(interface);
@@ -308,8 +351,8 @@ void Core::ExtensionLoad()
                 }
             } else if (name.endsWith(".py"))
             {
-#ifdef PYTHONENGINE
-                name = QString(path_) + extensions.at(xx);
+#ifdef HUGGLE_PYTHON
+                name = extensions.at(xx);
                 if (Core::Python->LoadScript(name))
                 {
                     Huggle::Syslog::HuggleLogs->Log("Loaded python script: " + name);
@@ -325,7 +368,11 @@ void Core::ExtensionLoad()
     {
         Huggle::Syslog::HuggleLogs->Log("There is no extensions folder, skipping load");
     }
+#ifndef HUGGLE_PYTHON
     Huggle::Syslog::HuggleLogs->Log("Extensions: " + QString::number(Core::Extensions.count()));
+#else
+    Huggle::Syslog::HuggleLogs->Log("Extensions: " + QString::number(Core::Python->Count() + Core::Extensions.count()));
+#endif
 }
 
 void Core::VersionRead()
@@ -344,10 +391,17 @@ void Core::VersionRead()
 
 void Core::Shutdown()
 {
+    // we need to disable all extensions first
+    Hooks::Shutdown();
+    // now we can shutdown whole huggle
     this->Running = false;
     // grace time for subthreads to finish
-    if (this->Main != NULL)
+    if (this->Main != nullptr)
     {
+        if (this->PrimaryFeedProvider && this->PrimaryFeedProvider->IsWorking())
+        {
+            this->PrimaryFeedProvider->Stop();
+        }
         this->Main->hide();
     }
     Syslog::HuggleLogs->Log("SHUTDOWN: giving a gracetime to other threads to finish");
@@ -358,20 +412,49 @@ void Core::Shutdown()
     }
     Core::SaveDefs();
     Configuration::SaveSystemConfig();
-#ifdef PYTHONENGINE
+#ifdef HUGGLE_PYTHON
     if (!Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
         Huggle::Syslog::HuggleLogs->Log("Unloading python");
         delete this->Python;
     }
 #endif
-    QueryPool::HugglePool = NULL;
+    QueryPool::HugglePool = nullptr;
+    if (this->fLogin != nullptr)
+    {
+        delete this->fLogin;
+        this->fLogin = nullptr;
+    }
+    if (this->Main != nullptr)
+    {
+        delete this->Main;
+        this->Main = nullptr;
+    }
+    MainWindow::HuggleMain = nullptr;
+    delete this->HGQP;
+    this->HGQP = nullptr;
+    QueryPool::HugglePool = nullptr;
+    // now stop the garbage collector and wait for it to finish
+    GC::gc->Stop();
+    Syslog::HuggleLogs->Log("SHUTDOWN: waiting for garbage collector to finish");
+    while(GC::gc->IsRunning())
+        Sleeper::usleep(200);
+    // last garbage removal
+    GC::gc->DeleteOld();
+#ifdef HUGGLE_PROFILING
+    Syslog::HuggleLogs->Log("Profiler info: locks " + QString::number(Collectable::LockCt));
+    foreach (Collectable *q, GC::gc->list)
+    {
+        // retrieve GC info
+        Syslog::HuggleLogs->Log(q->DebugHgc());
+    }
+#endif
+    Syslog::HuggleLogs->DebugLog("GC: " + QString::number(GC::gc->list.count()) + " objects");
+    delete GC::gc;
+    GC::gc = nullptr;
+    this->gc = nullptr;
     delete Configuration::HuggleConfiguration;
     delete Localizations::HuggleLocalizations;
-    delete GC::gc;
-    delete this->HGQP;
-    GC::gc = NULL;
-    this->gc = NULL;
     QApplication::quit();
 }
 
@@ -379,7 +462,7 @@ void Core::TestLanguages()
 {
     if (Configuration::HuggleConfiguration->SystemConfig_LanguageSanity)
     {
-        Language *english = Localizations::HuggleLocalizations->LocalizationData.at(0);
+        Language *english = Localizations::HuggleLocalizations->LocalizationData.at(Localizations::EnglishID);
         QList<QString> keys = english->Messages.keys();
         int language = 1;
         while (language < Localizations::HuggleLocalizations->LocalizationData.count())
@@ -413,39 +496,43 @@ void Core::ExceptionHandler(Exception *exception)
 void Core::LoadLocalizations()
 {
     Localizations::HuggleLocalizations = new Localizations();
-    this->HuggleLocalizations = Localizations::HuggleLocalizations;
-    Localizations::HuggleLocalizations->LocalInit("en");
     if (Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
+        Localizations::HuggleLocalizations->LocalInit("en"); // English, when in safe mode
         Huggle::Syslog::HuggleLogs->Log("Skipping load of other languages, because of safe mode");
         return;
     }
-    Localizations::HuggleLocalizations->LocalInit("ar");
-    Localizations::HuggleLocalizations->LocalInit("bg");
-    Localizations::HuggleLocalizations->LocalInit("bn");
-    Localizations::HuggleLocalizations->LocalInit("cz");
-    Localizations::HuggleLocalizations->LocalInit("es");
-    Localizations::HuggleLocalizations->LocalInit("de");
-    Localizations::HuggleLocalizations->LocalInit("fa");
-    Localizations::HuggleLocalizations->LocalInit("fr");
-    Localizations::HuggleLocalizations->LocalInit("hi");
-    Localizations::HuggleLocalizations->LocalInit("it");
-    Localizations::HuggleLocalizations->LocalInit("ja");
-    Localizations::HuggleLocalizations->LocalInit("ka");
-    Localizations::HuggleLocalizations->LocalInit("km");
-    Localizations::HuggleLocalizations->LocalInit("kn");
-    Localizations::HuggleLocalizations->LocalInit("ko");
-    Localizations::HuggleLocalizations->LocalInit("ml");
-    Localizations::HuggleLocalizations->LocalInit("mr");
-    Localizations::HuggleLocalizations->LocalInit("nl");
-    Localizations::HuggleLocalizations->LocalInit("no");
-    Localizations::HuggleLocalizations->LocalInit("oc");
-    Localizations::HuggleLocalizations->LocalInit("or");
-    Localizations::HuggleLocalizations->LocalInit("pt");
-    Localizations::HuggleLocalizations->LocalInit("pt-BR");
-    Localizations::HuggleLocalizations->LocalInit("ru");
-    Localizations::HuggleLocalizations->LocalInit("sv");
-    Localizations::HuggleLocalizations->LocalInit("zh");
+    Localizations::HuggleLocalizations->LocalInit("ar"); // Arabic
+    Localizations::HuggleLocalizations->LocalInit("bg"); // Bulgarian
+    //Localizations::HuggleLocalizations->LocalInit("bn"); // Bengali
+    Localizations::HuggleLocalizations->LocalInit("cz"); // Czech
+    Localizations::HuggleLocalizations->LocalInit("de"); // Deutsch
+    Localizations::HuggleLocalizations->LocalInit("en"); // English
+    Localizations::HuggleLocalizations->LocalInit("es"); // Spanish
+    Localizations::HuggleLocalizations->LocalInit("fa"); // Persian
+    Localizations::HuggleLocalizations->LocalInit("fr"); // French
+    Localizations::HuggleLocalizations->LocalInit("he"); // Hebrew
+    Localizations::HuggleLocalizations->LocalInit("hi"); // Hindi
+    //Localizations::HuggleLocalizations->LocalInit("it"); // Italian
+    Localizations::HuggleLocalizations->LocalInit("ja"); // Japanese
+    Localizations::HuggleLocalizations->LocalInit("ka"); // ?
+    //Localizations::HuggleLocalizations->LocalInit("km"); // Khmer
+    Localizations::HuggleLocalizations->LocalInit("kn"); // Kannada
+    Localizations::HuggleLocalizations->LocalInit("ko"); // Korean
+    Localizations::HuggleLocalizations->LocalInit("lb"); // Lebanon
+    Localizations::HuggleLocalizations->LocalInit("mk"); // Macedonian
+    Localizations::HuggleLocalizations->LocalInit("ml"); // Malayalam
+    Localizations::HuggleLocalizations->LocalInit("mr"); // Marathi
+    Localizations::HuggleLocalizations->LocalInit("nl"); // Dutch
+    Localizations::HuggleLocalizations->LocalInit("no"); // Norwegian
+    Localizations::HuggleLocalizations->LocalInit("oc"); // Occitan
+    Localizations::HuggleLocalizations->LocalInit("or"); // Oriya
+    Localizations::HuggleLocalizations->LocalInit("pt"); // Portuguese
+    Localizations::HuggleLocalizations->LocalInit("pt-BR"); // Portuguese (in Brazil)
+    Localizations::HuggleLocalizations->LocalInit("ru"); // Russian
+    Localizations::HuggleLocalizations->LocalInit("sv"); // Swedish
+    Localizations::HuggleLocalizations->LocalInit("tr"); // Turkish
+    Localizations::HuggleLocalizations->LocalInit("zh"); // Chinese
     this->TestLanguages();
 }
 
