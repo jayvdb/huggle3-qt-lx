@@ -12,13 +12,13 @@
 #include "configuration.hpp"
 #include "projectconfiguration.hpp"
 #include "syslog.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
 
 QString HuggleParser::ConfigurationParse(QString key, QString content, QString missing)
 {
     /// \todo this parses the config a lot different than HG2 (here only one line, mising replaces...)
-    /// \todo maybe move it to Huggle::HuggleParser like ConfigurationParse_QL
     // if first line in config
     if (content.startsWith(key + ":"))
     {
@@ -244,8 +244,13 @@ static int DateMark(QString page)
     return position;
 }
 
-byte_ht HuggleParser::GetLevel(QString page, QDate bt)
+byte_ht HuggleParser::GetLevel(QString page, QDate bt, WikiSite *site)
 {
+    if (!site)
+    {
+        // for compatibilty purposes
+        site = Configuration::HuggleConfiguration->Project;
+    }
     if (Configuration::HuggleConfiguration->TrimOldWarnings)
     {
         // we need to get rid of old warnings now
@@ -340,7 +345,7 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
             } else
             {
                 // now check if it's at least 1 month old
-                if (bt.addDays(Configuration::HuggleConfiguration->ProjectConfig->TemplateAge) > date)
+                if (bt.addDays(site->ProjectConfig->TemplateAge) > date)
                 {
                     // we don't want to parse this thing
                     CurrentIndex++;
@@ -354,18 +359,12 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
     byte_ht level = 4;
     while (level > 0)
     {
-        int xx=0;
-        while (xx<Configuration::HuggleConfiguration->ProjectConfig->WarningDefs.count())
+        foreach (QString df, site->ProjectConfig->WarningDefs)
         {
-            QString defs=Configuration::HuggleConfiguration->ProjectConfig->WarningDefs.at(xx);
-            if (HuggleParser::GetKeyFromValue(defs).toInt() == level)
+            if (HuggleParser::GetKeyFromValue(df).toInt() == level && page.contains(HuggleParser::GetValueFromKey(df)))
             {
-                if (page.contains(HuggleParser::GetValueFromKey(defs)))
-                {
-                    return level;
-                }
+                return level;
             }
-            xx++;
         }
         level--;
     }
@@ -558,11 +557,15 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
             name.replace(":", "");
             filter->QueueName = name;
             line++;
+            if (line >= Info.count())
+                goto exit;
             text = Info.at(line);
             while (text.startsWith("        ") && text.contains(":") && line < Info.count())
             {
                 // we need to parse the info
                 line++;
+                if (line >= Info.count())
+                    goto exit;
                 while (text.startsWith(" "))
                 {
                     text = text.mid(1);
@@ -627,6 +630,7 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
             line++;
         }
     }
+  exit:
     return ReturnValue;
 }
 

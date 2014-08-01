@@ -18,7 +18,6 @@
 #include <QByteArray>
 #include <QHash>
 #include <QString>
-#include "huggleoption.hpp"
 #include "userconfiguration.hpp"
 #include "projectconfiguration.hpp"
 class QXmlStreamWriter;
@@ -66,6 +65,8 @@ class QXmlStreamWriter;
 #define HUGGLE_ACCEL_MAIN_OPEN_IN_BROWSER       40
 #define HUGGLE_ACCEL_MAIN_GOOD                  41
 #define HUGGLE_ACCEL_MAIN_MYTALK_PAGE           42
+#define HUGGLE_ACCEL_MAIN_WATCH                 45
+#define HUGGLE_ACCEL_MAIN_UNWATCH               46
 
 //! Huggle namespace contains all objects that belongs to huggle only so that they don't colide with other objects
 namespace Huggle
@@ -168,36 +169,18 @@ namespace Huggle
             //! Load the local configuration from disk
             static void LoadSystemConfig(QString fn);
             //! This function creates a user configuration that is stored on wiki
-            static QString MakeLocalUserConfig();
+            static QString MakeLocalUserConfig(WikiSite *site);
             static Configuration *HuggleConfiguration;
 
             Configuration();
             ~Configuration();
-            /*!
-             * \brief Returns a data for given key
-             * \param key
-             * \return New instance of data or NULL in case there is no such an option
-             */
-            HuggleOption *GetOption(QString key);
-            /*!
-             * \brief SetOption lookup for a key in config file, if there is no such a key, insert a default one
-             * \param key_ Name of configuration key in user config file
-             * \param config_ Config file text
-             * \param default_ Value that is used in case there is no such a key
-             */
-            QVariant SetOption(QString key_, QString config_, QVariant default_);
-            QStringList SetUserOptionList(QString key_, QString config_, QStringList default_, bool CS = false);
-            int GetSafeUserInt(QString key_, int default_value = 0);
-            bool GetSafeUserBool(QString key_, bool default_value = false);
-            QString GetSafeUserString(QString key_, QString default_value = "");
-            void NormalizeConf();
+            void NormalizeConf(WikiSite *site);
             QString GenerateSuffix(QString text);
             QString GenerateSuffix(QString text, ProjectConfiguration *conf);
             //! Parse all information from global config on meta
             bool ParseGlobalConfig(QString config);
-            bool ParseUserConfig(QString config);
+            bool ParseUserConfig(WikiSite *site, QString config);
             QString GetExtensionConfig(QString extension, QString name, QString ms);
-            QDateTime ServerTime();
             ////////////////////////////////////////////
             // System
             ////////////////////////////////////////////
@@ -207,15 +190,18 @@ namespace Huggle
             //! If it's needed to reload config of main form
             bool                     ReloadOfMainformNeeded = true;
             //! Verbosity for debugging to terminal etc, can be switched with parameter --verbosity
-            unsigned int    Verbosity = 0;
+            unsigned int      Verbosity = 0;
             //! Version
-            QString         HuggleVersion;
-            QString         HANMask = "$feed.huggle";
-            QByteArray      WebqueryAgent;
+            QString           HuggleVersion;
+            QString           HANMask = "$feed.huggle";
+            QByteArray        WebqueryAgent;
+            bool              Multiple = false;
+            QList<WikiSite *> Projects;
             //! currently selected project
-            WikiSite        *Project = nullptr;
+            WikiSite         *Project = nullptr;
             //! List of projects
             QList<WikiSite *> ProjectList;
+            QStringList       ProjectString;
             //! When this is true most of functions will not work
             bool            Restricted = false;
             //! This is used in combination with --login option, so that huggle knows if it should
@@ -227,6 +213,7 @@ namespace Huggle
             //! Whether python is available
             bool            PythonEngine;
             bool            HtmlAllowedInIrc = false;
+            bool            Fuzzy = false;
             //! Size of feed
             int             SystemConfig_ProviderCache = 200;
             //! Maximum size of ringlog
@@ -235,9 +222,6 @@ namespace Huggle
             QString         HomePath;
             //! Path to a file where information about wikis are stored
             QString         WikiDB = "";
-            //! Data of wl (list of users)
-            QStringList     WhiteList;
-            QStringList     NewWhitelist;
             //! URL of wiki that contains a global config
             QString         GlobalConfigurationWikiAddress = "meta.wikimedia.org/w/";
             //! Number of seconds for which the processed queries remain in list of processes
@@ -296,9 +280,6 @@ namespace Huggle
             //! We are storing index instead of wiki name, because in case it was a wiki that later
             //! was removed from the list, we would have nonexistent wiki in list
             int             IndexOfLastWiki = 0;
-            QString         TemporaryConfig_EditToken = "";
-            //! This is a number that can be used to get a current server time
-            qint64          ServerOffset = 0;
 
             //////////////////////////////////////////////
             // User

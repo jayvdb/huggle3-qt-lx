@@ -20,6 +20,7 @@
 
 namespace Huggle
 {
+    class HuggleFeed;
     //! Namespace (mediawiki)
     class WikiPageNS
     {
@@ -81,7 +82,7 @@ namespace Huggle
               \param channel irc
               \param wl whitelist
             */
-            WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl, bool isrtl = false);
+            WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl, QString han, bool isrtl = false);
             ~WikiSite();
             WikiPageNS *RetrieveNSFromTitle(QString title);
             WikiPageNS *RetrieveNSByCanonicalName(QString CanonicalName);
@@ -95,6 +96,7 @@ namespace Huggle
             QString Name;
             //! URL of wiki, no http prefix must be present
             QString URL;
+            HuggleFeed *Provider = nullptr;
             //! long article path (wiki/ for example on english wp)
             QString LongPath;
             //! short path
@@ -103,8 +105,9 @@ namespace Huggle
             QString OAuthURL;
             //! IRC channel of this site, if it doesn't have a channel leave it empty
             QString IRCChannel;
-            ProjectConfiguration *Project = nullptr;
-            UserConfiguration    *User = nullptr;
+            QString HANChannel;
+            ProjectConfiguration *ProjectConfig = nullptr;
+            UserConfiguration    *UserConfig = nullptr;
             //! URL of whitelist, every site needs to have some, if your site doesn't have it
             //! leave it as test
             QString WhiteList;

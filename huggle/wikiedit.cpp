@@ -416,13 +416,20 @@ void WikiEdit::PostProcess()
     if (this->PostProcessing)
         return;
 
-    if (this->Status != Huggle::StatusProcessed)
-        throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status");
     if (this->Page == nullptr)
         throw new Huggle::NullPointerException("Page", "void WikiEdit::PostProcess()");
+    if (this->Status == Huggle::StatusNone)
+    {
+        Exception::ThrowSoftException("Processing edit to " + this->Page->PageName + "which was requested to be post processed,"\
+                                      " but wasn't processed yet", "void WikiEdit::PostProcess()");
+        QueryPool::HugglePool->PreProcessEdit(this);
+    }
+    if (this->Status == Huggle::StatusPostProcessed)
+        throw new Huggle::Exception("Unable to post process an edit that is already processed");
+    if (this->Status != Huggle::StatusProcessed)
+        throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status");
     this->PostProcessing = true;
-    this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk());
-    this->qTalkpage->Site = this->GetSite();
+    this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk(), this->GetSite());
     QueryPool::HugglePool->AppendQuery(this->qTalkpage);
     this->qTalkpage->Target = "Retrieving tp " + this->User->GetTalk();
     this->qTalkpage->Process();
@@ -434,12 +441,12 @@ void WikiEdit::PostProcess()
             // &rvprop=content can't be used because of fuck up of mediawiki
             this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
                                             "&rvlimit=1&rvtoken=rollback&rvstartid=" +
-                                            QString::number(this->RevID) + "&rvdiffto=prev&titles=" +
+                                            QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         } else
         {
             this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
-                                            "&rvlimit=1&rvtoken=rollback&rvdiffto=prev&titles=" +
+                                            "&rvlimit=1&rvtoken=rollback&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         }
         this->qDifference->Target = Page->PageName;
@@ -462,7 +469,7 @@ void WikiEdit::PostProcess()
     this->qUser->Process();
 }
 
-Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid)
+Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid, QString prev)
 {
     Collectable_SmartPtr<WikiEdit> e;
     if (revid == WIKI_UNKNOWN_REVID)
@@ -476,7 +483,7 @@ Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid)
     {
         WikiEdit *edit = WikiEdit::EditList.at(x);
         x++;
-        if (edit->RevID == revid)
+        if (edit->RevID == revid && edit->DiffTo == prev)
         {
             e = edit;
             // let's return it
@@ -560,6 +567,8 @@ void ProcessorThread::Process(WikiEdit *edit)
     edit->Score += edit->User->GetBadnessScore();
     if (!IgnoreWords)
         edit->ProcessWords();
+    if (edit->SizeIsKnown && edit->Size < (-1*edit->GetSite()->GetProjectConfig()->LargeRemoval))
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreRemoval;
     edit->User->ParseTP(QDate::currentDate());
     if (edit->Summary.size() == 0)
         edit->Score += 10;

@@ -54,9 +54,10 @@ bool Generic::ReportPreFlightCheck()
     return (q != QMessageBox::No);
 }
 
-ApiQuery *Generic::RetrieveWikiPageContents(QString page, bool parse)
+ApiQuery *Generic::RetrieveWikiPageContents(QString page, WikiSite *site, bool parse)
 {
     WikiPage pt(page);
+    pt.Site = site;
     return RetrieveWikiPageContents(&pt, parse);
 }
 
@@ -122,17 +123,14 @@ QString Generic::EvaluateWikiPageContents(ApiQuery *query, bool *failed, QString
     }
     QDomElement e = page.at(0).toElement();
     if (user && e.attributes().contains("user"))
-    {
         *user = e.attribute("user");
-    }
+
     if (comment && e.attributes().contains("comment"))
-    {
         *comment = e.attribute("comment");
-    }
+
     if (ts && e.attributes().contains("timestamp"))
-    {
         *ts = e.attribute("timestamp");
-    }
+
     if (revid)
     {
         if (e.attributes().contains("revid"))
@@ -175,7 +173,7 @@ QString Generic::ShrinkText(QString text, int size, bool html)
     return text_;
 }
 
-int Generic::MessageBox(QString title, QString text, MessageBoxStyle st)
+int Generic::MessageBox(QString title, QString text, MessageBoxStyle st, bool enforce_stop)
 {
     QMessageBox mb;
     mb.setWindowTitle(title);
@@ -185,11 +183,35 @@ int Generic::MessageBox(QString title, QString text, MessageBoxStyle st)
         case MessageBoxStyleQuestion:
             mb.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
             mb.setDefaultButton(QMessageBox::Yes);
-            break;
+            return mb.exec();
         case MessageBoxStyleNormal:
         case MessageBoxStyleError:
         case MessageBoxStyleWarning:
-            break;
+            if (enforce_stop)
+                mb.exec();
+            else
+                mb.show();
+            return 0;
     }
-    return mb.exec();
+    return -1;
+}
+
+bool Generic::CompareVersions(QString a, QString b)
+{
+    QStringList va = a.split('.');
+    QStringList vb = b.split('.');
+    int cv = 0;
+    while (cv < va.count())
+    {
+        if (vb.count() <= cv)
+            break;
+        // if it's greater we have a newer version
+        if (va[cv] > vb[cv])
+            return true;
+        // if it's smaller we have older version
+        if (vb[cv] > va[cv])
+            return false;
+        cv++;
+    }
+    return true;
 }
