@@ -92,9 +92,11 @@ bool ProjectConfiguration::Parse(QString config, QString *reason)
     this->WarnSummary2 = HuggleParser::ConfigurationParse("warn-summary-2", config);
     this->DefaultSummary = HuggleParser::ConfigurationParse("default-summary", config,
               "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to last revision by $2");
+    this->WelcomeSummary = HuggleParser::ConfigurationParse("welcome-summary", config, this->WelcomeSummary);
     this->AgfRevert = HuggleParser::ConfigurationParse("agf", config, "Reverted good faith edits by [[Special:Contributions/$2|$2]]"\
                                                        " [[User talk:$2|talk]]: $1");
     this->EditSuffixOfHuggle = HuggleParser::ConfigurationParse("summary", config, "[[Project:Huggle|HG]]");
+    this->Goto = HuggleParser::ConfigurationParse_QL("go", config);
     this->WarnSummary3 = HuggleParser::ConfigurationParse("warn-summary-3", config);
     this->WarnSummary4 = HuggleParser::ConfigurationParse("warn-summary-4", config);
     this->RevertSummaries = HuggleParser::ConfigurationParse_QL("template-summ", config);

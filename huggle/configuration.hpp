@@ -67,6 +67,9 @@ class QXmlStreamWriter;
 #define HUGGLE_ACCEL_MAIN_MYTALK_PAGE           42
 #define HUGGLE_ACCEL_MAIN_WATCH                 45
 #define HUGGLE_ACCEL_MAIN_UNWATCH               46
+#define HUGGLE_ACCEL_MAIN_OPEN                  48
+
+#define hcfg Huggle::Configuration::HuggleConfiguration
 
 //! Huggle namespace contains all objects that belongs to huggle only so that they don't colide with other objects
 namespace Huggle
@@ -363,7 +366,6 @@ namespace Huggle
              * \param s Stream writer
              */
             static void InsertConfig(QString key, QString value, QXmlStreamWriter *s);
-            static QString Bool2ExcludeRequire(bool b);
 
             void MakeShortcut(QString name, QString description, QString default_accel = HUGGLE_ACCEL_NONE);
     };

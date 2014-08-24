@@ -91,6 +91,7 @@ Configuration::Configuration()
     this->MakeShortcut("main-good", "shortcut-good", "G");
     this->MakeShortcut("main-watch", "shortcut-watch", "Alt+X");
     this->MakeShortcut("main-unwatch", "shortcut-unwatch", "Alt+C");
+    this->MakeShortcut("main-open", "shortcut-open-in-huggle", "Alt+O");
 }
 
 Configuration::~Configuration()
@@ -176,13 +177,18 @@ QString Configuration::ReplaceSpecialUserPage(QString PageName)
     return result;
 }
 
-QString Configuration::Bool2ExcludeRequire(bool b)
+static QString Bool2ExcludeRequire(HuggleQueueFilterMatch match)
 {
-    if (b)
+    switch (match)
     {
-        return "exclude";
+        case HuggleQueueFilterMatchRequire:
+            return "require";
+        case HuggleQueueFilterMatchExclude:
+            return "exclude";
+        case HuggleQueueFilterMatchIgnore:
+            return "ignore";
     }
-    return "require";
+    throw Huggle::Exception("Invalid enum", "static QString Bool2ExcludeRequire(HuggleQueueFilterMatch match)");
 }
 
 void Configuration::MakeShortcut(QString name, QString description, QString default_accel)
@@ -323,16 +329,16 @@ QString Configuration::MakeLocalUserConfig(WikiSite *site)
         if (fltr->IsChangeable())
         {
             configuration_ += "    " + fltr->QueueName + ":\n";
-            configuration_ += "        filter-ignored:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreWL()) + "\n";
-            configuration_ += "        filter-bots:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreBots()) + "\n";
-            configuration_ += "        filter-assisted:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreFriends()) + "\n";
-            configuration_ += "        filter-ip:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreIP()) + "\n";
-            configuration_ += "        filter-minor:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreMinor()) + "\n";
-            configuration_ += "        filter-new-pages:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreNP()) + "\n";
-            configuration_ += "        filter-me:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreSelf()) + "\n";
-            configuration_ += "        filter-users:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreUsers()) + "\n";
-            configuration_ += "        nsfilter-user:" + Configuration::Bool2ExcludeRequire(fltr->getIgnore_UserSpace()) + "\n";
-            configuration_ += "        filter-talk:" + Configuration::Bool2ExcludeRequire(fltr->getIgnoreTalk()) + "\n";
+            configuration_ += "        filter-ignored:" + Bool2ExcludeRequire(fltr->getIgnoreWL()) + "\n";
+            configuration_ += "        filter-bots:" + Bool2ExcludeRequire(fltr->getIgnoreBots()) + "\n";
+            configuration_ += "        filter-assisted:" + Bool2ExcludeRequire(fltr->getIgnoreFriends()) + "\n";
+            configuration_ += "        filter-ip:" + Bool2ExcludeRequire(fltr->getIgnoreIP()) + "\n";
+            configuration_ += "        filter-minor:" + Bool2ExcludeRequire(fltr->getIgnoreMinor()) + "\n";
+            configuration_ += "        filter-new-pages:" + Bool2ExcludeRequire(fltr->getIgnoreNP()) + "\n";
+            configuration_ += "        filter-me:" + Bool2ExcludeRequire(fltr->getIgnoreSelf()) + "\n";
+            configuration_ += "        filter-users:" + Bool2ExcludeRequire(fltr->getIgnoreUsers()) + "\n";
+            configuration_ += "        nsfilter-user:" + Bool2ExcludeRequire(fltr->getIgnore_UserSpace()) + "\n";
+            configuration_ += "        filter-talk:" + Bool2ExcludeRequire(fltr->getIgnoreTalk()) + "\n";
             configuration_ += "\n";
         }
     }
@@ -774,6 +780,8 @@ Shortcut::Shortcut(QString name, QString description)
         this->ID = HUGGLE_ACCEL_MAIN_WATCH;
     else if (name == "main-unwatch")
         this->ID = HUGGLE_ACCEL_MAIN_UNWATCH;
+    else if (name == "main-open")
+        this->ID = HUGGLE_ACCEL_MAIN_OPEN;
     else if (name == "main-mytalk")
         this->ID = HUGGLE_ACCEL_MAIN_MYTALK_PAGE;
     else if (name == "main-talk")

@@ -253,6 +253,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QAction *debugm = this->ui->menuDebug_2->menuAction();
         this->ui->menuHelp->removeAction(debugm);
     }
+    if (hcfg->ProjectConfig->Goto.count() > 0)
+    {
+        this->ui->menuGo_to->addSeparator();
+        QList<QAction*> list;
+        foreach (QString item, hcfg->ProjectConfig->Goto)
+        {
+            if (!item.contains(";"))
+            {
+                Syslog::HuggleLogs->WarningLog("Invalid item for go menu: " + item);
+                continue;
+            }
+            QString url = item.mid(0, item.indexOf(";"));
+            QString name = item.mid(item.indexOf(";") + 1);
+            if (name.endsWith(","))
+                name = name.mid(0, name.length() - 1);
+            QAction *action = new QAction(name, this);
+            connect(action, SIGNAL(triggered()), this, SLOT(Go()));
+            action->setToolTip(url);
+            list.append(action);
+        }
+        this->ui->menuGo_to->addActions(list);
+    }
     this->Localize();
     this->VandalDock->Connect();
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@irc");
@@ -772,6 +794,9 @@ void MainWindow::ReloadShort(QString id)
         case HUGGLE_ACCEL_MAIN_TALK:
             q = this->ui->actionTalk_page;
             break;
+        case HUGGLE_ACCEL_MAIN_OPEN:
+            q = this->ui->actionDisplay_this_page;
+            break;
         case HUGGLE_ACCEL_MAIN_FORWARD:
             q = this->ui->actionForward;
             break;
@@ -1064,12 +1089,12 @@ void MainWindow::on_actionAbout_triggered()
 
 void MainWindow::OnMainTimerTick()
 {
-    if (!Configuration::HuggleConfiguration->ProjectConfig->IsLoggedIn && !Configuration::HuggleConfiguration->ProjectConfig->RequestingLogin
-            && !Configuration::HuggleConfiguration->Restricted)
+    ProjectConfiguration *cfg = this->GetCurrentWikiSite()->GetProjectConfig();
+    if (!cfg->IsLoggedIn && !cfg->RequestingLogin && !hcfg->Restricted)
     {
         delete this->fRelogin;
         // we need to flag it here so that we don't reload the form next tick
-        Configuration::HuggleConfiguration->ProjectConfig->RequestingLogin = true;
+        cfg->RequestingLogin = true;
         this->fRelogin = new ReloginForm(this);
         // exec to freeze
         this->fRelogin->show();
@@ -1286,7 +1311,8 @@ void MainWindow::OnTimerTick0()
             {
                 WikiPage *uc = new WikiPage(page);
                 uc->Site = site;
-                Collectable_SmartPtr<EditQuery> temp = WikiUtil::EditPage(uc, Configuration::MakeLocalUserConfig(site), _l("saveuserconfig-progress"), true);
+                Collectable_SmartPtr<EditQuery> temp = WikiUtil::EditPage(uc, Configuration::MakeLocalUserConfig(site),
+                                                                          _l("saveuserconfig-progress"), true);
                 temp->IncRef();
                 this->StorageQueries.insert(site, temp.GetPtr());
                 delete uc;
@@ -1570,7 +1596,7 @@ bool MainWindow::CheckEditableBrowserPage()
     }
     if (Configuration::HuggleConfiguration->SystemConfig_RequestDelay)
     {
-        qint64 wt = QDateTime::currentDateTime().msecsTo(this->EditLoad.addSecs(Configuration::HuggleConfiguration->SystemConfig_DelayVal));
+        qint64 wt = QDateTime::currentDateTime().msecsTo(this->EditLoad.addSecs(hcfg->SystemConfig_DelayVal));
         if (wt > 0)
         {
             Syslog::HuggleLogs->WarningLog("Ignoring edit request because you are too fast, please wait " +
@@ -1673,6 +1699,9 @@ void MainWindow::Localize()
     this->ui->menuHAN->setTitle(_l("main-han"));
     this->ui->actionAbout->setText(_l("main-help-about"));
     this->ui->actionBack->setText(_l("main-browser-back"));
+    this->ui->menuGo_to->setTitle(_l("main-goto"));
+    this->ui->actionMy_talk_page->setText(_l("main-goto-mytalk"));
+    this->ui->actionMy_Contributions->setText(_l("main-goto-mycontribs"));
     this->ui->actionBlock_user->setText(_l("main-user-block"));
     this->ui->actionClear_talk_page_of_user->setText(_l("main-user-clear-talk"));
     this->ui->actionDelete->setText(_l("main-page-delete"));
@@ -1908,7 +1937,7 @@ void MainWindow::Welcome()
                               false, nullptr, false, false, true, this->CurrentEdit->TPRevBaseTime, create_only);
         return;
     }
-    if (conf->WelcomeTypes.count() == 0)
+    if (conf->WelcomeTypes.isEmpty())
     {
         // This error should never happen so we don't need to localize this
         Syslog::HuggleLogs->ErrorLog("There are no welcome messages defined for this project");
@@ -2681,4 +2710,30 @@ void Huggle::MainWindow::on_actionRemove_page_from_a_watchlist_triggered()
     if (this->CurrentEdit->Page == nullptr)
         throw new Huggle::NullPointerException("this->CurrentEdit->Page", "void Huggle::MainWindow::on_actionRemove_page_from_a_watchlist_triggered()");
     WikiUtil::Unwatchlist(this->CurrentEdit->Page);
+}
+
+void Huggle::MainWindow::on_actionMy_talk_page_triggered()
+{
+    if (Configuration::HuggleConfiguration->Restricted)
+        return;
+    this->LockPage();
+    this->Browser->DisplayPage(Configuration::GetProjectWikiURL(this->GetCurrentWikiSite()) +
+                                           "User_talk:" +
+                                           QUrl::toPercentEncoding(hcfg->SystemConfig_Username));
+}
+
+void Huggle::MainWindow::on_actionMy_Contributions_triggered()
+{
+    if (Configuration::HuggleConfiguration->Restricted)
+        return;
+    this->LockPage();
+    this->Browser->DisplayPage(Configuration::GetProjectWikiURL(this->GetCurrentWikiSite()) +
+                                           "Special:Contributions/" +
+                               QUrl::toPercentEncoding(hcfg->SystemConfig_Username));
+}
+
+void MainWindow::Go()
+{
+    QAction *action = (QAction*)QObject::sender();
+    QDesktopServices::openUrl(QString(Configuration::GetProjectWikiURL() + action->toolTip()));
 }
