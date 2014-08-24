@@ -18,6 +18,7 @@
 #include "generic.hpp"
 #include "hooks.hpp"
 #include "hugglefeed.hpp"
+#include "huggleprofiler.hpp"
 #include "hugglequeuefilter.hpp"
 #include "iextension.hpp"
 #include "localization.hpp"
@@ -38,6 +39,7 @@ Core    *Core::HuggleCore = nullptr;
 
 void Core::Init()
 {
+    HUGGLE_PROFILER_RESET;
     this->StartupTime = QDateTime::currentDateTime();
     // preload of config
     Configuration::HuggleConfiguration->WikiDB = Configuration::GetConfigurationPath() + "wikidb.xml";
@@ -74,8 +76,10 @@ void Core::Init()
     {
         Configuration::LoadSystemConfig(QCoreApplication::applicationDirPath() + HUGGLE_CONF);
     }
+    HUGGLE_PROFILER_PRINT_TIME("Core::Init()@conf");
     HUGGLE_DEBUG1("Loading defs");
     this->LoadDefs();
+    HUGGLE_PROFILER_PRINT_TIME("Core::Init()@defs");
     HUGGLE_DEBUG1("Loading wikis");
     this->LoadDB();
     HUGGLE_DEBUG1("Loading queue");
@@ -101,6 +105,7 @@ void Core::Init()
         Syslog::HuggleLogs->Log("Not loading plugins in a safe mode");
     }
     Syslog::HuggleLogs->Log("Loaded in " + QString::number(this->StartupTime.msecsTo(QDateTime::currentDateTime())) + "ms");
+    HUGGLE_PROFILER_PRINT_TIME("Core::Init()@finalize");
 }
 
 Core::Core()
@@ -110,8 +115,6 @@ Core::Core()
 #endif
     this->Main = nullptr;
     this->fLogin = nullptr;
-    this->SecondaryFeedProvider = nullptr;
-    this->PrimaryFeedProvider = nullptr;
     this->Processor = nullptr;
     this->HuggleSyslog = nullptr;
     this->StartupTime = QDateTime::currentDateTime();
@@ -123,8 +126,6 @@ Core::~Core()
 {
     delete this->Main;
     delete this->fLogin;
-    delete this->SecondaryFeedProvider;
-    delete this->PrimaryFeedProvider;
     delete this->gc;
     delete this->Processor;
 }
@@ -188,6 +189,8 @@ void Core::LoadDB()
             site->IRCChannel = e.attribute("channel");
         if (e.attributes().contains("rtl"))
             site->IsRightToLeft = Generic::SafeBool(e.attribute("rtl"));
+        if (e.attributes().contains("han_irc"))
+            site->HANChannel = e.attribute("han_irc");
         Configuration::HuggleConfiguration->ProjectList.append(site);
         xx++;
     }
@@ -398,9 +401,10 @@ void Core::Shutdown()
     // grace time for subthreads to finish
     if (this->Main != nullptr)
     {
-        if (this->PrimaryFeedProvider && this->PrimaryFeedProvider->IsWorking())
+        foreach (WikiSite *site, Configuration::HuggleConfiguration->Projects)
         {
-            this->PrimaryFeedProvider->Stop();
+            if (site->Provider && site->Provider->IsWorking())
+                site->Provider->Stop();
         }
         this->Main->hide();
     }

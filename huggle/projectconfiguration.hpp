@@ -15,6 +15,7 @@
 #include "definitions.hpp"
 
 #include <QList>
+#include <QDateTime>
 #include <QStringList>
 #include <QHash>
 #include <QString>
@@ -58,14 +59,18 @@ namespace Huggle
     class ProjectConfiguration
     {
         public:
-            ProjectConfiguration();
+            ProjectConfiguration(QString project_name);
             ~ProjectConfiguration();
+            QString ProjectName;
+            QDateTime ServerTime();
             //! Parse all information from local config, this function is used in login
-            bool Parse(QString config);
+            bool Parse(QString config, QString *reason);
             void RequestLogin();
             //! \todo This needs to be later used as a default value for user config, however it's not being ensured
             //!       this value is loaded before the user config right now
             bool AutomaticallyResolveConflicts = false;
+            bool IsSane = false;
+            QString     EditToken = "";
             QStringList Months;
             //! Pointer to AIV page
             WikiPage    *AIVP = nullptr;
@@ -151,6 +156,9 @@ namespace Huggle
             QString         WarnSummary4 = "Warning (level 4)";
             QStringList     WarningTemplates;
             QStringList     WarningDefs;
+            //! Data of wl (list of users)
+            QStringList     WhiteList;
+            QStringList     NewWhitelist;
             QString         ReportSummary;
             QString         RestoreSummary = "Restored revision $1 made by $2";
             bool            WelcomeGood = true;
@@ -179,7 +187,11 @@ namespace Huggle
             int                     ScoreTalk = -200;
             //! Score that is added for every edit that has really big size
             int                     ScoreChange = 100;
+            int                     LargeRemoval = 400;
+            int                     ScoreRemoval = 800;
             int                     ScoreUser = -600;
+            //! This is a number that can be used to get a current server time
+            qint64                  ServerOffset = 0;
             QStringList             Ignores;
             QStringList             RevertPatterns;
             QStringList             Assisted;
@@ -203,6 +215,7 @@ namespace Huggle
             QStringList             SpeedyTemplates;
             QStringList             WelcomeTypes;
             long                    WhitelistScore = -800;
+            QString                 WatchlistToken = "";
             // UAA
             QString                 UAAPath = "Project:Usernames for administrator attention";
             bool                    UAAavailable = false;

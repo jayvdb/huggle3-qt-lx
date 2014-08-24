@@ -10,6 +10,7 @@
 
 #include "wikisite.hpp"
 #include "configuration.hpp"
+#include "exception.hpp"
 #include "syslog.hpp"
 using namespace Huggle;
 
@@ -59,10 +60,11 @@ WikiSite::WikiSite(const WikiSite &w)
     this->SupportHttps = w.SupportHttps;
     this->SupportOAuth = w.SupportOAuth;
     this->URL = w.URL;
+    this->HANChannel = w.HANChannel;
     this->IsRightToLeft = w.IsRightToLeft;
     this->Unknown = w.Unknown;
-    this->User = w.User;
-    this->Project = w.Project;
+    this->UserConfig = w.UserConfig;
+    this->ProjectConfig = w.ProjectConfig;
     this->WhiteList = w.WhiteList;
 }
 
@@ -77,10 +79,11 @@ WikiSite::WikiSite(WikiSite *w)
     this->OAuthURL = w->OAuthURL;
     this->WhiteList = w->WhiteList;
     this->URL = w->URL;
-    this->Project = w->Project;
+    this->HANChannel = w->HANChannel;
+    this->ProjectConfig = w->ProjectConfig;
     this->IsRightToLeft = w->IsRightToLeft;
     this->Unknown = w->Unknown;
-    this->User = w->User;
+    this->UserConfig = w->UserConfig;
     this->SupportOAuth = w->SupportOAuth;
     this->SupportHttps = w->SupportHttps;
     this->ScriptPath = w->ScriptPath;
@@ -99,12 +102,13 @@ WikiSite::WikiSite(QString name, QString url)
     this->WhiteList = "test.wikipedia";
 }
 
-WikiSite::WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl, bool isrtl)
+WikiSite::WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl, QString han, bool isrtl)
 {
     this->IRCChannel = channel;
     this->LongPath = path;
     this->Name = name;
     this->SupportHttps = https;
+    this->HANChannel = han;
     this->OAuthURL = url + "w/index.php?title=Special:MWOAuth";
     this->ScriptPath = script;
     this->URL = url;
@@ -116,6 +120,8 @@ WikiSite::WikiSite(QString name, QString url, QString path, QString script, bool
 WikiSite::~WikiSite()
 {
     this->ClearNS();
+    delete this->ProjectConfig;
+    delete this->UserConfig;
 }
 
 WikiPageNS *WikiSite::RetrieveNSFromTitle(QString title)
@@ -159,19 +165,18 @@ WikiPageNS *WikiSite::RetrieveNSByCanonicalName(QString CanonicalName)
 
 ProjectConfiguration *WikiSite::GetProjectConfig()
 {
-    if (this->Project == nullptr)
-        return Configuration::HuggleConfiguration->ProjectConfig;
+    if (this->ProjectConfig == nullptr)
+        throw new Huggle::Exception("There is no project config for this wiki");
 
-    return this->Project;
+    return this->ProjectConfig;
 }
 
 UserConfiguration *WikiSite::GetUserConfig()
 {
-    if (this->User != nullptr)
-    {
-        return this->User;
-    }
-    return Configuration::HuggleConfiguration->UserConfig;
+    if (this->UserConfig == nullptr)
+        throw new Huggle::Exception("There is no user configuration for this wiki");
+    // we can return the local conf now
+    return this->UserConfig;
 }
 
 void WikiSite::InsertNS(WikiPageNS *Ns)

@@ -98,6 +98,16 @@ void HuggleWeb::Click(const QUrl &page)
     QDesktopServices::openUrl(page);
 }
 
+QString HuggleWeb::GetShortcut()
+{
+    QString incoming = Resources::HtmlIncoming;
+    if (!Configuration::HuggleConfiguration->Shortcuts.contains("main-mytalk"))
+        throw new Huggle::Exception("key");
+    Shortcut sh = Configuration::HuggleConfiguration->Shortcuts["main-mytalk"];
+    incoming.replace("$shortcut", sh.QAccel);
+    return incoming;
+}
+
 void HuggleWeb::DisplayDiff(WikiEdit *edit)
 {
     this->ui->webView->history()->clear();
@@ -119,15 +129,22 @@ void HuggleWeb::DisplayDiff(WikiEdit *edit)
     {
         Huggle::Syslog::HuggleLogs->WarningLog("unable to retrieve diff for edit " + edit->Page->PageName + " fallback to web rendering");
         this->ui->webView->setHtml(_l("browser-load"));
-        this->ui->webView->load(QString(Configuration::GetProjectScriptURL(edit->Page->Site) + "index.php?title=" + edit->Page->PageName + "&diff="
+        if (edit->DiffTo != "prev")
+        {
+            this->ui->webView->load(QString(Configuration::GetProjectScriptURL(edit->Page->Site) + "index.php?title=" + edit->Page->PageName + "&diff="
+                                        + QString::number(edit->Diff) + "&oldid=" + edit->DiffTo + "&action=render"));
+        } else
+        {
+            this->ui->webView->load(QString(Configuration::GetProjectScriptURL(edit->Page->Site) + "index.php?title=" + edit->Page->PageName + "&diff="
                                         + QString::number(edit->Diff) + "&action=render"));
+        }
         return;
     }
     QString HTML = Resources::GetHtmlHeader();
     if (Configuration::HuggleConfiguration->NewMessage)
     {
         // we display a notification that user received a new message
-        HTML += Resources::HtmlIncoming;
+        HTML += this->GetShortcut();
     }
     HTML += Resources::DiffHeader + "<tr></td colspan=2>";
     if (Configuration::HuggleConfiguration->UserConfig->DisplayTitle)
@@ -172,7 +189,7 @@ void HuggleWeb::DisplayNewPageEdit(WikiEdit *edit)
     if (Configuration::HuggleConfiguration->NewMessage)
     {
         // we display a notification that user received a new message
-        HTML += Resources::HtmlIncoming;
+        HTML += this->GetShortcut();
     }
     if (Configuration::HuggleConfiguration->UserConfig->DisplayTitle)
     {

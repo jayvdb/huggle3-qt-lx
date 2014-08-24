@@ -14,6 +14,7 @@
 #include "definitions.hpp"
 
 #include <QString>
+#include "apiquery.hpp"
 #include "editquery.hpp"
 #include "message.hpp"
 #include "revertquery.hpp"
@@ -59,8 +60,8 @@ namespace Huggle
          * \return NULL on error or instance of Huggle::Message in case it's success
          */
         Message *MessageUser(WikiUser *User, QString Text, QString Title, QString Summary, bool InsertSection = true,
-                             Query *Dependency = NULL, bool NoSuffix = false, bool SectionKeep = false,
-                             bool autoremove = false, QString BaseTimestamp = "", bool CreateOnly_ = false, bool FreshOnly_ = false);
+                             Query *Dependency = nullptr, bool NoSuffix = false, bool SectionKeep = false,
+                             bool autoremove = true, QString BaseTimestamp = "", bool CreateOnly_ = false, bool FreshOnly_ = false);
         /*!
          * \brief SanitizeUser removes all invalid or problematic characters from user name
          * \param username Username that is to be fixed
@@ -86,6 +87,8 @@ namespace Huggle
                                                  QString BaseTimestamp = "", unsigned int section = 0);
         Collectable_SmartPtr<EditQuery> EditPage(WikiPage *page, QString text, QString summary = "Edited using huggle", bool minor = false,
                                                  QString BaseTimestamp = "", unsigned int section = 0);
+        ApiQuery *Unwatchlist(WikiPage *page);
+        ApiQuery *Watchlist(WikiPage *page);
     }
 }
 

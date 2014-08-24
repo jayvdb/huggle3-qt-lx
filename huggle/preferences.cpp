@@ -13,6 +13,7 @@
 #include "core.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
+#include "huggleoption.hpp"
 #include "hugglequeue.hpp"
 #include "localization.hpp"
 #include "syslog.hpp"
@@ -251,7 +252,7 @@ void Huggle::Preferences::on_pushButton_2_clicked()
         // now we need to update the option as well just to ensure that user config will be updated as well
         // this option needs to be written only if it was explicitly changed by user to a value that
         // is different from a project config file
-        HuggleOption *o_ = Configuration::HuggleConfiguration->GetOption("welcome-good");
+        HuggleOption *o_ = Configuration::HuggleConfiguration->UserConfig->GetOption("welcome-good");
         if (o_)
             o_->SetVariant(Configuration::HuggleConfiguration->UserConfig->WelcomeGood);
     }
@@ -426,24 +427,28 @@ void Preferences::RecordKeys(int row, int column)
             Syslog::HuggleLogs->ErrorLog("Invalid shortcut: " + this->ui->tableWidget_2->item(row, column)->text());
             goto revert;
         }
-        // check if there isn't another shortcut which uses this
-        QStringList keys = Configuration::HuggleConfiguration->Shortcuts.keys();
-        foreach (QString s, keys)
+        if (!this->IgnoreConflicts)
         {
-            if (Configuration::HuggleConfiguration->Shortcuts[s].QAccel == key)
+            // check if there isn't another shortcut which uses this
+            QStringList keys = Configuration::HuggleConfiguration->Shortcuts.keys();
+            foreach (QString s, keys)
             {
-                QMessageBox m;
-                m.setWindowTitle("Fail");
-                m.setText("Shortcut for " + Configuration::HuggleConfiguration->Shortcuts[s].Name +
-                          " is already using the same keys");
-                m.exec();
-                goto revert;
+                if (Configuration::HuggleConfiguration->Shortcuts[s].QAccel == key && s != id)
+                {
+                    QMessageBox m;
+                    m.setWindowTitle("Fail");
+                    m.setText("Shortcut for " + Configuration::HuggleConfiguration->Shortcuts[s].Name +
+                              " is already using the same keys");
+                    m.exec();
+                    goto revert;
+                }
             }
         }
     }
 
     this->ModifiedForm = true;
     this->RewritingForm = true;
+    this->IgnoreConflicts = false;
     Configuration::HuggleConfiguration->Shortcuts[id].Modified = true;
     Configuration::HuggleConfiguration->Shortcuts[id].QAccel = key;
     this->ui->tableWidget_2->setItem(row, column, new QTableWidgetItem(key));
@@ -451,6 +456,7 @@ void Preferences::RecordKeys(int row, int column)
     return;
 
     revert:
+        this->IgnoreConflicts = true;
         this->ui->tableWidget_2->setItem(row, column, new QTableWidgetItem(Configuration::HuggleConfiguration->Shortcuts[id].QAccel));
         return;
 }
