@@ -1,3 +1,9 @@
+huggle (3.1.2.0-ppa1) precise; urgency=medium
+
+  * 3.1.2 production
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 10 Sep 2014 18:48:05 +0200
+
 huggle (3.1.1.0-ppa1) precise; urgency=medium
 
   * 3.1.1 rl
