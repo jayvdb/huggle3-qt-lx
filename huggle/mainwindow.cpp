@@ -18,6 +18,7 @@
 #include <QLabel>
 #include <QTimer>
 #include <QThread>
+#include <QVBoxLayout>
 #include <QSplitter>
 #include <QDockWidget>
 #include "aboutform.hpp"
@@ -96,7 +97,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->tb = new HuggleTool();
     this->Queries = new ProcessList(this);
     this->SystemLog = new HuggleLog(this);
-    this->Browser = new HuggleWeb(this);
+    this->CreateBrowserTab("Welcome page", 0);
     this->Queue1 = new HuggleQueue(this);
     this->_History = new History(this);
     this->wHistory = new HistoryForm(this);
@@ -139,7 +140,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         projects += ")";
     }
     this->setWindowTitle("Huggle 3 QT-LX on " + projects);
-    this->ui->verticalLayout->addWidget(this->Browser);
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@layout");
     this->DisplayWelcomeMessage();
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@welcome");
@@ -216,15 +216,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         HUGGLE_DEBUG1("Loading state");
         layout = new QFile(Configuration::GetConfigurationPath() + "mainwindow_state");
         if (!layout->open(QIODevice::ReadOnly))
-        {
             Syslog::HuggleLogs->ErrorLog("Unable to read state from a config file");
-        } else
-        {
-            if (!this->restoreState(layout->readAll()))
-            {
-                HUGGLE_DEBUG1("Failed to restore state");
-            }
-        }
+        else if (!this->restoreState(layout->readAll()))
+            HUGGLE_DEBUG1("Failed to restore state");
+
         layout->close();
         delete layout;
     }
@@ -233,15 +228,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         HUGGLE_DEBUG1("Loading geometry");
         layout = new QFile(Configuration::GetConfigurationPath() + "mainwindow_geometry");
         if (!layout->open(QIODevice::ReadOnly))
-        {
             Syslog::HuggleLogs->ErrorLog("Unable to read geometry from a config file");
-        } else
-        {
-            if (!this->restoreGeometry(layout->readAll()))
-            {
+        else if (!this->restoreGeometry(layout->readAll()))
                 HUGGLE_DEBUG1("Failed to restore layout");
-            }
-        }
         layout->close();
         delete layout;
     }
@@ -302,6 +291,11 @@ MainWindow::~MainWindow()
         this->PatrolledEdits.at(0)->UnregisterConsumer("patrol");
         this->PatrolledEdits.removeAt(0);
     }
+    while (this->Browsers.count())
+    {
+        delete this->Browsers.at(0);
+        this->Browsers.removeAt(0);
+    }
     delete this->fWikiPageTags;
     delete this->OnNext_EvPage;
     delete this->fSpeedyDelete;
@@ -326,7 +320,6 @@ MainWindow::~MainWindow()
     delete this->Queue1;
     delete this->SystemLog;
     delete this->Status;
-    delete this->Browser;
     delete this->fBlockForm;
     delete this->fWarningList;
     delete this->fDeleteForm;
@@ -431,32 +424,34 @@ void MainWindow::ProcessEdit(WikiEdit *e, bool IgnoreHistory, bool KeepHistory, 
     e->User->Resync();
     this->EditablePage = true;
     Configuration::HuggleConfiguration->ForcedNoEditJump = ForcedJump;
-    if (!KeepUser)
-    {
-        this->wUserInfo->ChangeUser(e->User);
-        if (Configuration::HuggleConfiguration->UserConfig->HistoryLoad)
-            this->wUserInfo->Read();
-    }
-    if (!KeepHistory)
-    {
-        this->wHistory->Update(e);
-        if (Configuration::HuggleConfiguration->UserConfig->HistoryLoad)
-            this->wHistory->Read();
-    }
     this->CurrentEdit = e;
     this->EditLoad = QDateTime::currentDateTime();
     this->Browser->DisplayDiff(e);
-    this->Render();
+    this->Render(KeepHistory, KeepUser);
     e->DecRef();
 }
 
-void MainWindow::Render()
+void MainWindow::Render(bool KeepHistory, bool KeepUser)
 {
     if (this->CurrentEdit != nullptr)
     {
         if (this->CurrentEdit->Page == nullptr)
             throw new Huggle::Exception("Page of CurrentEdit can't be nullptr at MainWindow::Render()");
 
+        if (!KeepUser)
+        {
+            this->wUserInfo->ChangeUser(this->CurrentEdit->User);
+            if (Configuration::HuggleConfiguration->UserConfig->HistoryLoad)
+                this->wUserInfo->Read();
+        }
+        if (!KeepHistory)
+        {
+            this->wHistory->Update(this->CurrentEdit);
+            if (Configuration::HuggleConfiguration->UserConfig->HistoryLoad)
+                this->wHistory->Read();
+        }
+
+        this->Title(this->CurrentEdit->Page->PageName);
         if (this->PreviousSite != this->GetCurrentWikiSite())
         {
             this->ReloadInterface();
@@ -500,6 +495,26 @@ void MainWindow::RequestPD()
     this->fSpeedyDelete = new SpeedyForm();
     this->fSpeedyDelete->Init(this->CurrentEdit);
     this->fSpeedyDelete->show();
+}
+
+void MainWindow::RevertAgf(bool only)
+{
+    if (this->CurrentEdit == nullptr || !this->CheckExit() || !this->CheckEditableBrowserPage())
+        return;
+    if (Configuration::HuggleConfiguration->Restricted)
+    {
+        Generic::DeveloperError();
+        return;
+    }
+    bool ok;
+    QString reason = QInputDialog::getText(this, _l("reason"), _l("main-revert-custom-reson"), QLineEdit::Normal,
+                                           "No reason was provided / custom revert", &ok);
+    if (!ok)
+        return;
+    QString summary = this->GetCurrentWikiSite()->GetProjectConfig()->AgfRevert;
+    summary.replace("$2", this->CurrentEdit->User->Username);
+    summary.replace("$1", reason);
+    this->Revert(summary, true, only);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -679,8 +694,20 @@ void MainWindow::ReloadShort(QString id)
             q = this->ui->actionRevert_currently_displayed_edit;
             tip = this->ui->actionRevert;
             break;
+        case HUGGLE_ACCEL_CREATE_NEW_TAB:
+            q = this->ui->actionOpen_new_tab;
+            break;
+        case HUGGLE_ACCEL_REVERT_STAY:
+            q = this->ui->actionRevert_currently_displayed_edit_and_stay_on_page;
+            break;
+        case HUGGLE_ACCEL_REVW_STAY:
+            q = this->ui->actionRevert_currently_displayed_edit_warn_user_and_stay_on_page;
+            break;
         case HUGGLE_ACCEL_MAIN_WATCH:
             q = this->ui->actionInsert_page_to_a_watchlist;
+            break;
+        case HUGGLE_ACCEL_CLOSE_TAB:
+            q = this->ui->actionClose_current_tab;
             break;
         case HUGGLE_ACCEL_MAIN_UNWATCH:
             q = this->ui->actionRemove_page_from_a_watchlist;
@@ -784,6 +811,9 @@ void MainWindow::ReloadShort(QString id)
         case HUGGLE_ACCEL_MAIN_WARN:
             q = this->ui->actionWarn_the_user;
             tip = this->ui->actionWarn;
+            break;
+        case HUGGLE_ACCEL_MAIN_REVERT_AGF_ONE_REV:
+            q = this->ui->actionRevert_only_this_revision_assuming_good_faith;
             break;
         case HUGGLE_ACCEL_MAIN_GOOD:
             q = this->ui->actionFlag_as_a_good_edit;
@@ -1050,6 +1080,27 @@ void MainWindow::FinishRestore()
     }
     this->RestoreEdit.Delete();
     this->RestoreQuery.Delete();
+}
+
+void MainWindow::CreateBrowserTab(QString name, int index)
+{
+    QWidget *tab = new QWidget(this);
+    HuggleWeb *web = new HuggleWeb();
+    this->Browsers.append(web);
+    QVBoxLayout *lay = new QVBoxLayout(tab);
+    lay->setSizeConstraint(QLayout::SetNoConstraint);
+    tab->setLayout(lay);
+    lay->setSpacing(0);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->addWidget(web);
+    this->ui->tabWidget->insertTab(index, tab, name);
+    this->ui->tabWidget->setCurrentIndex(index);
+    this->Browser = web;
+}
+
+void MainWindow::Title(QString name)
+{
+    this->ui->tabWidget->setTabText(this->ui->tabWidget->currentIndex(), Generic::ShrinkText(name, 20, false, 3));
 }
 
 void MainWindow::TriggerWarn()
@@ -1870,6 +1921,15 @@ void MainWindow::WelcomeGood()
     this->DisplayNext();
 }
 
+void MainWindow::RenderPage(QString Page)
+{
+    WikiPage *page = new WikiPage(Page);
+    page->Site = this->GetCurrentWikiSite();
+    this->tb->SetPage(page);
+    delete page;
+    this->tb->RenderEdit();
+}
+
 WikiSite *MainWindow::GetCurrentWikiSite()
 {
     if (this->CurrentEdit == nullptr || this->CurrentEdit->Page == nullptr)
@@ -2041,7 +2101,12 @@ void MainWindow::on_actionOpen_in_a_browser_triggered()
 {
     if (this->CurrentEdit != nullptr)
     {
-        QDesktopServices::openUrl(QUrl::fromEncoded(QString(this->ProjectURL() + this->CurrentEdit->Page->EncodedName()).toUtf8()));
+        if (this->CurrentEdit->NewPage)
+            QDesktopServices::openUrl(QUrl::fromEncoded(QString(this->ProjectURL() + this->CurrentEdit->Page->EncodedName()).toUtf8()));
+        else
+            QDesktopServices::openUrl(QUrl::fromEncoded(QString(Configuration::GetProjectScriptURL(this->GetCurrentWikiSite()) +
+                                                                  "index.php?diff=" +
+                                                                  QString::number(this->CurrentEdit->Diff)).toUtf8()));
     }
 }
 
@@ -2138,12 +2203,14 @@ void MainWindow::on_actionClear_talk_page_of_user_triggered()
 void MainWindow::on_actionList_all_QGC_items_triggered()
 {
     int xx=0;
+    GC::gc->Lock->lock();
     while (xx<GC::gc->list.count())
     {
         Collectable *query = GC::gc->list.at(xx);
         Syslog::HuggleLogs->Log(query->DebugHgc());
         xx++;
     }
+    GC::gc->Lock->unlock();
 }
 
 void MainWindow::on_actionRevert_currently_displayed_edit_warn_user_and_stay_on_page_triggered()
@@ -2261,13 +2328,17 @@ void Huggle::MainWindow::on_actionShow_talk_triggered()
     this->LockPage();
     // we switch this to false so that in case we have received a message,
     // before we display the talk page, it get marked as read
-    Configuration::HuggleConfiguration->NewMessage = false;
-    WikiPage *page = new WikiPage("User_talk:" + Configuration::HuggleConfiguration->SystemConfig_Username);
-    page->Site = this->GetCurrentWikiSite();
-    //this->Browser->DisplayPreFormattedPage(this->WikiScriptURL() + "index.php?title=User_talk:" + Configuration::HuggleConfiguration->SystemConfig_Username);
-    this->tb->SetPage(page);
-    delete page;
-    this->tb->RenderEdit();
+    if (Configuration::HuggleConfiguration->NewMessage)
+    {
+        Configuration::HuggleConfiguration->NewMessage = false;
+        ApiQuery *query = new ApiQuery(ActionClearHasMsg, this->GetCurrentWikiSite());
+        query->IncRef();
+        query->Target = "Flagging new messages as read";
+        QueryPool::HugglePool->AppendQuery(query);
+        query->Process();
+        query->DecRef();
+    }
+    this->RenderPage("User_talk:" + Configuration::HuggleConfiguration->SystemConfig_Username);
 }
 
 void MainWindow::on_actionProtect_triggered()
@@ -2339,22 +2410,7 @@ void Huggle::MainWindow::on_actionShow_list_of_score_words_triggered()
 
 void Huggle::MainWindow::on_actionRevert_AGF_triggered()
 {
-    if (this->CurrentEdit == nullptr || !this->CheckExit() || !this->CheckEditableBrowserPage())
-        return;
-    if (Configuration::HuggleConfiguration->Restricted)
-    {
-        Generic::DeveloperError();
-        return;
-    }
-    bool ok;
-    QString reason = QInputDialog::getText(this, _l("reason"), _l("main-revert-custom-reson"), QLineEdit::Normal,
-                                           "No reason was provided / custom revert", &ok);
-    if (!ok)
-        return;
-    QString summary = this->GetCurrentWikiSite()->GetProjectConfig()->AgfRevert;
-    summary.replace("$2", this->CurrentEdit->User->Username);
-    summary.replace("$1", reason);
-    this->Revert(summary);
+    this->RevertAgf(false);
 }
 
 void Huggle::MainWindow::on_actionDisplay_a_session_data_triggered()
@@ -2736,4 +2792,66 @@ void MainWindow::Go()
 {
     QAction *action = (QAction*)QObject::sender();
     QDesktopServices::openUrl(QString(Configuration::GetProjectWikiURL() + action->toolTip()));
+}
+
+void Huggle::MainWindow::on_actionRevert_only_this_revision_assuming_good_faith_triggered()
+{
+    this->RevertAgf(true);
+}
+
+void Huggle::MainWindow::on_tabWidget_currentChanged(int index)
+{
+    int in = this->ui->tabWidget->count() - 1;
+    if (index == in)
+    {
+        // we need to create a new browser window
+        this->CreateBrowserTab("New tab", in);
+        this->CurrentEdit = nullptr;
+        this->LockPage();
+    } else
+    {
+        this->Browser = (HuggleWeb*)this->ui->tabWidget->widget(index)->layout()->itemAt(0)->widget();
+        if (!this->Browser)
+            throw new Huggle::Exception("Invalid browser pointer");
+
+        // we need to change edit to what we have in that tab including all other stuff
+        this->CurrentEdit = this->Browser->CurrentEdit;
+        this->Render();
+    }
+}
+
+void Huggle::MainWindow::on_actionClose_current_tab_triggered()
+{
+    if (this->Browsers.count() < 2)
+    {
+        Syslog::HuggleLogs->ErrorLog("I can't close this tab because it's last one, you must have at least 1 tab open");
+        return;
+    }
+
+    // first kill the tab
+    HuggleWeb *br = this->Browser;
+    // we need to store the id of current tab because we must switch to index 0 before
+    // deleting it, otherwise it could jump on + tab which would immediatelly open
+    // new tab
+    int cu = this->ui->tabWidget->currentIndex();
+    this->ui->tabWidget->setCurrentIndex(0);
+    this->ui->tabWidget->removeTab(cu);
+    int index = 0;
+    while (index < this->Browsers.count())
+    {
+        if (this->Browsers.at(index) == br)
+        {
+            this->Browsers.removeAt(index);
+            break;
+        }
+        index++;
+    }
+    delete br;
+}
+
+void Huggle::MainWindow::on_actionOpen_new_tab_triggered()
+{
+    this->CreateBrowserTab("New tab", this->ui->tabWidget->count() - 1);
+    this->CurrentEdit = nullptr;
+    this->LockPage();
 }

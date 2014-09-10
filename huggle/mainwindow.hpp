@@ -134,6 +134,8 @@ namespace Huggle
             void PauseQueue();
             void ResumeQueue();
             void WelcomeGood();
+            //! Try to load a page
+            void RenderPage(QString Page);
             WikiSite *GetCurrentWikiSite();
             //! Make currently displayed page unchangeable (useful when you render non-diff pages where rollback wouldn't work)
             void LockPage();
@@ -166,6 +168,7 @@ namespace Huggle
             History *_History;
             //! Pointer to menu of revert warn button
             QMenu *RevertWarn = nullptr;
+            QList<HuggleWeb*> Browsers;
             //! Pointer to vandal network
             VandalNw *VandalDock;
             SessionForm *fSessionData = nullptr;
@@ -294,12 +297,19 @@ namespace Huggle
             void on_actionMy_talk_page_triggered();
             void on_actionMy_Contributions_triggered();
             void Go();
+            void on_actionRevert_only_this_revision_assuming_good_faith_triggered();
+            void on_tabWidget_currentChanged(int index);
+            void on_actionClose_current_tab_triggered();
+            void on_actionOpen_new_tab_triggered();
+
         private:
             //! Check if huggle is shutting down or not, in case it is, message box is shown as well
             //! this function should be called before every action user can trigger
             bool CheckExit();
             void DisplayWelcomeMessage();
             void FinishRestore();
+            void CreateBrowserTab(QString name, int index);
+            void Title(QString name);
             //! When any button to warn current user is pressed it call this function
             void TriggerWarn();
             //! Check if we can revert this edit
@@ -309,9 +319,10 @@ namespace Huggle
             void ChangeProvider(WikiSite *site, HuggleFeed *provider);
             void ReloadInterface();
             //! Recreate interface, should be called everytime you do anything with main form
-            void Render();
+            void Render(bool KeepHistory = false, bool KeepUser = false);
             //! Request a page deletion csd or afd and so on
             void RequestPD();
+            void RevertAgf(bool only);
             //! This function is called by main thread and is used to remove edits that were already reverted
             void TruncateReverts();
             void closeEvent(QCloseEvent *event);

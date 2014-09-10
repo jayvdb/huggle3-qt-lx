@@ -148,21 +148,26 @@ void Generic::DeveloperError()
                         " developer mode, because you aren't logged into the wiki");
 }
 
-QString Generic::ShrinkText(QString text, int size, bool html)
+QString Generic::ShrinkText(QString text, unsigned int size, bool html, unsigned int minimum)
 {
-    if (size < 2)
+    if (size < minimum)
     {
         throw new Huggle::Exception("Parameter size must be more than 2", "QString Core::ShrinkText(QString text, int size)");
     }
     // let's copy the text into new variable so that we don't break the original
     // who knows how these mutable strings are going to behave in qt :D
     QString text_ = text;
-    int length = text_.length();
+    unsigned int length = (unsigned int)text_.length();
     if (length > size)
     {
-        text_ = text_.mid(0, size - 2);
-        text_ = text_ + "..";
-    } else while (text_.length() < size)
+        text_ = text_.mid(0, size - minimum);
+        unsigned int cd = minimum;
+        while (cd > 0)
+        {
+            text_ = text_ + ".";
+            cd--;
+        }
+    } else while ((unsigned int)text_.length() < size)
     {
         text_ += " ";
     }

@@ -55,6 +55,18 @@
     <property name="bottomMargin">
      <number>0</number>
     </property>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>+</string>
+       </attribute>
+      </widget>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -63,7 +75,7 @@
      <x>0</x>
      <y>0</y>
      <width>794</width>
-     <height>20</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -123,6 +135,7 @@
     <addaction name="actionRevert_currently_displayed_edit_warn_user_and_stay_on_page"/>
     <addaction name="actionRevert_AGF"/>
     <addaction name="actionRevert_only_this_revision"/>
+    <addaction name="actionRevert_only_this_revision_assuming_good_faith"/>
     <addaction name="actionWarn_the_user"/>
     <addaction name="separator"/>
     <addaction name="actionDisplay_this_page_in_browser"/>
@@ -144,6 +157,9 @@
     <addaction name="separator"/>
     <addaction name="actionInsert_page_to_a_watchlist"/>
     <addaction name="actionRemove_page_from_a_watchlist"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose_current_tab"/>
+    <addaction name="actionOpen_new_tab"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -174,7 +190,6 @@
     <addaction name="actionTalk_page"/>
     <addaction name="actionUser_page"/>
     <addaction name="actionClear_talk_page_of_user"/>
-    <addaction name="actionClear_template_meta_data"/>
     <addaction name="actionUser_contributions"/>
     <addaction name="separator"/>
     <addaction name="actionWelcome_user_2"/>
@@ -990,6 +1005,24 @@
   <action name="actionMy_Contributions">
    <property name="text">
     <string>My Contributions</string>
+   </property>
+  </action>
+  <action name="actionRevert_only_this_revision_assuming_good_faith">
+   <property name="text">
+    <string>Revert only this revision assuming good faith</string>
+   </property>
+  </action>
+  <action name="actionClose_current_tab">
+   <property name="text">
+    <string>Close current tab</string>
+   </property>
+   <property name="toolTip">
+    <string>Close tab</string>
+   </property>
+  </action>
+  <action name="actionOpen_new_tab">
+   <property name="text">
+    <string>Open new tab</string>
    </property>
   </action>
  </widget>
