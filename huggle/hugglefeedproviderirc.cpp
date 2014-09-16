@@ -34,12 +34,12 @@ HuggleFeedProviderIRC::HuggleFeedProviderIRC(WikiSite *site) : HuggleFeed(site)
 
 HuggleFeedProviderIRC::~HuggleFeedProviderIRC()
 {
+    this->Stop();
     while (this->Buffer.count() > 0)
     {
         this->Buffer.at(0)->DecRef();
         this->Buffer.removeAt(0);
     }
-    this->Stop();
     delete this->thread;
     delete this->Network;
 }
@@ -112,21 +112,27 @@ void HuggleFeedProviderIRC::Stop()
 void HuggleFeedProviderIRC::InsertEdit(WikiEdit *edit)
 {
     if (edit == nullptr)
-        throw new Huggle::Exception("WikiEdit *edit must not be NULL", "void HuggleFeedProviderIRC::InsertEdit(WikiEdit *edit)");
+        throw new Huggle::NullPointerException("WikiEdit *edit", "void HuggleFeedProviderIRC::InsertEdit(WikiEdit *edit)");
 
+    // Increase the number of edits that were made since provider is up, this is used for statistics
     this->EditCounter++;
+    // We need to pre process edit so that we have all its properties ready for queue filter
     QueryPool::HugglePool->PreProcessEdit(edit);
+    // We only insert it to buffer in case that current filter matches the edit, this is probably not needed
+    // but it might be a performance improvement at some point
     if (MainWindow::HuggleMain->Queue1->CurrentFilter->Matches(edit))
     {
         this->lock.lock();
         if (this->Buffer.size() > Configuration::HuggleConfiguration->SystemConfig_ProviderCache)
         {
+            // If the buffer is full we need to remove 10 oldest edits
+            // we also show a warning to user
             while (this->Buffer.size() > (Configuration::HuggleConfiguration->SystemConfig_ProviderCache - 10))
             {
                 this->Buffer.at(0)->DecRef();
                 this->Buffer.removeAt(0);
             }
-            Huggle::Syslog::HuggleLogs->Log("WARNING: insufficient space in irc cache, increase ProviderCache size, otherwise you will be loosing edits");
+            Huggle::Syslog::HuggleLogs->WarningLog("insufficient space in irc cache, increase ProviderCache size, otherwise you will be losing edits");
         }
         this->Buffer.append(edit);
         this->lock.unlock();
