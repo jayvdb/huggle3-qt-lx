@@ -23,6 +23,7 @@
 #include <QDockWidget>
 #include "aboutform.hpp"
 #include "configuration.hpp"
+#include "editbar.hpp"
 #include "reloginform.hpp"
 #include "generic.hpp"
 #include "gc.hpp"
@@ -99,6 +100,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->SystemLog = new HuggleLog(this);
     this->CreateBrowserTab("Welcome page", 0);
     this->Queue1 = new HuggleQueue(this);
+    this->wEditBar = new EditBar(this);
     this->_History = new History(this);
     this->wHistory = new HistoryForm(this);
     this->wUserInfo = new UserinfoForm(this);
@@ -110,6 +112,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->addDockWidget(Qt::RightDockWidgetArea, this->wHistory);
     this->addDockWidget(Qt::RightDockWidgetArea, this->wUserInfo);
     this->addDockWidget(Qt::BottomDockWidgetArea, this->VandalDock);
+    this->addDockWidget(Qt::TopDockWidgetArea, this->wEditBar);
+    this->wEditBar->hide();
     this->preferencesForm = new Preferences(this);
     this->aboutForm = new AboutForm(this);
     this->ui->actionDisplay_bot_data->setChecked(Configuration::HuggleConfiguration->UserConfig->HAN_DisplayBots);
@@ -306,9 +310,11 @@ MainWindow::~MainWindow()
     delete this->VandalDock;
     delete this->_History;
     delete this->RevertWarn;
+    delete this->tCheck;
     delete this->fRelogin;
     delete this->WarnMenu;
     delete this->fProtectForm;
+    delete this->wEditBar;
     delete this->RevertSummaries;
     delete this->Queries;
     delete this->preferencesForm;
@@ -438,6 +444,7 @@ void MainWindow::Render(bool KeepHistory, bool KeepUser)
         if (this->CurrentEdit->Page == nullptr)
             throw new Huggle::Exception("Page of CurrentEdit can't be nullptr at MainWindow::Render()");
 
+        this->wEditBar->RemoveAll();
         if (!KeepUser)
         {
             this->wUserInfo->ChangeUser(this->CurrentEdit->User);
@@ -531,7 +538,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::FinishPatrols()
 {
     int x = 0;
-    bool flaggedrevs = Configuration::HuggleConfiguration->ProjectConfig->PatrollingFlaggedRevs;
+    bool flaggedrevs = hcfg->ProjectConfig->PatrollingFlaggedRevs;
     while (x < this->PatrolledEdits.count())
     {
         Collectable_SmartPtr<ApiQuery> query = this->PatrolledEdits.at(x);
@@ -603,12 +610,8 @@ void MainWindow::UpdateStatusBarData()
         statistics_ = "waiting for more edits";
     } else
     {
-        double EditsPerMinute = 0;
-        double RevertsPerMinute = 0;
-        if (this->GetCurrentWikiSite()->Provider->EditCounter > 0)
-            EditsPerMinute = this->GetCurrentWikiSite()->Provider->EditCounter / (Uptime / 60);
-        if (this->GetCurrentWikiSite()->Provider->RvCounter > 0)
-            RevertsPerMinute = this->GetCurrentWikiSite()->Provider->RvCounter / (Uptime / 60);
+        double EditsPerMinute = this->GetCurrentWikiSite()->Provider->GetEditsPerMinute();
+        double RevertsPerMinute = this->GetCurrentWikiSite()->Provider->GetRevertsPerMinute();
         double VandalismLevel = 0;
         if (EditsPerMinute > 0 && RevertsPerMinute > 0)
             VandalismLevel = (RevertsPerMinute / (EditsPerMinute / 2)) * 10;
@@ -619,6 +622,7 @@ void MainWindow::UpdateStatusBarData()
             color = "black";
         if (VandalismLevel > 1.8)
             color = "orange";
+        //! \todo LOCALIZE ME
         // make the numbers easier to read
         EditsPerMinute = ((double)qRound(EditsPerMinute * 100)) / 100;
         RevertsPerMinute = ((double)qRound(RevertsPerMinute * 100)) / 100;
@@ -950,20 +954,19 @@ bool MainWindow::PreflightCheck(WikiEdit *_e)
         throw new Huggle::Exception("nullptr edit in PreflightCheck(WikiEdit *_e) is not a valid edit");
     bool Warn = false;
     QString type = "unknown";
-    if (Configuration::HuggleConfiguration->WarnUserSpaceRoll && _e->Page->IsUserpage())
+    if (hcfg->WarnUserSpaceRoll && _e->Page->IsUserpage())
     {
         Warn = true;
         type = "in userspace";
-    } else if (Configuration::HuggleConfiguration->ProjectConfig->ConfirmOnSelfRevs
-               &&(_e->User->Username.toLower() == Configuration::HuggleConfiguration->SystemConfig_Username.toLower()))
+    } else if (hcfg->ProjectConfig->ConfirmOnSelfRevs && (_e->User->Username.toLower() == hcfg->SystemConfig_Username.toLower()))
     {
         type = "made by you";
         Warn = true;
-    } else if (Configuration::HuggleConfiguration->ProjectConfig->ConfirmTalk && _e->Page->IsTalk())
+    } else if (hcfg->ProjectConfig->ConfirmTalk && _e->Page->IsTalk())
     {
         type = "made on talk page";
         Warn = true;
-    } else if (Configuration::HuggleConfiguration->ProjectConfig->ConfirmWL && _e->User->IsWhitelisted())
+    } else if (hcfg->ProjectConfig->ConfirmWL && _e->User->IsWhitelisted())
     {
         type = "made by a user who is on white list";
         Warn = true;
@@ -1030,7 +1033,7 @@ void MainWindow::on_actionExit_triggered()
 
 void MainWindow::DisplayWelcomeMessage()
 {
-    WikiPage *welcome = new WikiPage(Configuration::HuggleConfiguration->ProjectConfig->WelcomeMP);
+    WikiPage *welcome = new WikiPage(hcfg->ProjectConfig->WelcomeMP);
     this->Browser->DisplayPreFormattedPage(welcome);
     this->LockPage();
     delete welcome;
@@ -1358,8 +1361,18 @@ void MainWindow::OnTimerTick0()
             this->Shutdown = ShutdownOpUpdatingConf;
             QString page = Configuration::HuggleConfiguration->GlobalConfig_UserConf;
             page = page.replace("$1", Configuration::HuggleConfiguration->SystemConfig_Username);
+            Version huggle_version(HUGGLE_VERSION);
             foreach (WikiSite*site, Configuration::HuggleConfiguration->Projects)
             {
+                if (*site->UserConfig->Previous_Version > huggle_version)
+                {
+                    if (Generic::MessageBox("Do you really want to store the configs",
+                                            "This version of huggle (" + QString(HUGGLE_VERSION) + ") is older that version of huggle that you used last (" +
+                                            site->UserConfig->Previous_Version->ToString() + ") if you continue, some of the settings you stored "\
+                                            "with the newer version may be lost. Do you really want to do that? (clicking no will skip it)",
+                                            MessageBoxStyleQuestion, true) == QMessageBox::No)
+                        continue;
+                }
                 WikiPage *uc = new WikiPage(page);
                 uc->Site = site;
                 Collectable_SmartPtr<EditQuery> temp = WikiUtil::EditPage(uc, Configuration::MakeLocalUserConfig(site),
@@ -2098,10 +2111,13 @@ void MainWindow::on_actionOpen_in_a_browser_triggered()
     {
         if (this->CurrentEdit->NewPage)
             QDesktopServices::openUrl(QUrl::fromEncoded(QString(this->ProjectURL() + this->CurrentEdit->Page->EncodedName()).toUtf8()));
-        else
+        else if (this->CurrentEdit->Diff > 0)
             QDesktopServices::openUrl(QUrl::fromEncoded(QString(Configuration::GetProjectScriptURL(this->GetCurrentWikiSite()) +
                                                                   "index.php?diff=" +
                                                                   QString::number(this->CurrentEdit->Diff)).toUtf8()));
+        else
+            QDesktopServices::openUrl(QUrl::fromEncoded(QString(Configuration::GetProjectScriptURL(this->GetCurrentWikiSite()) + "index.php?diff=" +
+                                                                QString::number(this->CurrentEdit->RevID)).toUtf8()));
     }
 }
 
@@ -2146,6 +2162,9 @@ void MainWindow::on_actionDisplay_this_page_in_browser_triggered()
         if (this->CurrentEdit->Diff > 0)
             QDesktopServices::openUrl(QUrl::fromEncoded(QString(this->WikiScriptURL() +
               "index.php?diff=" + QString::number(this->CurrentEdit->Diff)).toUtf8()));
+        else if (this->CurrentEdit->RevID > 0)
+            QDesktopServices::openUrl(QUrl::fromEncoded(QString(this->WikiScriptURL() +
+              "index.php?diff=" + QString::number(this->CurrentEdit->RevID)).toUtf8()));
         else
             QDesktopServices::openUrl(QUrl::fromEncoded(QString(this->ProjectURL() +
                               this->CurrentEdit->Page->EncodedName()).toUtf8()));
@@ -2189,9 +2208,9 @@ void MainWindow::on_actionClear_talk_page_of_user_triggered()
     }
     WikiPage *page = new WikiPage(this->CurrentEdit->User->GetTalk());
     /// \todo LOCALIZE ME
-    WikiUtil::EditPage(page, Configuration::HuggleConfiguration->ProjectConfig->ClearTalkPageTemp
-                       + "\n" + Configuration::HuggleConfiguration->ProjectConfig->WelcomeAnon + " ~~~~",
-                       "Cleaned old templates from talk page " + Configuration::HuggleConfiguration->ProjectConfig->EditSuffixOfHuggle);
+    WikiUtil::EditPage(page, this->GetCurrentWikiSite()->ProjectConfig->ClearTalkPageTemp
+                       + "\n" + this->GetCurrentWikiSite()->ProjectConfig->WelcomeAnon + " ~~~~",
+                       "Cleaned old templates from talk page " + this->GetCurrentWikiSite()->ProjectConfig->EditSuffixOfHuggle);
     delete page;
 }
 
@@ -2375,7 +2394,7 @@ void MainWindow::on_actionReport_username_triggered()
     {
         return;
     }
-    if (!Configuration::HuggleConfiguration->ProjectConfig->UAAavailable)
+    if (!this->GetCurrentWikiSite()->ProjectConfig->UAAavailable)
     {
         QMessageBox dd;
         dd.setIcon(dd.Information);
@@ -2849,4 +2868,14 @@ void Huggle::MainWindow::on_actionOpen_new_tab_triggered()
     this->CreateBrowserTab("New tab", this->ui->tabWidget->count() - 1);
     this->CurrentEdit = nullptr;
     this->LockPage();
+}
+
+void Huggle::MainWindow::on_actionVerbosity_2_triggered()
+{
+    hcfg->Verbosity += 1;
+}
+
+void Huggle::MainWindow::on_actionVerbosity_triggered()
+{
+    hcfg->Verbosity -= 1;
 }

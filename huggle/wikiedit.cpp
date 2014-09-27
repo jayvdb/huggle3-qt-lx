@@ -327,7 +327,7 @@ QString WikiEdit::GetPixmap()
     if (this->OwnEdit)
         return ":/huggle/pictures/Resources/blob-me.png";
 
-    if (this->User->IsBanned)
+    if (this->User->IsBlocked)
         return ":/huggle/pictures/Resources/blob-blocked.png";
 
     if (this->User->IsReported)
@@ -541,6 +541,40 @@ Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid, QString pre
     }
     WikiEdit::Lock_EditList->unlock();
     return e;
+}
+
+QString WikiEdit::GetPixmapFromEditType(EditType edit_type)
+{
+    switch (edit_type)
+    {
+        case EditType_Normal:
+            return ":/huggle/pictures/Resources/blob-none.png";
+        case EditType_1:
+            return ":/huggle/pictures/Resources/blob-warn-1.png";
+        case EditType_2:
+            return ":/huggle/pictures/Resources/blob-warn-2.png";
+        case EditType_3:
+            return ":/huggle/pictures/Resources/blob-warn-3.png";
+        case EditType_4:
+            return ":/huggle/pictures/Resources/blob-warn-4.png";
+        case EditType_Anon:
+            return ":/huggle/pictures/Resources/blob-anon.png";
+        case EditType_Bot:
+            return ":/huggle/pictures/Resources/blob-bot.png";
+        case EditType_Blocked:
+            return ":/huggle/pictures/Resources/blob-blocked.png";
+        case EditType_New:
+            return ":/huggle/pictures/Resources/blob-new.png";
+        case EditType_Reported:
+            return ":/huggle/pictures/Resources/blob-reported.png";
+        case EditType_Revert:
+            return ":/huggle/pictures/Resources/blob-revert.png";
+        case EditType_Self:
+            return ":/huggle/pictures/Resources/blob-me.png";
+        case EditType_W:
+            return ":/huggle/pictures/Resources/blob-ignored.png";
+    }
+    return ":/huggle/pictures/Resources/blob-none.png";
 }
 
 WikiSite *WikiEdit::GetSite()

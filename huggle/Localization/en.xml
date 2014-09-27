@@ -241,7 +241,7 @@
     <string name="main-new-messages">You have new messages. Select System -&gt; Show new messages or press M to view them.</string>
     <string name="main-space">Page name can't end with a space, please correct the page name</string>
     <string name="main-system">System</string>
-    <string name="main-status-bar">Processing &lt;b&gt;$1&lt;/b&gt;edits and &lt;b&gt;$2&lt;/b&gt;queries. Whitelisted users: &lt;b&gt;$3&lt;/b&gt; Queue size: &lt;b&gt;$4&lt;/b&gt; Statistics for $6: $5</string>
+    <string name="main-status-bar">Processing &lt;b&gt;$1&lt;/b&gt; edits and &lt;b&gt;$2&lt;/b&gt; queries. Whitelisted users: &lt;b&gt;$3&lt;/b&gt; Queue size: &lt;b&gt;$4&lt;/b&gt; Statistics for $6: $5</string>
     <string name="main-shutting-down">Huggle is shutting down, ignored</string>
     <string name="main-system-messages">Show new messages</string>
     <string name="main-system-reconnectirc">Reconnect IRC feed</string>
@@ -535,7 +535,7 @@
     <string name="history-fail">Failed to retrieve history of $1</string>
     <string name="history-progress">Retrieving history of $1 ($2)...</string>
     <string name="history-work">Undoing own edit made to $1</string>
-    <string name="history-message-revert-title">You really want to undo just message?</string>
+    <string name="history-message-revert-title">Do you really want to undo just this message?</string>
     <string name="history-not-found">Nothing was found to undo</string>
     <string name="history-already-done">This was already undone</string>
     <string name="history-message-revert-body">This was a message that is referenced by a rollback, are you sure you want to undo only template and not even your edit to page? (you need to undo the rollback in case you want to revert both of these)</string>

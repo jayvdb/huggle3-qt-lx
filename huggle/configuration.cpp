@@ -19,6 +19,7 @@
 #include "huggleoption.hpp"
 #include "hugglequeuefilter.hpp"
 #include "huggleparser.hpp"
+#include "version.hpp"
 #include "localization.hpp"
 #include "wikipage.hpp"
 #include "wikisite.hpp"
@@ -224,7 +225,9 @@ QString Configuration::GenerateSuffix(QString text)
 QString Configuration::MakeLocalUserConfig(WikiSite *site)
 {
     QString configuration_ = "<nowiki>\n";
+    configuration_ += "// This is a configuration of huggle, do not change it unless you know what you do.\n";
     configuration_ += "enable:true\n";
+    configuration_ += "// Last version of huggle that wrote into this configuration file (sanity check)\n";
     configuration_ += "version:" + HuggleConfiguration->HuggleVersion + "\n\n";
     configuration_ += "speedy-message-title:Speedy deleted\n";
     configuration_ += "report-summary:" + site->ProjectConfig->ReportSummary + "\n";
@@ -249,6 +252,7 @@ QString Configuration::MakeLocalUserConfig(WikiSite *site)
     configuration_ += "// this option will change the behaviour of automatic resolution, be carefull\n";
     configuration_ += "revert-auto-multiple-edits:" + Bool2String(HuggleConfiguration->RevertOnMultipleEdits) + "\n";
     configuration_ += "automatically-resolve-conflicts:" + Bool2String(site->UserConfig->AutomaticallyResolveConflicts) + "\n";
+    configuration_ += "font:" + HuggleConfiguration->SystemConfig_Font + "\n";
     configuration_ += "software-rollback:" + Bool2String(HuggleConfiguration->EnforceManualSoftwareRollback) + "\n";
     configuration_ += "diff-font-size:" + QString::number(HuggleConfiguration->SystemConfig_FontSize) + "\n";
     configuration_ += "HistoryLoad:" + Bool2String(site->UserConfig->HistoryLoad) + "\n";
@@ -520,6 +524,11 @@ void Configuration::LoadSystemConfig(QString fn)
             Configuration::HuggleConfiguration->ProjectString = option.attribute("text").split(",");
             continue;
         }
+        if (key == "SuppressWarnings")
+        {
+            Configuration::HuggleConfiguration->SystemConfig_SuppressWarnings = SafeBool(option.attribute("text"));
+            continue;
+        }
     }
     item = 0;
     while (item < e.count())
@@ -579,6 +588,7 @@ void Configuration::SaveSystemConfig()
     InsertConfig("IndexOfLastWiki", QString::number(Configuration::HuggleConfiguration->IndexOfLastWiki), writer);
     InsertConfig("DynamicColsInList", Bool2String(Configuration::HuggleConfiguration->SystemConfig_DynamicColsInList), writer);
     InsertConfig("Multiple", Bool2String(Configuration::HuggleConfiguration->Multiple), writer);
+    InsertConfig("SuppressWarnings", Bool2String(Configuration::HuggleConfiguration->SystemConfig_SuppressWarnings), writer);
     QString projects;
     foreach (QString wiki, Configuration::HuggleConfiguration->ProjectString)
     {
@@ -637,6 +647,8 @@ bool Configuration::ParseUserConfig(WikiSite *site, QString config)
     site->ProjectConfig->ScoreFlag = site->GetUserConfig()->SetOption("score-flag", config, site->ProjectConfig->ScoreFlag).toInt();
     site->ProjectConfig->WarnSummary = site->GetUserConfig()->SetOption("warn-summary", config, site->ProjectConfig->WarnSummary).toString();
     this->EnforceManualSoftwareRollback = SafeBool(ConfigurationParse("software-rollback", config));
+    this->SystemConfig_FontSize = ConfigurationParse("diff-font-size", config, "16").toInt();
+    this->SystemConfig_Font = ConfigurationParse("font", config, this->SystemConfig_Font);
     site->ProjectConfig->WarnSummary2 = site->GetUserConfig()->SetOption("warn-summary-2", config, site->ProjectConfig->WarnSummary2).toString();
     site->ProjectConfig->WarnSummary3 = site->GetUserConfig()->SetOption("warn-summary-3", config, site->ProjectConfig->WarnSummary3).toString();
     site->ProjectConfig->WarnSummary4 = site->GetUserConfig()->SetOption("warn-summary-4", config, site->ProjectConfig->WarnSummary4).toString();
@@ -674,6 +686,8 @@ bool Configuration::ParseUserConfig(WikiSite *site, QString config)
     site->UserConfig->GoNext = static_cast<Configuration_OnNext>(ConfigurationParse("OnNext", config, "1").toInt());
     site->UserConfig->DeleteEditsAfterRevert = SafeBool(ConfigurationParse("DeleteEditsAfterRevert", config, "true"));
     site->UserConfig->WelcomeGood = site->GetUserConfig()->SetOption("welcome-good", config, site->ProjectConfig->WelcomeGood).toBool();
+    delete site->UserConfig->Previous_Version;
+    site->UserConfig->Previous_Version = new Version(ConfigurationParse("version", config, HUGGLE_VERSION));
     // for now we do this only for home wiki but later we need to make it for every wiki
     if (this->Project == site)
     {

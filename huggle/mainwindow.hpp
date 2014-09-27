@@ -30,16 +30,17 @@ namespace Ui
 
 namespace Huggle
 {
-    class DeleteForm;
+    class AboutForm;
     class BlockUser;
+    class DeleteForm;
+    class EditBar;
     class HuggleLog;
     class History;
     class HistoryForm;
-    class UserinfoForm;
     class HuggleFeed;
     class HuggleQueue;
     class HuggleTool;
-    class AboutForm;
+    class UserinfoForm;
     class HuggleWeb;
     class SpeedyForm;
     class RevertQuery;
@@ -153,6 +154,7 @@ namespace Huggle
             UserinfoForm *wUserInfo;
             //! Pointer to toolbar
             HuggleTool *tb;
+            EditBar *wEditBar;
             //! Pointer to options
             Preferences *preferencesForm = nullptr;
             //! Pointer to ignore list (see ignorelist.h)
@@ -301,7 +303,8 @@ namespace Huggle
             void on_tabWidget_currentChanged(int index);
             void on_actionClose_current_tab_triggered();
             void on_actionOpen_new_tab_triggered();
-
+            void on_actionVerbosity_2_triggered();
+            void on_actionVerbosity_triggered();
         private:
             //! Check if huggle is shutting down or not, in case it is, message box is shown as well
             //! this function should be called before every action user can trigger

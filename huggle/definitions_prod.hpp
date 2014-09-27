@@ -24,6 +24,10 @@ typedef char byte_ht;
 // Version of mediawiki that we do support
 #define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.22"
 
+// How often the statistics get purged in seconds (smaller, more precise they will be)
+#define HUGGLE_STATISTICS_LIFETIME     200
+#define HUGGLE_STATISTICS_BLOCK_SIZE   20
+
 // we are using translatewiki and if this is not defined there is a huge overhead of Qt code
 #ifndef QT_NO_TRANSLATION
     #define QT_NO_TRANSLATION
@@ -36,6 +40,9 @@ typedef char byte_ht;
     #include <cstddef>
     #include "TargetConditionals.h"
     #ifdef TARGET_OS_MAC
+// fixme
+// this is needed on mac, who knows why, gets a cookie :o
+namespace std { typedef decltype(nullptr) nullptr_t; }
         #define HUGGLE_MACX true
         #define HUGGLE_NO_MT_GC
     #endif

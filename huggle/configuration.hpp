@@ -246,7 +246,9 @@ namespace Huggle
             bool            SystemConfig_SafeMode = false;
             /// \todo This option needs to be implemented to browser so that font size is different when this is changed by user
             //! Size of fonts in diff
-            int             SystemConfig_FontSize = 10;
+            int             SystemConfig_FontSize = 16;
+            //! Font that we use to render diffs and similar pages
+            QString         SystemConfig_Font = "Helvetica, Arial, sans-serif";
             //! Timeout for queries
             int             SystemConfig_ReadTimeout = 60;
             //! Timeout for write / update queries
@@ -271,6 +273,7 @@ namespace Huggle
             bool            SystemConfig_NotifyBeta = false;
             bool            SystemConfig_LanguageSanity = false;
             bool            SystemConfig_RequestDelay = false;
+            bool            SystemConfig_SuppressWarnings = true;
             unsigned int    SystemConfig_DelayVal = 0;
             unsigned int    SystemConfig_WikiRC = 200;
             //! This is a size of cache used by HAN to keep data about other user messages

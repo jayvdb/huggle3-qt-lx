@@ -11,11 +11,12 @@
 #include "userinfoform.hpp"
 #include <QtXml>
 #include "configuration.hpp"
+#include "editbar.hpp"
 #include "exception.hpp"
-#include "querypool.hpp"
 #include "localization.hpp"
 #include "huggleweb.hpp"
 #include "mainwindow.hpp"
+#include "querypool.hpp"
 #include "syslog.hpp"
 #include "wikiuser.hpp"
 #include "wikipage.hpp"
@@ -79,6 +80,7 @@ void UserinfoForm::ChangeUser(WikiUser *user)
     {
         this->ui->tableWidget->removeRow(0);
     }
+    this->Items.clear();
     QString text = "Flags: " + user->Flags() + " Score: " + QString::number(user->GetBadnessScore()) + " level: "
                     + QString::number(user->WarningLevel);
     if (user->EditCount > 0)
@@ -138,14 +140,23 @@ void UserinfoForm::OnTick()
         {
             QColor xb;
             bool xt = false;
-            bool top = false;
             while (results.count() > xx)
             {
                 QDomElement edit = results.at(xx).toElement();
                 if (!edit.attributes().contains("user"))
                     continue;
-                top = edit.attributes().contains("top");
-                if (top)
+                UserInfoFormHistoryItem item;
+                item.Top = edit.attributes().contains("top");
+                item.Name = this->User->Username;
+                if (this->User->IsIP())
+                {
+                    item.Type = EditType_Anon;
+                }
+                if (this->User->IsReported)
+                    item.Type = EditType_Reported;
+                if (this->User->IsBlocked)
+                    item.Type = EditType_Blocked;
+                if (item.Top)
                 {
                     // set a different color for edits that are top
                     if (xt)
@@ -159,58 +170,58 @@ void UserinfoForm::OnTick()
                     else
                         xb = QColor(224, 222, 250);
                 }
+
                 xt = !xt;
-                QString page = "unknown page";
+                item.Page = "unknown page";
                 if (edit.attributes().contains("title"))
-                    page = edit.attribute("title");
-                QString time = "unknown time";
+                    item.Page = edit.attribute("title");
+                item.Date = "unknown time";
                 if (edit.attributes().contains("timestamp"))
-                    time = edit.attribute("timestamp");
-                QString diff = "";
+                    item.Date = edit.attribute("timestamp");
                 if (edit.attributes().contains("revid"))
-                    diff = edit.attribute("revid");
+                    item.RevID = edit.attribute("revid");
                 int last = this->ui->tableWidget->rowCount();
                 this->ui->tableWidget->insertRow(last);
                 QFont font;
-                if (top)
+                if (item.Top)
                 {
                     font.setBold(true);
                 }
-                QTableWidgetItem *q = new QTableWidgetItem(page);
+                QTableWidgetItem *q = new QTableWidgetItem(item.Page);
                 q->setBackgroundColor(xb);
                 q->setFont(font);
                 this->ui->tableWidget->setItem(last, 0, q);
-                q = new QTableWidgetItem(time);
+                q = new QTableWidgetItem(item.Date);
                 q->setBackgroundColor(xb);
                 this->ui->tableWidget->setItem(last, 1, q);
-                q = new QTableWidgetItem(diff);
+                q = new QTableWidgetItem(item.RevID);
                 q->setBackgroundColor(xb);
+                this->Items.append(item);
                 this->ui->tableWidget->setItem(last, 2, q);
                 xx++;
             }
         } else
             Syslog::HuggleLogs->ErrorLog(_l("user-history-fail", this->User->Username));
         this->ui->tableWidget->resizeRowsToContents();
+        MainWindow::HuggleMain->wEditBar->RefreshUser();
         this->qContributions.Delete();
         this->timer->stop();
     }
 }
 
-void UserinfoForm::on_tableWidget_clicked(const QModelIndex &index)
+void UserinfoForm::Render(long revid, QString page)
 {
     // in case there are no edits we can safely quit here, there is also check because
     // we must not retrieve edit until previous operation did finish
     if (this->qContributions != nullptr || this->ui->tableWidget->rowCount() == 0)
         return;
 
+    // check if revid is useable for us
+    if (revid == 0)
+        return;
+
     // check if we don't have this edit in a buffer
     int x = 0;
-    int revid = this->ui->tableWidget->item(index.row(), 2)->text().toInt();
-    if (revid == 0)
-    {
-        // unable to read the revid
-        return;
-    }
     WikiEdit::Lock_EditList->lock();
     while (x < WikiEdit::EditList.count())
     {
@@ -227,11 +238,17 @@ void UserinfoForm::on_tableWidget_clicked(const QModelIndex &index)
     // there is no such edit, let's get it
     this->edit = new WikiEdit();
     this->edit->User = new WikiUser(this->User);
-    this->edit->Page = new WikiPage(this->ui->tableWidget->item(index.row(), 0)->text());
+    this->edit->Page = new WikiPage(page);
     this->edit->RevID = revid;
     this->edit->Page->Site = this->User->GetSite();
     QueryPool::HugglePool->PreProcessEdit(this->edit);
     QueryPool::HugglePool->PostProcessEdit(this->edit);
     MainWindow::HuggleMain->Browser->RenderHtml(_l("wait"));
     this->timer->start(HUGGLE_TIMER);
+}
+
+void UserinfoForm::on_tableWidget_clicked(const QModelIndex &index)
+{
+    this->Render(this->ui->tableWidget->item(index.row(), 2)->text().toLong(),
+                 this->ui->tableWidget->item(index.row(), 0)->text());
 }
