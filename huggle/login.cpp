@@ -9,15 +9,14 @@
 //GNU General Public License for more details.
 
 #include "login.hpp"
-#include <QMessageBox>
 #include <QCheckBox>
 #include <QUrl>
 #include <QDesktopServices>
-#include <QtXml>
 #include "apiqueryresult.hpp"
 #include "core.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
+#include "generic.hpp"
 #include "syslog.hpp"
 #include "mainwindow.hpp"
 #include "mediawiki.hpp"
@@ -172,10 +171,14 @@ void Login::RemoveQueries()
     Sites = this->WhitelistQueries.keys();
     foreach (WikiSite* st, Sites)
         this->WhitelistQueries[st]->DecRef();
+    Sites = this->qTokenInfo.keys();
+    foreach (WikiSite* st, Sites)
+        this->qTokenInfo[st]->DecRef();
     Sites = this->qSiteInfo.keys();
     foreach (WikiSite* st, Sites)
         this->qSiteInfo[st]->DecRef();
     this->qSiteInfo.clear();
+    this->qTokenInfo.clear();
     this->WhitelistQueries.clear();
     this->LoginQueries.clear();
 }
@@ -200,10 +203,10 @@ void Login::CancelLogin()
 int Login::GetRowIDForSite(WikiSite *site, int row)
 {
     if (!this->LoadingFormRows.contains(site))
-        throw new Huggle::Exception("There is no such a site in DB of rows", "int Login::GetRowIDForSite(WikiSite *site, int row)");
+        throw new Huggle::Exception("There is no such a site in DB of rows", BOOST_CURRENT_FUNCTION);
 
     if (!this->LoadingFormRows[site].contains(row))
-        throw new Huggle::Exception("There is no such a row in DB of rows", "int Login::GetRowIDForSite(WikiSite *site, int row)");
+        throw new Huggle::Exception("There is no such a row in DB of rows", BOOST_CURRENT_FUNCTION);
 
     return this->LoadingFormRows[site][row];
 }
@@ -302,19 +305,13 @@ void Login::PressOK()
     this->GlobalConfig = false;
     if (this->ui->tab_oauth->isVisible())
     {
-        QMessageBox mb;
-        mb.setWindowTitle(_l("function-miss"));
-        mb.setText("This function is not available for wmf wikis in this moment");
-        mb.exec();
+        Generic::pMessageBox(this, _l("function-miss"), "This function is not available for wmf wikis in this moment");
         return;
     }
     if (this->ui->Project->count() == 0)
     {
         // there are no projects in login form
-        QMessageBox mb;
-        mb.setWindowTitle(_l("error"));
-        mb.setText("There are no projects defined in a list you need to set up some on global wiki");
-        mb.exec();
+        Generic::pMessageBox(this, _l("error"), "There are no projects defined in a list you need to set up some on global wiki");
         return;
     }
     Configuration::HuggleConfiguration->IndexOfLastWiki = this->ui->Project->currentIndex();
@@ -329,7 +326,7 @@ void Login::PressOK()
         foreach (QCheckBox* cb, this->Project_CheckBoxens)
         {
             if (project_id >= Configuration::HuggleConfiguration->ProjectList.count())
-                throw new Huggle::Exception("Inconsistent number of projects and check boxes in memory");
+                throw new Huggle::Exception("Inconsistent number of projects and check boxes in memory", BOOST_CURRENT_FUNCTION);
             WikiSite *project = Configuration::HuggleConfiguration->ProjectList.at(project_id);
             if (cb->isChecked() && !Configuration::HuggleConfiguration->Projects.contains(project))
                 Configuration::HuggleConfiguration->Projects << project;
@@ -417,10 +414,10 @@ void Login::PerformLoginPart2(WikiSite *site)
         return;
 
     ApiQuery *query = this->LoginQueries[site];
-    if (query->Result->IsFailed())
+    if (query->IsFailed())
     {
         this->CancelLogin();
-        this->Update(_l("login-fail", site->Name) + ": " + query->Result->ErrorMessage);
+        this->Update(_l("login-fail", site->Name) + ": " + query->GetFailureReason());
         return;
     }
     QString token = this->GetToken(query->Result->Data);
@@ -490,7 +487,7 @@ void Login::FinishLogin(WikiSite *site)
     ApiQuery *query = this->LoginQueries[site];
     if (query->Result->IsFailed())
     {
-        this->DisplayError("Login failed (on " + site->Name + "): " + query->Result->ErrorMessage);
+        this->DisplayError("Login failed (on " + site->Name + "): " + query->GetFailureReason());
         this->Statuses[site] = LoginFailed;
         return;
     }
@@ -507,6 +504,11 @@ void Login::FinishLogin(WikiSite *site)
         this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_LOGIN), LoadingForm_Icon_Success);
         qr->Parameters = "meta=siteinfo&siprop=" + QUrl::toPercentEncoding("namespaces|general");
         qr->Process();
+        qr = new ApiQuery(ActionQuery, site);
+        this->qTokenInfo.insert(site, qr);
+        qr->IncRef();
+        qr->Parameters = "meta=tokens&type=" + QUrl::toPercentEncoding("watch|patrol|rollback");
+        qr->Process();
         this->Statuses[site] = RetrievingProjectConfig;
     }
 }
@@ -519,7 +521,7 @@ void Login::RetrieveWhitelist(WikiSite *site)
         if (query->IsProcessed())
         {
             this->WhitelistQueries.remove(site);
-            if (query->Result->IsFailed())
+            if (query->IsFailed())
             {
                 //! \todo This needs to be handled per project, there is no point in disabling WL on all projects
                 Configuration::HuggleConfiguration->SystemConfig_WhitelistDisabled = true;
@@ -551,7 +553,7 @@ void Login::RetrieveProjectConfig(WikiSite *site)
         ApiQuery *query = this->LoginQueries[site];
         if (query->IsProcessed())
         {
-            if (query->Result->IsFailed())
+            if (query->IsFailed())
             {
                 this->DisplayError(_l("login-error-config", site->Name, query->Result->ErrorMessage));
                 return;
@@ -567,7 +569,7 @@ void Login::RetrieveProjectConfig(WikiSite *site)
             query->DecRef();
             // since now data may be deleted
             if (site->ProjectConfig == nullptr)
-                throw new Huggle::NullPointerException("site->Project", "void Login::RetrieveProjectConfig(WikiSite *site)");
+                throw new Huggle::NullPointerException("site->Project", BOOST_CURRENT_FUNCTION);
             QString reason;
             if (site->ProjectConfig->Parse(value, &reason))
             {
@@ -602,7 +604,7 @@ void Login::RetrieveUserConfig(WikiSite *site)
         ApiQuery *q = this->LoginQueries[site];
         if (q->IsProcessed())
         {
-            if (q->Result->IsFailed())
+            if (q->IsFailed())
             {
                 this->DisplayError("Login failed unable to retrieve user config: " + q->Result->ErrorMessage);
                 return;
@@ -644,7 +646,7 @@ void Login::RetrieveUserConfig(WikiSite *site)
             QString val_ = data->Value;
             this->LoginQueries.remove(site);
             q->DecRef();
-            if (Configuration::HuggleConfiguration->ParseUserConfig(site, val_))
+            if (site->GetUserConfig()->ParseUserConfig(val_, site->GetProjectConfig(), site == hcfg->Project))
             {
                 if (this->LoadedOldConfigs[site])
                 {
@@ -657,6 +659,7 @@ void Login::RetrieveUserConfig(WikiSite *site)
                     this->DisplayError(_l("login-fail-enable-true", site->Name));
                     return;
                 }
+                hcfg->NormalizeConf(site);
                 this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_USERCONFIG), LoadingForm_Icon_Success);
                 this->Statuses[site] = RetrievingUser;
                 return;
@@ -684,9 +687,9 @@ void Login::RetrieveUserInfo(WikiSite *site)
         ApiQuery *query = this->LoginQueries[site];
         if (query->IsProcessed())
         {
-            if (query->Result->IsFailed())
+            if (query->IsFailed())
             {
-                this->DisplayError(_l("login-fail-no-info", site->Name, query->Result->ErrorMessage));
+                this->DisplayError(_l("login-fail-no-info", site->Name, query->GetFailureReason()));
                 return;
             }
             QList<ApiQueryResultNode*> node = query->GetApiQueryResult()->GetNodes("r");
@@ -752,24 +755,49 @@ void Login::DeveloperMode()
 
 void Login::ProcessSiteInfo(WikiSite *site)
 {
-    if (this->qSiteInfo.contains(site) && this->qSiteInfo[site]->IsProcessed())
+    if (this->qTokenInfo.contains(site) && this->qSiteInfo.contains(site)
+            && this->qTokenInfo[site]->IsProcessed() && this->qSiteInfo[site]->IsProcessed())
     {
-        //! \todo Check that request isnt failed
-        QDomDocument d;
-        d.setContent(this->qSiteInfo[site]->Result->Data);
-        QDomNodeList l = d.elementsByTagName("general");
-        if( l.count() < 1 )
+        if (this->qSiteInfo[site]->IsFailed())
+        {
+            this->DisplayError("Site info query for " + site->Name + " has failed: " + this->qSiteInfo[site]->GetFailureReason());
+            return;
+        }
+        if (!this->qTokenInfo[site]->IsFailed())
+        {
+            // if this query failed user is probably on older mediawiki, that means some features will not work
+            // but there is no reason why we should abort whole login operation just because of that
+            ApiQueryResultNode *tokens = this->qTokenInfo[site]->GetApiQueryResult()->GetNode("tokens");
+            if (tokens != nullptr)
+            {
+                if (tokens->Attributes.contains("rollbacktoken"))
+                {
+                    site->GetProjectConfig()->RollbackToken = tokens->GetAttribute("rollbacktoken");
+                    HUGGLE_DEBUG("Token for " + site->Name + " rollback " + site->GetProjectConfig()->RollbackToken, 2);
+                } else
+                {
+                    HUGGLE_DEBUG1("No rollback for " + site->Name + "result: " + this->qTokenInfo[site]->Result->Data);
+                }
+            }
+        } else
+        {
+            Syslog::HuggleLogs->WarningLog("Tokens query for " + site->Name + " has failed: " + this->qTokenInfo[site]->GetFailureReason());
+        }
+        // we can remove the query no matter if it was finished or not
+        this->qTokenInfo[site]->DecRef();
+        this->qTokenInfo.remove(site);
+        ApiQueryResultNode *g_ = this->qSiteInfo[site]->GetApiQueryResult()->GetNode("general");
+        if( g_ == nullptr )
         {
             this->DisplayError("No site info was returned for this wiki");
             return;
         }
-        QDomElement item = l.at(0).toElement();
-        if (item.attributes().contains("rtl"))
+        if (g_->Attributes.contains("rtl"))
             site->IsRightToLeft = true;
 
-        if (item.attributes().contains("generator"))
+        if (g_->Attributes.contains("generator"))
         {
-            QString vr = item.attribute("generator");
+            QString vr = g_->GetAttribute("generator");
             if (!vr.contains(" "))
             {
                 Syslog::HuggleLogs->WarningLog("Mediawiki of " + site->Name + " has some invalid version: " + vr);
@@ -777,6 +805,7 @@ void Login::ProcessSiteInfo(WikiSite *site)
             {
                 vr = vr.mid(vr.indexOf(" ") + 1);
                 site->MediawikiVersion = Version(vr);
+                HUGGLE_DEBUG1(site->Name + " mediawiki " + site->MediawikiVersion.ToString());
                 if (site->MediawikiVersion < Version::SupportedMediawiki)
                     Syslog::HuggleLogs->WarningLog("Mediawiki of " + site->Name + " is using version " + site->MediawikiVersion.ToString() +
                                                    " which isn't supported by huggle");
@@ -785,13 +814,13 @@ void Login::ProcessSiteInfo(WikiSite *site)
         {
             Syslog::HuggleLogs->WarningLog("MediaWiki of " + site->Name + " provides no version");
         }
-        if (item.attributes().contains("time"))
+        if (g_->Attributes.contains("time"))
         {
-            QDateTime server_time = MediaWiki::FromMWTimestamp(item.attribute("time"));
+            QDateTime server_time = MediaWiki::FromMWTimestamp(g_->GetAttribute("time"));
             site->GetProjectConfig()->ServerOffset = QDateTime::currentDateTime().secsTo(server_time);
         }
-        l = d.elementsByTagName("ns");
-        if (l.count() < 1)
+        QList<ApiQueryResultNode*> ns = this->qSiteInfo[site]->GetApiQueryResult()->GetNodes("ns");
+        if (ns.count() < 1)
         {
             Syslog::HuggleLogs->WarningLog(QString("Mediawiki of ") + site->Name + " provided no information about namespaces");
         } else
@@ -799,13 +828,13 @@ void Login::ProcessSiteInfo(WikiSite *site)
             // let's prepare a NS list
             site->ClearNS();
             register int index = 0;
-            while (index < l.count())
+            while (index < ns.count())
             {
-                QDomElement e = l.at(index).toElement();
+                ApiQueryResultNode *node = ns.at(index);
                 index++;
-                if (!e.attributes().contains("id") || !e.attributes().contains("canonical"))
+                if (!node->Attributes.contains("id") || !node->Attributes.contains("canonical"))
                     continue;
-                site->InsertNS(new WikiPageNS(e.attribute("id").toInt(), e.text(), e.attribute("canonical")));
+                site->InsertNS(new WikiPageNS(node->GetAttribute("id").toInt(), node->Value, node->GetAttribute("canonical")));
             }
         }
         this->processedSiteinfos[site] = true;
@@ -976,7 +1005,7 @@ void Login::OnTimerTick()
     foreach (WikiSite *site, Configuration::HuggleConfiguration->Projects)
     {
         if (!this->Statuses.contains(site))
-            throw new Huggle::Exception("There is no such a wiki in statuses list");
+            throw new Huggle::Exception("There is no such a wiki in statuses list", BOOST_CURRENT_FUNCTION);
         if (!this->GlobalConfig)
         {
             // we need to skip these unless it's login

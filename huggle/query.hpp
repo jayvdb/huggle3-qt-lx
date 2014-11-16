@@ -58,7 +58,7 @@ namespace Huggle
     //! Query base class for all http queries executed by huggle
 
     //! Every request to website is processed as a query, this is a base object that all
-    //! other queries are derived from. The query system is using own GC see a QueryGC
+    //! other queries are derived from. The query system is using GC.
     //! That means every query is either unmanaged or managed. In case it is managed,
     //! the GC will care about it being removed from operating memory and you must not
     //! call a delete on it, otherwise program will crash.
@@ -99,7 +99,10 @@ namespace Huggle
             //! Every query has own unique ID which can be used to work with them
             //! this function returns that
             unsigned int QueryID();
-            bool IsFailed();
+            virtual bool IsFailed();
+            virtual QString GetFailureReason();
+            virtual QString DebugURL();
+            QString FailureReason = "Unknown";
             //! Result of query, see documentation of QueryResult for more
             QueryResult *Result = nullptr;
             //! Current status of a query

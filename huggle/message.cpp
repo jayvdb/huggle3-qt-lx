@@ -178,13 +178,13 @@ void Message::Finish()
         {
             return;
         }
-        if (this->query->Result->IsFailed())
+        if (this->query->IsFailed())
         {
             this->Fail(_l("message-fail-retrieve-talk"));
             return;
         }
         this->ProcessTalk();
-        this->query = nullptr;
+        this->query.Delete();
         // we should be able to finish sending now
         this->ProcessSend();
         return;
@@ -273,13 +273,13 @@ bool Message::FinishToken()
 {
     if (this->qToken == nullptr)
     {
-        throw new Huggle::Exception("qToken must not be NULL in this context", "void Message::FinishToken()");
+        throw new Huggle::NullPointerException("qToken must not be NULL in this context", BOOST_CURRENT_FUNCTION);
     }
     if (!this->qToken->IsProcessed())
     {
         return false;
     }
-    if (this->qToken->Result->IsFailed())
+    if (this->qToken->IsFailed())
     {
         this->Fail(_l("message-fail-token-1"));
         return false;
@@ -296,8 +296,7 @@ bool Message::FinishToken()
     QDomElement element = l.at(0).toElement();
     if (!element.attributes().contains("edittoken"))
     {
-        /// \todo LOCALIZE ME
-        this->Fail("the result doesn't contain the token");
+        this->Fail(_l("message-fail-token-2"));
         Huggle::Syslog::HuggleLogs->DebugLog("No token");
         return false;
     }
@@ -351,7 +350,7 @@ void Message::ProcessSend()
     this->query->Timeout = 600;
     this->query->Target = "Writing " + this->User->GetTalk();
     this->query->UsingPOST = true;
-    QString s = this->Summary;
+    QString summary = this->Summary;
     QString parameters = "";
     if (!this->BaseTimestamp.isEmpty())
     {
@@ -369,7 +368,7 @@ void Message::ProcessSend()
     }
     if (this->Suffix)
     {
-        s += " " + Configuration::HuggleConfiguration->ProjectConfig->EditSuffixOfHuggle;
+        summary = Configuration::GenerateSuffix(summary, this->User->Site->GetProjectConfig());
     }
     if (this->SectionKeep || !this->CreateInNewSection)
     {
@@ -382,13 +381,13 @@ void Message::ProcessSend()
             if (!this->Page.isEmpty())
                 this->Text = this->Page + "\n\n" + this->Text;
         }
-        this->query->Parameters = "title=" + QUrl::toPercentEncoding(User->GetTalk()) + "&summary=" + QUrl::toPercentEncoding(s)
+        this->query->Parameters = "title=" + QUrl::toPercentEncoding(User->GetTalk()) + "&summary=" + QUrl::toPercentEncoding(summary)
                 + "&text=" + QUrl::toPercentEncoding(this->Text) + parameters
                 + "&token=" + QUrl::toPercentEncoding(this->User->GetSite()->GetProjectConfig()->EditToken);
     }else
     {
         this->query->Parameters = "title=" + QUrl::toPercentEncoding(User->GetTalk()) + "&section=new&sectiontitle="
-                + QUrl::toPercentEncoding(this->Title) + "&summary=" + QUrl::toPercentEncoding(s)
+                + QUrl::toPercentEncoding(this->Title) + "&summary=" + QUrl::toPercentEncoding(summary)
                 + "&text=" + QUrl::toPercentEncoding(this->Text) + parameters + "&token="
                 + QUrl::toPercentEncoding(this->User->GetSite()->GetProjectConfig()->EditToken);
     }

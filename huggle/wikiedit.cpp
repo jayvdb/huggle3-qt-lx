@@ -148,7 +148,7 @@ bool WikiEdit::FinalizePostProcessing()
                 QString gn = group.text();
                 if (gn != "*" && gn != "user")
                 this->User->Groups.append(gn);
-                x++;
+                ++x;
             }
             this->Score += (Configuration::HuggleConfiguration->ProjectConfig->ScoreFlag * this->User->Groups.count());
             if (this->User->Groups.contains("bot"))
@@ -165,11 +165,9 @@ bool WikiEdit::FinalizePostProcessing()
     {
         // check if api was processed
         if (!this->qTalkpage->IsProcessed())
-        {
             return false;
-        }
 
-        if (this->qTalkpage->Result->IsFailed())
+        if (this->qTalkpage->IsFailed())
         {
             /// \todo LOCALIZE ME
             Huggle::Syslog::HuggleLogs->Log("Unable to retrieve " + this->User->GetTalk() + " warning level will not be scored by it");
@@ -233,7 +231,7 @@ bool WikiEdit::FinalizePostProcessing()
             return false;
         }
 
-        if (this->qDifference->Result->IsFailed())
+        if (this->qDifference->IsFailed())
         {
             // whoa it ended in error, we need to get rid of this edit somehow now
             Huggle::Syslog::HuggleLogs->WarningLog("Failed to obtain diff for " + this->Page->PageName + " the error was: "
@@ -261,14 +259,19 @@ bool WikiEdit::FinalizePostProcessing()
                 {
                     if (e.attribute("user") == this->User->Username)
                     {
-                        if (e.attributes().contains("rollbacktoken"))
+                        if (this->GetSite()->GetProjectConfig()->RollbackToken.isEmpty() && this->RollbackToken.isEmpty() && e.attributes().contains("rollbacktoken"))
                         {
                             // let's update it from fresh diff
                             this->RollbackToken = e.attribute("rollbacktoken");
+                            this->GetSite()->GetProjectConfig()->RollbackToken = e.attribute("rollbacktoken");
                         }
                     }
                     if (e.attributes().contains("revid"))
                         this->RevID = e.attribute("revid").toInt();
+                } else
+                {
+                    HUGGLE_DEBUG1("Ignoring revision information for revision " + QString::number(this->RevID) + " because user " + this->User->Username +
+                                  " is not " + e.attribute("user"));
                 }
                 if (e.attributes().contains("timestamp"))
                     this->Time = MediaWiki::FromMWTimestamp(e.attribute("timestamp"));
@@ -322,7 +325,7 @@ bool WikiEdit::FinalizePostProcessing()
 QString WikiEdit::GetPixmap()
 {
     if (this->User == nullptr)
-        throw new Huggle::NullPointerException("WikiEdit::User", "QString WikiEdit::GetPixmap()");
+        throw new Huggle::NullPointerException("WikiEdit::User", BOOST_CURRENT_FUNCTION);
 
     if (this->OwnEdit)
         return ":/huggle/pictures/Resources/blob-me.png";
@@ -384,7 +387,7 @@ void WikiEdit::ProcessWords()
             this->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.at(xx).score;
             ScoreWords.append(w);
         }
-        xx++;
+        ++xx;
     }
     xx = 0;
     while (xx<Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.count())
@@ -393,7 +396,7 @@ void WikiEdit::ProcessWords()
         // if there is no such a string in text we can skip it
         if (!text.contains(w))
         {
-            xx++;
+            ++xx;
             continue;
         }
         int SD = 0;
@@ -423,16 +426,16 @@ void WikiEdit::ProcessWords()
                 }
                 if (found)
                     break;
-                SL++;
+                ++SL;
             }
-            SD++;
+            ++SD;
         }
         if (found)
         {
             this->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.at(xx).score;
             ScoreWords.append(w);
         }
-        xx++;
+        ++xx;
     }
 }
 
@@ -466,7 +469,7 @@ void WikiEdit::PostProcess()
         return;
 
     if (this->Page == nullptr)
-        throw new Huggle::NullPointerException("Page", "void WikiEdit::PostProcess()");
+        throw new Huggle::NullPointerException("Page", BOOST_CURRENT_FUNCTION);
     if (this->Status == Huggle::StatusNone)
     {
         Exception::ThrowSoftException("Processing edit to " + this->Page->PageName + "which was requested to be post processed,"\
@@ -488,10 +491,19 @@ void WikiEdit::PostProcess()
         if (this->RevID != WIKI_UNKNOWN_REVID)
         {
             // &rvprop=content can't be used because of fuck up of mediawiki
-            this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
+            if (this->GetSite()->GetProjectConfig()->RollbackToken.isEmpty())
+            {
+                // this is here for compatibility reason and when mediawiki gets fucked up
+                this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
                                             "&rvlimit=1&rvtoken=rollback&rvstartid=" +
                                             QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
+            } else
+            {
+                this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
+                                                "&rvlimit=1&rvstartid=" + QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
+                                                QUrl::toPercentEncoding(this->Page->PageName);
+            }
         } else
         {
             this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
@@ -531,7 +543,7 @@ Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid, QString pre
     while (x < WikiEdit::EditList.count())
     {
         WikiEdit *edit = WikiEdit::EditList.at(x);
-        x++;
+        ++x;
         if (edit->RevID == revid && edit->DiffTo == prev)
         {
             e = edit;
@@ -606,7 +618,7 @@ void ProcessorThread::run()
         {
             this->Process(PendingEdits.at(e));
             PendingEdits.at(e)->UnregisterConsumer(HUGGLECONSUMER_PROCESSOR);
-            e++;
+            ++e;
         }
         PendingEdits.clear();
         ProcessorThread::EditLock.unlock();
@@ -655,7 +667,7 @@ void ProcessorThread::Process(WikiEdit *edit)
     edit->User->ParseTP(QDate::currentDate());
     if (edit->Summary.size() == 0)
         edit->Score += 10;
-    switch(edit->User->WarningLevel)
+    switch(edit->User->GetWarningLevel())
     {
         case 1:
             edit->Score += 200;

@@ -72,6 +72,7 @@ namespace Huggle
             void SetAction(const Action action);
             //! Set the raw action type, you should not use this unless you have to
             void SetAction(const QString action);
+            QString DebugURL();
             //! Terminate the query
             void Kill();
             //! Get a query target as a string
@@ -85,6 +86,7 @@ namespace Huggle
             bool UsingPOST = false;
             //! This is a requested format in which the result should be written in
             Format RequestFormat;
+            bool IsContinuous = false;
             //! This is an url of api request, you probably don't want to change it unless
             //! you want to construct whole api request yourself
             QString URL = "";

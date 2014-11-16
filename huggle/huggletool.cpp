@@ -9,7 +9,7 @@
 //GNU General Public License for more details.
 
 #include "huggletool.hpp"
-#include <QtXml>
+#include "apiqueryresult.hpp"
 #include "core.hpp"
 #include "exception.hpp"
 #include "generic.hpp"
@@ -39,9 +39,9 @@ HuggleTool::HuggleTool(QWidget *parent) : QDockWidget(parent), ui(new Ui::Huggle
     this->ui->pushButton->setText(_l("main-page-load"));
     this->ui->label_3->setText(_l("main-page-curr-disp"));
     this->tick = new QTimer(this);
-    this->ui->label->setText(_l("User"));
+    this->ui->label->setText(_l("user"));
     this->page = nullptr;
-    this->ui->label_2->setText(_l("Page"));
+    this->ui->label_2->setText(_l("page"));
     foreach (WikiSite *site, Configuration::HuggleConfiguration->Projects)
         this->ui->comboBox->addItem(site->Name);
     this->ui->comboBox->setCurrentIndex(0);
@@ -74,7 +74,7 @@ void HuggleTool::SetUser(QString user)
 void HuggleTool::SetPage(WikiPage *page)
 {
     if (page == nullptr)
-        throw new Huggle::Exception("HuggleTool::SetPage(WikiPage* page) page must not be nullptr");
+        throw new Huggle::NullPointerException("page", BOOST_CURRENT_FUNCTION);
 
     this->ui->lineEdit_3->setText(page->PageName);
     if (Configuration::HuggleConfiguration->Projects.contains(page->GetSite()) &&
@@ -104,7 +104,7 @@ WikiSite *HuggleTool::GetSite()
     {
         // this should not happen ever
         throw new Huggle::Exception("Wrong number of projects (Configuration::HuggleConfiguration->Projects.count() isn't same as comboBox->count())",
-                                    "WikiSite *HuggleTool::GetSite()");
+                                    BOOST_CURRENT_FUNCTION);
     }
     return Configuration::HuggleConfiguration->Projects.at(this->ui->comboBox->currentIndex());
 }
@@ -154,28 +154,27 @@ void HuggleTool::FinishPage()
 {
     if (this->query == nullptr || !this->query->IsProcessed())
         return;
-    QDomDocument d;
-    d.setContent(this->query->Result->Data);
     if (this->QueryPhase == 3)
     {
-        QDomNodeList l = d.elementsByTagName("item");
-        if (l.count() == 0)
+        ApiQueryResultNode *item = this->query->GetApiQueryResult()->GetNode("item");
+        if (!item)
         {
             this->ui->lineEdit_2->setStyleSheet("color: red;");
             this->tick->stop();
             return;
         }
-        QDomElement first_one = l.at(0).toElement();
-        if (!first_one.attributes().contains("title"))
+        if (!item->Attributes.contains("title"))
         {
             this->ui->lineEdit_2->setStyleSheet("color: red;");
             this->tick->stop();
             return;
         }
         this->edit = new WikiEdit();
-        this->edit->Page = new WikiPage(first_one.attribute("title"));
-        this->edit->User = new WikiUser(first_one.attribute("user"));
-        this->edit->RevID = first_one.attribute("revid").toInt();
+        this->edit->Page = new WikiPage(item->GetAttribute("title"));
+        this->edit->Page->Site = this->query->GetSite();
+        this->edit->User = new WikiUser(item->GetAttribute("user"));
+        this->edit->User->Site = this->query->GetSite();
+        this->edit->RevID = item->GetAttribute("revid").toInt();
         QueryPool::HugglePool->PreProcessEdit(this->edit);
         QueryPool::HugglePool->PostProcessEdit(this->edit);
         this->QueryPhase = 4;
@@ -183,11 +182,11 @@ void HuggleTool::FinishPage()
     {
         this->edit = new WikiEdit();
         this->edit->Page = new WikiPage(this->ui->lineEdit_3->text());
-        QDomNodeList l = d.elementsByTagName("rev");
-        if (l.count() > 0)
+        this->edit->Page->Site = this->query->GetSite();
+        ApiQueryResultNode *rev = this->query->GetApiQueryResult()->GetNode("rev");
+        if (rev)
         {
-            QDomElement e = l.at(0).toElement();
-            if (e.attributes().contains("missing"))
+            if (rev->Attributes.contains("missing"))
             {
                 // there is no such a page
                 this->ui->lineEdit_3->setStyleSheet("color: red;");
@@ -197,18 +196,18 @@ void HuggleTool::FinishPage()
                 this->query.Delete();
                 return;
             }
-            if (e.attributes().contains("user"))
+            if (rev->Attributes.contains("user"))
             {
-                this->edit->User = new WikiUser(e.attribute("user"));
+                this->edit->User = new WikiUser(rev->GetAttribute("user"));
+                this->edit->User->Site = this->GetSite();
             }
-            if (e.attributes().contains("revid"))
-            {
-                this->edit->RevID = e.attribute("revid").toInt();
-            }
+            if (rev->Attributes.contains("revid"))
+                this->edit->RevID = rev->GetAttribute("revid").toInt();
         }
         if (this->edit->User == nullptr)
         {
             this->edit->User = new WikiUser();
+            this->edit->User->Site = this->query->GetSite();
         }
         QueryPool::HugglePool->PreProcessEdit(this->edit);
         QueryPool::HugglePool->PostProcessEdit(this->edit);
@@ -239,7 +238,7 @@ void Huggle::HuggleTool::on_lineEdit_2_returnPressed()
     this->ui->pushButton->setEnabled(false);
     this->ui->lineEdit_2->setStyleSheet("color: green;");
     // retrieve information about the user
-    this->query = new ApiQuery(ActionQuery);
+    this->query = new ApiQuery(ActionQuery, this->GetSite());
     this->QueryPhase = 3;
     this->query->Parameters = "list=usercontribs&ucuser=" + QUrl::toPercentEncoding(this->ui->lineEdit_2->text()) +
                               "&ucprop=flags%7Ccomment%7Ctimestamp%7Ctitle%7Cids%7Csize&uclimit=20";

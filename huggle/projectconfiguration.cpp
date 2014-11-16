@@ -12,6 +12,7 @@
 #include "generic.hpp"
 #include "huggleparser.hpp"
 #include "syslog.hpp"
+#include "version.hpp"
 #include "wikipage.hpp"
 
 using namespace Huggle::Generic;
@@ -33,6 +34,9 @@ ProjectConfiguration::ProjectConfiguration(QString project_name)
                  << "October"
                  << "November"
                  << "December";
+
+    this->Parser_Date_Suffix << "(CET)" << "(UTC)" << "(CEST)";
+
     // defaults
     this->ProtectReason = "Persistent [[WP:VAND|vandalism]]";
     this->BlockExpiryOptions.append("indefinite");
@@ -50,18 +54,24 @@ ProjectConfiguration::~ProjectConfiguration()
 
 bool ProjectConfiguration::Parse(QString config, QString *reason)
 {
-    QString version = HuggleParser::ConfigurationParse("min-version", config, "3.0.0");
-    if (!Generic::CompareVersions(HUGGLE_VERSION, version))
+    Version version(HuggleParser::ConfigurationParse("min-version", config, "3.0.0"));
+    Version huggle_version(HUGGLE_VERSION);
+    if (huggle_version < version)
     {
         if (reason)
-            *reason = "your huggle is too old, " + this->ProjectName + " supports only " + version + " or newer.";
+            *reason = "your huggle is too old, " + this->ProjectName + " supports only " + version.ToString() + " or newer.";
         return false;
     }
+    if (SafeBool(HuggleParser::ConfigurationParse("approval", config, "false")))
+        Syslog::HuggleLogs->WarningLog(this->ProjectName + " is using obsolete option 'approval' which is not supported");
     //AIV
     this->AIV = SafeBool(HuggleParser::ConfigurationParse("aiv-reports", config));
     this->AIVExtend = SafeBool(HuggleParser::ConfigurationParse("aiv-extend", config));
     this->ReportAIV = HuggleParser::ConfigurationParse("aiv", config);
     this->ReportSt = HuggleParser::ConfigurationParse("aiv-section", config).toInt();
+    // we use these to understand which format they use on a wiki for dates
+    this->Parser_Date_Suffix = HuggleParser::ConfigurationParse_QL("parser-date-suffix", config, this->Parser_Date_Suffix, true);
+    this->Parser_Date_Prefix = HuggleParser::ConfigurationParse("parser-date-prefix", config, this->Parser_Date_Prefix);
     this->IPVTemplateReport = HuggleParser::ConfigurationParse("aiv-ip", config, "User $1: $2$3 ~~~~");
     this->RUTemplateReport = HuggleParser::ConfigurationParse("aiv-user", config, "User $1: $2$3 ~~~~");
     this->ReportDefaultReason = HuggleParser::ConfigurationParse("vandal-report-reason", config, "Persistent vandalism and/or "\
@@ -212,6 +222,7 @@ bool ProjectConfiguration::Parse(QString config, QString *reason)
     this->RFPP_Section = (unsigned int)HuggleParser::ConfigurationParse("rfpp-section", config, "0").toInt();
     this->RFPP_Page = HuggleParser::ConfigurationParse("protection-request-page", config);
     this->RFPP_Template = HuggleParser::ConfigurationParse("rfpp-template", config);
+    this->RFPP_Mark = HuggleParser::ConfigurationParse("rfpp-mark", config);
     this->RFPP_Summary = HuggleParser::ConfigurationParse("protection-request-summary", config, "Request to protect page");
     this->RFPP = (this->RFPP_Template.length() && this->RFPP_Regex.length());
     this->RFPP_TemplateUser = HuggleParser::ConfigurationParse("rfpp-template-user", config);

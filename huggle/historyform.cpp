@@ -11,7 +11,7 @@
 #include "historyform.hpp"
 #include <QTimer>
 #include <QToolTip>
-#include <QtXml>
+#include "apiqueryresult.hpp"
 #include "configuration.hpp"
 #include "editbar.hpp"
 #include "exception.hpp"
@@ -83,8 +83,7 @@ void HistoryForm::Read()
     this->ui->pushButton->hide();
     this->query = new ApiQuery(ActionQuery, this->CurrentEdit->GetSite());
     this->query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("ids|flags|timestamp|user|userid|size|sha1|comment") + "&rvlimit=" +
-            QString::number(Huggle::Configuration::HuggleConfiguration->UserConfig->HistoryMax) +
-            "&titles=" + QUrl::toPercentEncoding(this->CurrentEdit->Page->PageName);
+            QString::number(hcfg->UserConfig->HistoryMax) + "&titles=" + QUrl::toPercentEncoding(this->CurrentEdit->Page->PageName);
     this->query->Process();
     delete this->t1;
     this->t1 = new QTimer(this);
@@ -96,7 +95,7 @@ void HistoryForm::Read()
 void HistoryForm::Update(WikiEdit *edit)
 {
     if (edit == nullptr)
-        throw new Huggle::NullPointerException("WikiEdit *edit", "void HistoryForm::Update(WikiEdit *edit)");
+        throw new Huggle::NullPointerException("WikiEdit *edit", BOOST_CURRENT_FUNCTION);
     this->CurrentEdit = edit;
     this->ui->pushButton->setText(_l("historyform-retrieve-history"));
     this->ui->pushButton->show();
@@ -119,7 +118,7 @@ void HistoryForm::Update(WikiEdit *edit)
 void HistoryForm::onTick01()
 {
     if (this->CurrentEdit == nullptr)
-        throw new Huggle::NullPointerException("sp CurrentEdit", "void HistoryForm::onTick01()");
+        throw new Huggle::NullPointerException("sp CurrentEdit", BOOST_CURRENT_FUNCTION);
 
     if (this->RetrievingEdit && this->RetrievedEdit != nullptr)
     {
@@ -138,22 +137,20 @@ void HistoryForm::onTick01()
     if (this->query == nullptr || !this->query->IsProcessed())
         return;
 
-    if (this->query->Result->IsFailed())
+    if (this->query->IsFailed())
     {
         this->ui->pushButton->setEnabled(true);
-        Huggle::Syslog::HuggleLogs->ErrorLog("Unable to retrieve history");
+        Huggle::Syslog::HuggleLogs->ErrorLog(_l("history-failure"));
         this->query = nullptr;
         this->t1->stop();
         return;
     }
     bool IsLatest = false;
-    QDomDocument d;
-    d.setContent(this->query->Result->Data);
-    QDomNodeList l = d.elementsByTagName("rev");
+    QList<ApiQueryResultNode*>revision_data = this->query->GetApiQueryResult()->GetNodes("rev");
     int x=0;
     QColor xb;
     bool xt = false;
-    while (x < l.count())
+    while (x < revision_data.count())
     {
         if (xt)
         {
@@ -163,11 +160,11 @@ void HistoryForm::onTick01()
             xb = QColor(224, 222, 250);
         }
         xt = !xt;
-        QDomElement e = l.at(x).toElement();
+        ApiQueryResultNode *rv = revision_data.at(x);
         WikiPageHistoryItem *item = new WikiPageHistoryItem();
-        if (e.attributes().contains("revid"))
+        if (rv->Attributes.contains("revid"))
         {
-            item->RevID = e.attribute("revid");
+            item->RevID = rv->GetAttribute("revid");
         } else
         {
             x++;
@@ -175,14 +172,14 @@ void HistoryForm::onTick01()
         }
         item->Name = this->CurrentEdit->Page->PageName;
         item->Site = this->CurrentEdit->GetSite();
-        if (e.attributes().contains("user"))
-            item->User = e.attribute("user");
-        if (e.attributes().contains("size"))
-            item->Size = e.attribute("size");
-        if (e.attributes().contains("timestamp"))
-            item->Date = e.attribute("timestamp");
-        if (e.attributes().contains("comment") && !e.attribute("comment").isEmpty())
-            item->Summary = e.attribute("comment");
+        if (rv->Attributes.contains("user"))
+            item->User = rv->GetAttribute("user");
+        if (rv->Attributes.contains("size"))
+            item->Size = rv->GetAttribute("size");
+        if (rv->Attributes.contains("timestamp"))
+            item->Date = rv->GetAttribute("timestamp");
+        if (rv->Attributes.contains("comment") && !rv->GetAttribute("comment").isEmpty())
+            item->Summary = rv->GetAttribute("comment");
         this->ui->tableWidget->insertRow(x);
         QIcon icon(":/huggle/pictures/Resources/blob-none.png");
         if (WikiUtil::IsRevert(item->Summary))
@@ -207,9 +204,9 @@ void HistoryForm::onTick01()
             {
                 item->Type = EditType_Reported;
                 icon = QIcon(":/huggle/pictures/Resources/blob-reported.png");
-            } else if (wu->WarningLevel > 0)
+            } else if (wu->GetWarningLevel() > 0)
             {
-                switch(wu->WarningLevel)
+                switch(wu->GetWarningLevel())
                 {
                     case 1:
                         item->Type = EditType_1;

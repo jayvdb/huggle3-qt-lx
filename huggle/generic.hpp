@@ -21,6 +21,8 @@
 #define EvaluatePageErrorReason_NoRevs  3
 #define EvaluatePageErrorReason_Running 4
 
+class QWidget;
+
 namespace Huggle
 {
     class ApiQuery;
@@ -45,22 +47,16 @@ namespace Huggle
          * \return string
          */
         QString Bool2String(bool b);
-        /*!
-         * \brief CompareVersions
-         * \param a version
-         * \param b version
-         * \return true in case version b is older or same as version a
-         */
-        bool CompareVersions(QString a, QString b);
         bool SafeBool(QString value, bool defaultvalue = false);
         //! Display a user message before reporting a user based on user preferences
         bool ReportPreFlightCheck();
+        int pMessageBox(QWidget *parent, QString title, QString text, MessageBoxStyle st = MessageBoxStyleNormal, bool enforce_stop = false);
         /*!
          * \brief MessageBox Display a message box
          * \param title Title of message box
          * \param text What is displayed in a message
          */
-        int MessageBox(QString title, QString text, MessageBoxStyle st = MessageBoxStyleNormal, bool enforce_stop = false);
+        int MessageBox(QString title, QString text, MessageBoxStyle st = MessageBoxStyleNormal, bool enforce_stop = false, QWidget *parent = nullptr);
         //! Display a message box telling user that function is not allowed during developer mode
         void DeveloperError();
         /*!

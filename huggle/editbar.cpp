@@ -53,8 +53,9 @@ void EditBar::Refresh()
 
 void EditBar::InsertEdit(WikiPageHistoryItem *page, int RowId)
 {
-    EditBarItem *item = new EditBarItem();
+    EditBarItem *item = new EditBarItem(this);
     this->Items.append(item);
+    item->IsUser = false;
     this->ui->horizontalLayout_page->insertWidget(1, item);
     item->RevID = page->RevID;
     if (page->IsCurrent)
@@ -62,7 +63,6 @@ void EditBar::InsertEdit(WikiPageHistoryItem *page, int RowId)
     item->Username = page->User;
     item->RowId = RowId;
     item->SetPixmap(WikiEdit::GetPixmapFromEditType(page->Type));
-    //! \todo LOCALIZE ME
     item->SetText(_l("user") + ": " + page->User + "\n" +
                   _l("size") + ": " + page->Size + "\n" +
                   _l("date") + ": " + page->Date + "\n" +
@@ -71,7 +71,7 @@ void EditBar::InsertEdit(WikiPageHistoryItem *page, int RowId)
 
 void EditBar::InsertUser(UserInfoFormHistoryItem *user)
 {
-    EditBarItem *item = new EditBarItem();
+    EditBarItem *item = new EditBarItem(this);
     this->Items.append(item);
     this->ui->horizontalLayout_user->insertWidget(1, item);
     item->RevID = user->RevID;
@@ -80,11 +80,10 @@ void EditBar::InsertUser(UserInfoFormHistoryItem *user)
     item->Page = user->Page;
     item->SetPixmap(WikiEdit::GetPixmapFromEditType(user->Type));
     QString top;
-        //! \todo LOCALIZE ME
     if (user->Top)
     {
         item->SetFrame(Qt::magenta);
-        top = "\nThis edit is a top revision";
+        top = "\n" + _l("edit-bar-top");
     }
     item->SetText(_l("page") + ": " + user->Page + "\n" +
                   _l("date") + ": " + user->Date + "\n" +

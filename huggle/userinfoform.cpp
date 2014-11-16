@@ -66,7 +66,7 @@ UserinfoForm::~UserinfoForm()
 void UserinfoForm::ChangeUser(WikiUser *user)
 {
     if (user == nullptr)
-        throw new Huggle::NullPointerException("user", "void UserinfoForm::ChangeUser(WikiUser *user)");
+        throw new Huggle::NullPointerException("user", BOOST_CURRENT_FUNCTION);
     if (this->User != nullptr)
         delete this->User;
     // we create a copy of this wiki user so that we ensure it doesn't get deleted meanwhile
@@ -82,7 +82,7 @@ void UserinfoForm::ChangeUser(WikiUser *user)
     }
     this->Items.clear();
     QString text = "Flags: " + user->Flags() + " Score: " + QString::number(user->GetBadnessScore()) + " level: "
-                    + QString::number(user->WarningLevel);
+                    + QString::number(user->GetWarningLevel());
     if (user->EditCount > 0)
     {
         text += " Edit count: " + QString::number(user->EditCount);

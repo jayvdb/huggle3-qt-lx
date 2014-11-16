@@ -127,11 +127,11 @@ void VandalNw::Good(WikiEdit *Edit)
 {
     if (Edit == nullptr)
     {
-        throw new Exception("WikiEdit *Edit was NULL", "void VandalNw::Good(WikiEdit *Edit)");
+        throw new Exception("WikiEdit *Edit was NULL", BOOST_CURRENT_FUNCTION);
     }
     if (!this->Site2Channel.contains(Edit->GetSite()))
     {
-        throw new Exception("There is no channel for this site", "void VandalNw::Good(WikiEdit *Edit)");
+        throw new Exception("There is no channel for this site", BOOST_CURRENT_FUNCTION);
     }
     this->Irc->Send(this->Site2Channel[Edit->GetSite()], this->Prefix + "GOOD " + QString::number(Edit->RevID));
 }
@@ -140,11 +140,11 @@ void VandalNw::Rollback(WikiEdit *Edit)
 {
     if (Edit == nullptr)
     {
-        throw new Exception("WikiEdit *Edit was NULL", "void VandalNw::Rollback(WikiEdit *Edit)");
+        throw new Exception("WikiEdit *Edit was NULL", BOOST_CURRENT_FUNCTION);
     }
     if (!this->Site2Channel.contains(Edit->GetSite()))
     {
-        throw new Exception("There is no channel for this site", "void VandalNw::Rollback(WikiEdit *Edit)");
+        throw new Exception("There is no channel for this site", BOOST_CURRENT_FUNCTION);
     }
     this->Irc->Send(this->Site2Channel[Edit->GetSite()], this->Prefix + "ROLLBACK " + QString::number(Edit->RevID));
 }
@@ -153,11 +153,11 @@ void VandalNw::SuspiciousWikiEdit(WikiEdit *Edit)
 {
     if (Edit == nullptr)
     {
-        throw new Exception("WikiEdit *Edit was NULL", "void VandalNw::Rollback(WikiEdit *Edit)");
+        throw new Exception("WikiEdit *Edit was NULL", BOOST_CURRENT_FUNCTION);
     }
     if (!this->Site2Channel.contains(Edit->GetSite()))
     {
-        throw new Exception("There is no channel for this site", "void VandalNw::Good(WikiEdit *Edit)");
+        throw new Exception("There is no channel for this site", BOOST_CURRENT_FUNCTION);
     }
     this->Irc->Send(this->Site2Channel[Edit->GetSite()], this->Prefix + "SUSPICIOUS " + QString::number(Edit->RevID));
 }
@@ -166,11 +166,11 @@ void VandalNw::WarningSent(WikiUser *user, byte_ht Level)
 {
     if (user == nullptr)
     {
-        throw new Exception("WikiUser *user was NULL", "void VandalNw::WarningSent(WikiUser *user, int Level)");
+        throw new Exception("WikiUser *user was NULL", BOOST_CURRENT_FUNCTION);
     }
     if (!this->Site2Channel.contains(user->GetSite()))
     {
-        throw new Exception("There is no channel for this site", "void VandalNw::Good(WikiEdit *Edit)");
+        throw new Exception("There is no channel for this site", BOOST_CURRENT_FUNCTION);
     }
     this->Irc->Send(this->Site2Channel[user->GetSite()], this->Prefix + "WARN " + QString::number(Level)
                     + " " + QUrl::toPercentEncoding(user->Username));
@@ -277,7 +277,7 @@ void VandalNw::Message()
     {
         this->Irc->Send(this->Site2Channel[Configuration::HuggleConfiguration->Project], this->ui->lineEdit->text());
         QString text = ui->lineEdit->text();
-        if (!Configuration::HuggleConfiguration->HtmlAllowedInIrc)
+        if (!hcfg->UserConfig->HtmlAllowedInIrc)
             text = SafeHtml(text);
         this->Insert(Configuration::HuggleConfiguration->SystemConfig_Username + ": " + text,
                      HAN::MessageType_UserTalk);
@@ -288,7 +288,7 @@ void VandalNw::Message()
 void VandalNw::ProcessGood(WikiEdit *edit, QString user)
 {
     edit->User->SetBadnessScore(edit->User->GetBadnessScore() - 200);
-    this->Insert("<font color=blue>" + user + " seen a good edit on " + edit->GetSite()->Name + " to " + edit->Page->PageName + " by " + edit->User->Username
+    this->Insert("<font color=blue>" + user + " saw a good edit on " + edit->GetSite()->Name + " to " + edit->Page->PageName + " by " + edit->User->Username
                      + " (" + QString::number(edit->RevID) + ")" + "</font>", HAN::MessageType_User);
     Core::HuggleCore->Main->Queue1->DeleteByRevID(edit->RevID, edit->GetSite());
 }
@@ -493,9 +493,9 @@ void VandalNw::onTick()
         } else
         {
             QString message_ = m->Text;
-            if (!Configuration::HuggleConfiguration->HtmlAllowedInIrc)
+            if (!hcfg->UserConfig->HtmlAllowedInIrc)
                 message_ = SafeHtml(message_);
-            if (Configuration::HuggleConfiguration->Multiple)
+            if (hcfg->Multiple)
             {
                 this->Insert(m->user.Nick + " (" + site->Name + "): " + message_, HAN::MessageType_UserTalk);
             } else

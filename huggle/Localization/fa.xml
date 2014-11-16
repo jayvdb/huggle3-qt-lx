@@ -17,9 +17,13 @@
   <string name="remove">حذف‌کردن</string>
   <string name="rename">تغییر نام</string>
   <string name="reload">بارگیری مجدد</string>
+  <string name="project">پروژه</string>
   <string name="result">نتیجه</string>
   <string name="save">ذخیره‌کردن</string>
+  <string name="show">نمایش</string>
+  <string name="undo">واگردانی</string>
   <string name="yes">بله</string>
+  <string name="editing-page">ویرایش صفحه</string>
   <string name="agf">واگردانی با فرض حسن نیت و دلیل مشهود</string>
   <string name="successful">موفق</string>
   <string name="summary">خلاصه</string>
@@ -39,17 +43,23 @@
   <string name="link">پیوند</string>
   <string name="reason">دلیل</string>
   <string name="diffid">شناسه تفاوت</string>
-  <string name="whitelisted" fuzzy="true">$1 با شماره $2 به فهرست سفید افزوده شد</string>
+  <string name="whitelisted">$1 با شماره $2 بر $3 به فهرست سفید افزوده شد</string>
   <string name="expiry-time">زمان انقضاء</string>
   <string name="duration">مدت</string>
   <string name="no-token">بدون رمز</string>
   <string name="flags">پرچم‌ها</string>
+  <string name="score-score">امتیاز</string>
+  <string name="score-word">واژه</string>
+  <string name="score-range">بازه</string>
+  <string name="score-only-whole-word">تنها بر واژه‌های کامل همخوانی یابد</string>
+  <string name="score-take-any-word">تنها بر واژگانی که شامل این رشته می‌شوند همخوانی یابد</string>
   <string name="browser-none">هیچ صفحه‌ای نمایش داده نشد</string>
   <string name="browser-load">بارگیری تفاوت با استفاده از رندر وب، لطفاً صبر کنید....</string>
   <string name="browser-miss-summ">هیچ خلاصه‌ای ارائه نشده‌است</string>
   <string name="browser-diff">تفاوت صفحه:  $1  (امتیاز:  $2 )</string>
   <string name="browser-fail">ناتوان در بازیابی تفاوت $1</string>
   <string name="about-contributors">مشارکت‌ها:</string>
+  <string name="block-not">کاربر مسدود نشده‌است</string>
   <string name="block-title">بستن $1</string>
   <string name="block-reason">دلیل:</string>
   <string name="block-duration">مدت:</string>
@@ -72,10 +82,15 @@
   <string name="block-type">بستن/بازکردن</string>
   <string name="block-admin">بستن مدیر</string>
   <string name="block-none">هیچ کاربری برای بستن نیست.</string>
+  <string name="config-function">تابع</string>
+  <string name="config-description">توصیف</string>
+  <string name="config-shortcut">میانبر</string>
+  <string name="config-queue-filter-ignore">چشم‌پوشی (مهم نیست)</string>
+  <string name="config-queue-filter-exclude">کنار گذاشتن (هرگز نباید باشد)</string>
+  <string name="config-queue-filter-require">لازم (باید باشد)</string>
   <string name="config-summ">خلاصه ویرایش سفارشی برای الگوها</string>
   <string name="config-title">اختیارات</string>
-  <string name="config-rememberme">یادآوری نام کاربری من</string>
-  <string name="config-autowhitelist">قرار دادن کاربران در فهرست سفید به صورت خودکار</string>
+  <string name="config-already-in-use">این میانبر هم‌اکنون توسط $1 استفاده می‌شود، لطفاً یکی دیگر برگزینید</string>
   <string name="config-openinbrowser">پیوندهای مرورگر باز در پنجره‌ای نو</string>
   <string name="config-shownewedits">ویرایش‌های جدید بر نوشتار انتخاب شده را نشان بده</string>
   <string name="config-ircmode">در صورت امکان از IRC برای تغییرات اخیر بهره بگیر</string>
@@ -88,7 +103,6 @@
   <string name="config-shownewmessages">نشان دادن نوار پیام‌های جدید</string>
   <string name="config-shortcutlist">میانبرهای صفحه‌کلید</string>
   <string name="config-shortcutaction">عمل</string>
-  <string name="config-shortcut">میانبر</string>
   <string name="config-changeshortcut">تغییر میان‌بر برای $1</string>
   <string name="config-noshortcut">هیچ</string>
   <string name="config-defaults">پیش‌فرض‌ها</string>
@@ -96,6 +110,8 @@
   <string name="config-watchlist">افزودن به پی‌گیری‌ها</string>
   <string name="config-defaultsummary">خلاصه ویرایش پیش‌فرض برای ویرایش‌های دستی</string>
   <string name="config-undosummary">خلاصه ویرایش برای واگردانی ویرایش‌های خودتان</string>
+  <string name="config-confirm-us">نیاز به تایید برای واگردانی ویرایشی که در فضای کاربری است</string>
+  <string name="config-confirm-wl">نیاز به تایید برای واگردانی ویرایشی کهتوسط کاربر فهرست سفید انجام شده‌است</string>
   <string name="config-confirmmultiple">واگردانی‌های متعدد یک ویرایش توسط همان کاربر را تائید کن</string>
   <string name="config-confirmsame">تائید واگردانی ویرایش کاربر واگردانی شده</string>
   <string name="config-confirmselfrevert">تائید واگردانی ویرایش خودم (به جز خنثی‌سازی)</string>
@@ -138,6 +154,8 @@
   <string name="delete-e2">نمی‌توان صفحه را حذف کرد</string>
   <string name="delete-edsc">نمی‌توان صفحه را حذف به دلیل: $1</string>
   <string name="delete-failed-no-info">هیچ اطلاعات صفحه‌ای در این کوئری نیست (آیا مدیر هستید؟)</string>
+  <string name="extension-kl">کشته‌شد</string>
+  <string name="extension-fine">بارگیری‌شده و در حال اجرا</string>
   <string name="historyform-no-info">اطلاعات ویرایش وجود ندارد</string>
   <string name="historyform-title">تاریخچه</string>
   <string name="historyform-retrieve-history">گرفتن تاریخچه</string>
@@ -145,19 +163,20 @@
   <string name="historyform-not-latest-tip">این جدیدترین نسخه صفحه نیست. مطمئن شوید که نسخه‌های جدیدتر را نیز بررسی کرده‌اید. توجه کنید که واگردانی ممکن است از این نسخه ممکن نباشد.</string>
   <string name="history-error-message-title">غیرقابل بازگشت</string>
   <string name="history-error">این مورد را نمی‌توان واگردانی نمود. صفحه ممکن است در این میان تغییر کرده یا حذف شده باشد و هاگل نمی‌تواند از این نقطه واگردانی کند. اگر واقعاً می‌خواهید واگردانی کنید، لازم است این کار را دستی و از راه رابط مدیاویکی انجام دهید.</string>
+  <string name="history-failure">ناتوان در بازیابی تاریخچه</string>
   <string name="userhistory-title">تاریخچه ویرایش‌های شما</string>
-  <string name="irc-connected" fuzzy="true">به فید آی‌آرسی تغییرات اخیر متصل شد</string>
-  <string name="irc-connecting" fuzzy="true">در حال تلاش برای اتصال به خوراک تغییرات اخیر آی‌آرسی؛ این ممکن است چند لحظه‌ای طول بکشد...</string>
-  <string name="irc-disconnected" fuzzy="true">اتصال به خوراک تغیرات اخیر آی‌آرسی از دست رفت؛ اتصال دوباره...</string>
+  <string name="irc-connected">$1: به فید آی‌آرسی تغییرات اخیر متصل شد</string>
+  <string name="irc-connecting">در حال تلاش برای اتصال به خوراک تغییرات اخیر آی‌آرسیِ $1؛ این ممکن است چند لحظه‌ای طول بکشد...</string>
+  <string name="irc-disconnected">اتصال به خوراک تغیرات اخیر آی‌آرسی در $1 از دست رفت؛ اتصال دوباره...</string>
   <string name="irc-nochannel">کانال آی‌آرسی $1 یافت نشد؛ استفاده از درخواست‌های API به عنوان جایگزین</string>
   <string name="irc-error">امکان اتصال به خوراک تغییرات اخیر آی‌آرسی نبود ($1). در حال استفاده از درخواست‌های کندتر ای‌پی‌آی</string>
-  <string name="irc-stop" fuzzy="true">در انتظار توقف ارائه‌دهندهٔ خوراک اصلی</string>
+  <string name="irc-stop">در انتظار توقف ارائه‌دهندهٔ خوراک اصلیِ $1</string>
   <string name="irc-not">خوراک: آی‌آرسی توسط پیکربندی پروژه غیرفعال شده است</string>
   <string name="irc-failure">ارائه‌دهندهٔ خوراک اصلی نافرجام ماند. عقب‌گرد به ارائه‌دهندهٔ ویکی...</string>
   <string name="irc-wait">در انتظار توقف ارائه‌دهندهٔ خوراک اصلی</string>
   <string name="irc-switch-rc">تعویض به خوراک تغییرات اخیر ویکی</string>
   <string name="login-old">بازیابی پیکربندی کاربر از محل قدیمی</string>
-  <string name="login-intro" fuzzy="true">لطفاً نام کاربری ویکی‌پدیا را را وارد کنید و یک پروژه را انتخاب کنید.</string>
+  <string name="login-intro">لطفاً یک پروژه را برگزینید و نام کاربری و گذرواژهٔ خود را وارد کنید. همچنین می‌توانید با کلیک‌کردن روی دکمهٔ «پروژه‌ها» در چند پروژه ثبت ورود نمایید.</string>
   <string name="login-tab-oauth">OAuth</string>
   <string name="login-tab-login">ورود</string>
   <string name="login-reload-tool-tip">بارگیری دوبارهٔ فهرست پروژه‌های موجود که می‌تواند مورد استفادهٔ هاگل قرار گیرد. در صورتی که هاگل در پروژه‌ای به تازگی فعال شده این گزینه می‌تواند مفید باشد.</string>
@@ -171,15 +190,15 @@
   <string name="login-proxyport">درگاه:</string>
   <string name="login-proxydomain">دامنه:</string>
   <string name="login-retrieving-user-conf">واگردانی تنظیمات کاربر</string>
-  <string name="login-fail-css" fuzzy="true">ورود به سیستم انجام نشد. بازیابی پیکربندی کاربر ناممکن بود. Special:MyPage/huggle3.css در دسترس نیست. آیا Huggle3.css را در فضای کاربری خودتان ساخته‌اید؟</string>
-  <string name="login-fail-enable-true" fuzzy="true">ورود ناموفق: شما مقدار enable:true را در پیکربندی شخصی خود ندارید.</string>
-  <string name="login-fail-no-info" fuzzy="true">ورود ناموفق: عدم امکان بازیابی اطلاعات کاربر: $1</string>
-  <string name="login-fail-parse-config" fuzzy="true">ورود ناموفق: قادر به تجزیهٔ تنظیمات کاربر نبود. برای جزئیات بیشتر سیاههٔ اشکال‌زدایی را ببینید.</string>
-  <string name="login-fail-user-data" fuzzy="true">ورود ناموفق: قادر به بازیابی اطلاعات کاربر نبود. پرس‌وجو از API هیچ داده‌ای را برنگرداند.</string>
-  <string name="login-fail-rollback-rights" fuzzy="true">ورود ناموفق: شما در این پروژه دسترسی واگردانی ندارید.</string>
-  <string name="login-failed-autoconfirm-rights" fuzzy="true">ورود ناموفق: شما بر روی این پروژه تأیید خودکار نیستید.</string>
-  <string name="login-failed-edit" fuzzy="true">ورود ناموفق: ویرایش‌های شما در این پروژه کافی نیست.</string>
-  <string name="login-retrieving-info" fuzzy="true">بازیابی اطلاعات کاربر</string>
+  <string name="login-fail-css">ورود به سیستم انجام نشد. دریافت پیکربندی کاربر ناممکن بود. Special:MyPage/huggle3.css یافت نشد. آیا Huggle3.css را در فضای کاربری خودتان ساخته‌اید؟</string>
+  <string name="login-fail-enable-true">ورود ناموفق در $1: شما مقدار enable:true را در پیکربندی شخصی خود ندارید.</string>
+  <string name="login-fail-no-info">ورود ناموفق در $1: امکان دریافت اطلاعات کاربر نبود: $2</string>
+  <string name="login-fail-parse-config">ورود ناموفق در $1: قادر به تجزیهٔ پیکربندی کاربر نبود. برای جزئیات بیشتر سیاههٔ اشکال‌زدایی را ببینید.</string>
+  <string name="login-fail-user-data">ورود ناموفق در $1: قادر به دریافت اطلاعات کاربر نبود. پرس‌وجو از API هیچ داده‌ای را برنگرداند.</string>
+  <string name="login-fail-rollback-rights">ورود ناموفق در $1: شما در این پروژه دسترسی واگردانی ندارید.</string>
+  <string name="login-failed-autoconfirm-rights">ورود ناموفق در $1: شما روی این پروژه تأیید خودکار نیستید.</string>
+  <string name="login-failed-edit">ورود ناموفق در $1: ویرایش‌های شما در این پروژه کافی نیست.</string>
+  <string name="login-retrieving-info">دریافت اطلاعات کاربر روی $1</string>
   <string name="login-password-empty">پسوردی که وارد کرده‌اید خالی است.</string>
   <string name="login-fail-wrong-name">شما هیچ نام کاربری برای لاگین وارد نکرده‌اید</string>
   <string name="login-api">خطا: api.php با نتیجه‌ای ناشناخته داد: $1</string>
@@ -196,24 +215,24 @@
   <string name="login-progress-user-info">بررسی اطلاعات کاربر برای $1</string>
   <string name="login-progress-whitelist">بازیابی کاربر فهرست سفید...</string>
   <string name="login-ssl">اجرای اچ‌تی‌تی‌پی‌اس (openssl نیاز دارد)</string>
-  <string name="login-fail" fuzzy="true">قادر به ورود نیستم</string>
+  <string name="login-fail">ثبت ورود در $1 نافرجام ماند</string>
   <string name="login-error-admin">استفاده از هاگل در این پروژه نیازمند دسترسی مدیریت است.</string>
   <string name="login-error-age">استفاده از هاگل در این پروژه نیازمند حسابی با قدمت حداقل $1 روز است.</string>
   <string name="login-error-alldisabled">هاگل اکنون در همه پروژه‌ها غیرفعال است.</string>
-  <string name="login-error-approval" fuzzy="true">استفاده از هاگل در این پروژه نیازمند تایید است.</string>
+  <string name="login-error-approval">استفاده از هاگل در $1 نیازمند تأیید است.</string>
   <string name="login-error-cancelled">لغو شد.</string>
-  <string name="login-error-config" fuzzy="true">ورود ناموفق قادر به گرفتن پیکربندی محلی نیستم: $1</string>
+  <string name="login-error-config">ثبت ورود نافرجام ماند، امکان تجزیهٔ پیکربندی برای $1 نبود: $2</string>
   <string name="login-error-count">استفاده از هاگل در این پروژه نیازمند حداقل $1 ویرایش است.</string>
-  <string name="login-error-disabled" fuzzy="true">هاگل برای حساب کاربری شما فعال نیست؛ صفحه پیکربندی حساب کاربری را بررسی کنید.</string>
+  <string name="login-error-disabled">هاگل برای حساب کاربری شما در $1 فعال نشده است؛ صفحه پیکربندی حساب کاربری را بررسی کنید.</string>
   <string name="login-error-global">ورود ناموفق: قادر به تجزیهٔ پیکربندی سراسری نبود. برای جزئیات بیشتر سیاههٔ اشکال‌زدایی را ببینید.</string>
   <string name="login-error-invalid">نام کاربری نادرست</string>
-  <string name="login-error-noconfig" fuzzy="true">این پروژه صفحه پیکربندی هاگل ندارد</string>
+  <string name="login-error-noconfig">$1 صفحهٔ پیکربندی هاگل ندارد</string>
   <string name="login-error-nouser">این حساب کاربری وجود ندارد</string>
   <string name="login-error-password">گذرواژه نادرست</string>
   <string name="login-error-projdisabled">هاگل اکنون در پروژه شما غیرفعال است.</string>
-  <string name="login-error-unknown" fuzzy="true">قادر به ورود نیستم.</string>
+  <string name="login-error-unknown">قادر به ثبت ورود در $1 نبود.</string>
   <string name="login-error-version">این نسخه، قدیمی است. به آخرین نسخه به‌روزرسانی نمایید.</string>
-  <string name="login-error-whitelist" fuzzy="true">اشکال در بارگیری فهرست سفید کاربران.</string>
+  <string name="login-error-whitelist">بارگیری فهرست سفید کاربران برای $1 نافرجام ماند.</string>
   <string name="main-menu-provider-stop">توقف ارائه دهنده</string>
   <string name="main-menu-provider-resume">رزومه ارائه دهنده</string>
   <string name="main-no-reason">هیچ دلیلی توسط کاربر ارائه نشده‌است</string>
@@ -223,10 +242,11 @@
   <string name="main-contribs">مشارکت‌ها</string>
   <string name="main-history">تاریخچه</string>
   <string name="main-new-messages">شما پیام‌های جدیدی دارید؛ سامانه -&gt; نمایش پیام‌های جدید را انتخاب کنید یا M را فشار دهید تا ببینیدشان.</string>
+  <string name="main-space">نام صفحه نمی‌تواند با فاصله پایان یابد، لطفاُ نام صفحه را اصلاح کنید</string>
   <string name="main-system">سامانه</string>
-  <string name="main-status-bar" fuzzy="true">در حال پردازش &lt;b&gt;$1&lt;/b&gt;ویرایش و &lt;b&gt;$2&lt;/b&gt; پرس‌وجو. کاربران فهرست سفید: &lt;b&gt;$3&lt;/b&gt; اندازه صف: &lt;b&gt;$4&lt;/b&gt; آمار: $5</string>
+  <string name="main-status-bar">در حال پردازش &lt;b&gt;$1&lt;/b&gt;ویرایش و &lt;b&gt;$2&lt;/b&gt; پرس‌وجو. کاربران فهرست سفید: &lt;b&gt;$3&lt;/b&gt; اندازهٔ صف: &lt;b&gt;$4&lt;/b&gt; آمار برای$6: $5</string>
   <string name="main-shutting-down">هاگل در حال خاموش‌شدن است، نادیده گرفته شد</string>
-  <string name="main-system-messages">نمایش پیام‌های جدید</string>
+  <string name="main-system-messages">نمایش پیام‌های تازه</string>
   <string name="main-system-reconnectirc">ارتباط دوباره با فید آی‌آرسی</string>
   <string name="main-system-savelog">ذخیره سیاهه ...</string>
   <string name="main-system-statistics">آمارها...</string>
@@ -304,7 +324,7 @@
   <string name="main-browser-back">بازگشت</string>
   <string name="main-browser-forward">جلو</string>
   <string name="main-browser-open">نمایش در مرورگر خارجی</string>
-  <string name="main-browser-newedits">نمایش ویرایش‌های جدید صفحه</string>
+  <string name="main-browser-newedits">نمایش ویرایش‌های تازه صفحه</string>
   <string name="main-browser-newcontribs">نمایش مشارکت‌های جدید کاربر</string>
   <string name="main-revert-manual">هیچ واگردانی‌ای انجام نشد، عقب‌گرد به واگردانی دستی $1</string>
   <string name="main-han">هان</string>
@@ -342,6 +362,7 @@
   <string name="message-retrieve-new-token">در حال گرفتن توکن برای ویرایش $1</string>
   <string name="message-fail-re-user-tp">قادر به به بازیابی $1 نبود. در حال توقف تحویل پیام به آن کاربر</string>
   <string name="message-er">ناتوان در تحویل پیام به $1 : $2</string>
+  <string name="message-error">امکان رساندن پیام به $1 نبود! لطفاً سیاهه‌ها را چک کنید!</string>
   <string name="message-fail-retrieve-talk">ناتوان از گرفتن صفحه بحث کاربر</string>
   <string name="message-done">تحویل پیام به $1 با موفقیت انجام شد</string>
   <string name="message-fail-token-1">امکان دریافت اصالت‌سنج ویرایش نبود</string>
@@ -355,6 +376,7 @@
   <string name="protect-none">هیچ</string>
   <string name="protect-token">اصالت‌سنج را نمی‌توان بازیابی کرد. دلیل چنین بود: $1</string>
   <string name="protect-semiprotection">نیمه-محافظت‌شده</string>
+  <string name="protect-error">ناتوان در محافظت صفحه به دلیل: $1</string>
   <string name="protect-fail-no-info">هیچ اطلاعات صفحه‌ای در دسترس بود (شما یک مدیر هستید؟)</string>
   <string name="protect-fullprotection">حفاظت کامل</string>
   <string name="protect-message-title-fail">قادرنبودن در محافظت</string>
@@ -401,6 +423,9 @@
   <string name="report-message">پیام:</string>
   <string name="report-log">هشدار برای این کاربر:</string>
   <string name="report-include">در گزارش</string>
+  <string name="report-select">خواهشمند است به منظور بازکردن پیش‌نمایش یک تفاوت در فهرست انتخاب کنید</string>
+  <string name="report-write">نوشتن</string>
+  <string name="reportuser-not">این کاربر هم‌اکنون گزارش نشده است</string>
   <string name="report-evidence-none-provid">هیچ تفاوتی به عنوان مدرک فراهم نشده. این باعث می‌شود مدیران خیلی سخت بتوانند خرابکار بودن یا نبودن کاربر را تشخیص دهند. مطمئنید که می‌خواهید ادامه دهید؟</string>
   <string name="report-duplicate">کاربر در حال حاضر گزارش شده‌است</string>
   <string name="report-fail">$1 را گزارش نکرد</string>
@@ -438,40 +463,23 @@
   <string name="speedy-notifycreator">اطلاع‌رسانی به ایجادکننده صفحه</string>
   <string name="rollback">واگردانی $1</string>
   <string name="software-rollback">شما دسترسی واگردانی ندارید، بازگشت به واگردانی نرم‌افزاری</string>
-  <string name="stats-title">آمارها</string>
-  <string name="stats-actions">فعالیت‌های این نشست:</string>
-  <string name="stats-session">زمان جلسه: $1</string>
-  <string name="stats-edits">ویرایش‌ها</string>
-  <string name="stats-assisted">ویرایش‌های کمکی</string>
-  <string name="stats-huggle">ویرایش‌های هاگل</string>
-  <string name="stats-reverts">واگردانی</string>
-  <string name="stats-warnings">هشدارها</string>
-  <string name="stats-reports">گزارش‌ها</string>
-  <string name="stats-tags">برچسب‌ها</string>
-  <string name="stats-notifications">آگاه‌سازی‌ها</string>
-  <string name="stats-blocks">بستن‌ها</string>
-  <string name="stats-deletes">حذف‌ها</string>
-  <string name="stats-protections">محافظت‌ها</string>
-  <string name="stats-allusers">همهٔ کاربران</string>
-  <string name="stats-me">من</string>
-  <string name="stats-ignored">نادیده گرفتن</string>
-  <string name="stats-anon">ناشناس</string>
-  <string name="stats-bots">ربات‌ها</string>
-  <string name="stats-other">سایر</string>
   <string name="tag-title">برچسب $1</string>
   <string name="tag-tagselector">افزودن برچسب:</string>
   <string name="tag-tags">برچسب(ها):</string>
   <string name="tag-summary">خلاصه:</string>
   <string name="tag-insertatend">درج در انتهای صفحه</string>
-  <string name="update-title">نسخهٔ جدید در دسترس است</string>
+  <string name="update-title">نسخهٔ تازه در دسترس است</string>
   <string name="update-progress">دانلود نسخه جدید...</string>
-  <string name="update-error">موفق به دانلود نسخه جدید نشد</string>
+  <string name="update-error">موفق به دانلود نسخه تازه نشد</string>
   <string name="updater-title">نسخه جدیدی از هاگل در دسترس است</string>
   <string name="updater-update">به‌روزرسانی</string>
   <string name="updater-open-manualdownloadpage">باز کردن صفحه دانلود</string>
   <string name="updater-close">بستن</string>
   <string name="updater-disable-notify">غیر فعال کردن به روز رسانی</string>
+  <string name="user-history-fail">امکان دریافت تاریخچه برای کاربر نبود: $1</string>
   <string name="userinfo-generic">اطلاعات کاربری</string>
+  <string name="userinfo-retrieve">بازیابی اطلاعات</string>
+  <string name="shortcut-my-talk">صفحهٔ بحث من</string>
   <string name="shortcut-raw">واگردانی ویرایش و هشدار به کاربر</string>
   <string name="shortcut-exit">بستن هاگل به صورت معمولی</string>
   <string name="shortcut-next">رفتن به ویرایش بعدی</string>
@@ -482,10 +490,17 @@
   <string name="shortcut-revert">واگردانی ویرایش</string>
   <string name="shortcut-x-raw">آتش‌کردن مورد اِن‌اُم در گزینگان واگردانی‌ها و هشدار</string>
   <string name="shortcut-x-revert">آتش‌کردن مورد اِن‌اُم در گزینگان واگردانی</string>
+  <string name="shortcut-watch">درج صفحهٔ نمایش به فهرست پیگیری‌ها</string>
+  <string name="shortcut-unwatch">حذف صفحهٔ نمایش از فهرست پیگیری‌ها</string>
   <string name="shortcut-x-warn">آتش‌کردن مورد اِن‌اُم در گزینگان هشدار</string>
   <string name="shortcut-good">این ویرایش را به عنوان خوب علامت بزن</string>
+  <string name="shortcut-open-in-huggle">بازکردن صفحه در حال حاضر نمایش داده‌شده</string>
   <string name="shortcut-open">این ویرایش را در یک مرورگر نمایش بده</string>
   <string name="shortcut-talk">نمایش صفحه بحث کاربری که این ویرایش را انجام داده‌است</string>
+  <string name="shortcut-revert-agf-1">واگردانی آخرین نسخه با فرض حسن نیت</string>
+  <string name="shortcut-browser-close-tab">بستن یک سربرگ مرورگر</string>
+  <string name="shortcut-tab">بازکردن یک سربرگ تازه</string>
+  <string name="shortcut-rw-stay">واگردانی نسخهٔ کنونی، به یک کاربر هشدار می‌دهد و در همین صفحه می‌ماند</string>
   <string name="warning-title">هشدار $1</string>
   <string name="warning-levelgroup">سطح هشدار</string>
   <string name="warning-levelauto">خودکار</string>
@@ -496,6 +511,7 @@
   <string name="warning-warntype">نوع هشدار:</string>
   <string name="warning-warnlog">هشدار برای این کاربر:</string>
   <string name="warning-submit">ارسال</string>
+  <string name="missing-warning">الگوی هشداری با نام $1 وجود ندارد</string>
   <string name="han-not">شبکه خرابکاری در گزینه‌ها نیست</string>
   <string name="han-connecting">در حال ارتباط با شبکه ضد خرابکاری هاگل</string>
   <string name="error-loggedout">از حساب کاربری خارج شده است، در حال ورود دوباره به سامانه...</string>
@@ -518,10 +534,17 @@
   <string name="deletelog-fail">ناموفق در بازیابی سیاهه حذف $1</string>
   <string name="deletelog-none">سیاهه حذفی برای $1 وجود ندارد</string>
   <string name="deletelog-progress">در حال بازیابی سیاهه حذف $1 ...</string>
+  <string name="edit-bar-top">این ویرایش آخرین نسخه است</string>
   <string name="edit-fail">ویرایش $1 انجام نشد</string>
   <string name="edit-progress">ویرایش  $1 ...</string>
   <string name="history-fail">ناتوان از گرفتن تاریخچه</string>
   <string name="history-progress">گرفتن تاریخچه $1 ($2)...</string>
+  <string name="history-work">در حال لغو ویرایش خود به $1</string>
+  <string name="history-message-revert-title">واقعاً می‌خواهید تنها همین پیام را واگردانی کنید؟</string>
+  <string name="history-not-found">چیزی برای واگردانی یافت نشد</string>
+  <string name="history-already-done">از پیش واگردانی شده بود</string>
+  <string name="history-message-revert-body">این پیام به یک واگردانی ارجاع داده شده است، آیا مطمئن هستید که می‌خواهید بدون واگردانی ویرایشتان روی صفحه تنها این پیام را واگردانی کنید؟ (اگر می‌خواهید هردو واگردانی شوند می‌باید واگردانی را نیز خنثی کنید)</string>
+  <string name="history-revert-fail">ناتوان در بازگرداندن ویرایش‌تان در $1 خطا هنگام بازگرداندن: $2</string>
   <string name="notify-fail">سازنده $1 مطلع نشد</string>
   <string name="notify-unknowncreator">سازنده صفحه پیدا نشد</string>
   <string name="protect-done">وضعیت محافظت  $1 تغییر کرد</string>
@@ -529,7 +552,7 @@
   <string name="protect-progress">در حال تغییر دادن وضعیت محافظت  $1 ...</string>
   <string name="protectlog-fail">امکان دریافت سیاههٔ محافظت $1 نبود</string>
   <string name="protectlog-none">سیاهه حفاظتی برای $1 وجود ندارد</string>
-  <string name="protectlog-progress">در حال بازیابی سیاهه حفاظت $1 ...</string>
+  <string name="protectlog-progress">در حال بازیابی سیاههٔ حفاظت $1...</string>
   <string name="saveuserconfig-progress">در حال به روز رسانی صفحه پیکربندی کاربر...</string>
   <string name="loadglobalconfig-fail">ناتوان در بارگیری صفحه پیکربندی سراسری</string>
   <string name="loadprojectconfig-fail">ناتوان در بارگیری صفحه پیکربندی سراسری</string>
@@ -542,16 +565,14 @@
   <string name="speedy-progress">زدن برچسب حذف سریع بر \'$1\'</string>
   <string name="speedy-wrong">برچسب درخواست شده معتبر نیست. لطفاً دلیل حذف دیگری انتخاب کنید</string>
   <string name="speedy-finished">تمام شد</string>
-  <string name="usermessage-fail">به \'$1\' پیامی فرستاده نشد</string>
-  <string name="usermessage-progress">پیام \' $1 \'...</string>
   <string name="warn-alreadyblocked">کاربر در حال حاضر بسته شده است</string>
-  <string name="editquery-success" fuzzy="true">ویرایش موفق $1</string>
+  <string name="editquery-success">ویرایش موفق $1 بر $2</string>
   <string name="editquery-token">در حال گرفتن توکن برای ویرایش $1</string>
   <string name="editquery-token-error">قادر به گرفتن توکن برای ویرایش نیستم.</string>
   <string name="provider-failure">ناکارائی ارائه‌دهندهٔ خوراک اصلی، در حال تلاش برای بازیابی</string>
   <string name="provider-primary-failure">ارائه‌دهندهٔ خوراک اصلی نافرجام ماند. در حال عقب‌گرد به ارائه‌دهندهٔ ویکی</string>
   <string name="rc-error">ناتوان از گرفتن اطلاعات از فید ویکی، آخرین خطا: $1</string>
-  <string name="whitelist-download">در حال بارگیری فهرست سفید جدید</string>
+  <string name="whitelist-download">در حال بارگیری فهرست سفید تازه</string>
   <string name="logs-widget-name">سیاهه‌های سامانه</string>
   <string name="wait">لطفاً صبر کنید...</string>
   <string name="function-miss">تابع، اکنون در دسترس نمی‌باشد</string>
@@ -566,6 +587,7 @@
   <string name="cr-resolved-same-user">تعارض رفع شد: همهٔ ویرایش‌ها از جمله ویرایش‌های جدید کاربران یکسان واگردانی شدند - ویرایش‌ها متعلق به کاربران یکسانی هستند: $1</string>
   <string name="cr-stop-new-edit">تعارض رفع شد: هیچ عملی انجام نشد - ویرایش‌های تازه‌تری در $1 انجام شده است</string>
   <string name="cr-stop-multiple-same">تعارض رفع شد: هیچ عملی انجام ندهید - چندین ویرایش توسط کاربری یکسان در $1 انجام شده است</string>
+  <string name="cr-revert-same-user">تعارض رفع شد: واگردانی همه ویرایش‌ها- چندین ویرایش توسط یک کاربر در $1 هست</string>
   <string name="cr-message-same">چند ویرایش به وسیله همان کاربر در $1 وجود دارد، آیا قصد واگردانی همه آن‌ها را دارید؟</string>
   <string name="cr-message-new">ویرایش‌های تازه‌ای  در $1 وجود دارد، آیا قصد واگردانی همه آن‌ها را دارید؟</string>
   <string name="cr-message-not-same">ویرایش‌های تازه‌ای  در $1 از سوی کاربران مختلف وجود دارد، آیا قصد واگردانی همه آن‌ها را دارید؟</string>

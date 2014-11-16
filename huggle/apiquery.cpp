@@ -9,6 +9,7 @@
 //GNU General Public License for more details.
 
 #include "apiquery.hpp"
+#include <QFile>
 #include <QUrl>
 #include "apiqueryresult.hpp"
 #include "configuration.hpp"
@@ -23,7 +24,7 @@ using namespace Huggle;
 void ApiQuery::ConstructUrl()
 {
     if (this->ActionPart.isEmpty())
-        throw new Huggle::Exception("No action provided for api request");
+        throw new Huggle::Exception("No action provided for api request", BOOST_CURRENT_FUNCTION);
     if (this->OverrideWiki.isEmpty())
     {
         this->URL = Configuration::GetProjectScriptURL(this->GetSite()) + "api.php?action=" + this->ActionPart;
@@ -33,6 +34,8 @@ void ApiQuery::ConstructUrl()
     }
     if (this->Parameters.length() > 0)
         this->URL += "&" + this->Parameters;
+    if (this->IsContinuous)
+        this->URL += "&rawcontinue=1";
     switch (this->RequestFormat)
     {
         case XML:
@@ -53,12 +56,14 @@ QString ApiQuery::ConstructParameterLessUrl()
     QString url;
     if (this->ActionPart.isEmpty())
     {
-        throw new Huggle::Exception("No action provided for api request", "void ApiQuery::ConstructParameterLessUrl()");
+        throw new Huggle::Exception("No action provided for api request", BOOST_CURRENT_FUNCTION);
     }
     if (!this->OverrideWiki.size())
         url = Configuration::GetProjectScriptURL(this->GetSite()) + "api.php?action=" + this->ActionPart;
     else
         url = Configuration::GetURLProtocolPrefix(this->GetSite()) + this->OverrideWiki + "api.php?action=" + this->ActionPart;
+    if (this->IsContinuous)
+        url += "&rawcontinue=1";
     switch (this->RequestFormat)
     {
         case XML:
@@ -87,7 +92,7 @@ QString ApiQuery::GetAssertPartSuffix()
 // TODO: move this function to RevertQuery
 void ApiQuery::FinishRollback()
 {
-    this->CustomStatus = RevertQuery::GetCustomRevertStatus(this->Result->Data);
+    this->CustomStatus = RevertQuery::GetCustomRevertStatus(this->Result, this->GetSite());
     if (this->CustomStatus != "Reverted")
     {
         this->Result->SetError();
@@ -126,6 +131,35 @@ ApiQueryResult *ApiQuery::GetApiQueryResult()
     return (ApiQueryResult*)this->Result;
 }
 
+static void WriteFile(QString text)
+{
+    QFile *file = new QFile(hcfg->QueryDebugPath);
+    if (file->open(QIODevice::Append))
+    {
+        file->write(QString(text + "\n").toUtf8());
+        file->close();
+    }
+    delete file;
+}
+
+static void WriteIn(ApiQuery *q)
+{
+    if (hcfg->QueryDebugging)
+        WriteFile(QString::number(q->QueryID()) + " IN " + q->Result->Data);
+}
+
+static void WriteOut(ApiQuery *q)
+{
+    if (!hcfg->QueryDebugging)
+        return;
+    if (q->HiddenQuery)
+        WriteFile(QString::number(q->QueryID()) + " OUT secret");
+    else if (q->UsingPOST)
+        WriteFile(QString::number(q->QueryID()) + " OUT " + q->URL + " " + q->Parameters);
+    else
+        WriteFile(QString::number(q->QueryID()) + " OUT " + q->URL);
+}
+
 void ApiQuery::Finished()
 {
     ApiQueryResult *result = (ApiQueryResult*)this->Result;
@@ -150,6 +184,7 @@ void ApiQuery::Finished()
         result->Process();
     this->Status = StatusDone;
     this->ProcessCallback();
+    WriteIn(this);
 }
 
 void ApiQuery::Process()
@@ -186,6 +221,7 @@ void ApiQuery::Process()
                                 ") " + this->URL + "\ndata: " + QUrl::fromPercentEncoding(this->Parameters.toUtf8()));
         return;
     }
+    WriteOut(this);
     if (this->UsingPOST)
     {
         this->reply = Query::NetworkManager->post(request, this->Parameters.toUtf8());
@@ -214,6 +250,7 @@ void ApiQuery::SetAction(const Action action)
             return;
         case ActionQuery:
             this->ActionPart = "query";
+            this->IsContinuous = true;
             this->EnforceLogin = false;
             return;
         case ActionLogin:
@@ -267,4 +304,13 @@ void ApiQuery::SetAction(const Action action)
             this->EditingQuery = true;
             return;
     }
+}
+
+QString ApiQuery::DebugURL()
+{
+    if (this->HiddenQuery)
+        return "Protected link";
+    if (this->UsingPOST)
+        return this->URL + " POST: " + this->Parameters;
+    return this->URL;
 }

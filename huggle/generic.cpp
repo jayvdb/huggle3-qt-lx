@@ -76,8 +76,7 @@ QString Generic::EvaluateWikiPageContents(ApiQuery *query, bool *failed, QString
 {
     if (!failed)
     {
-        throw new Huggle::Exception("failed was NULL", "QString Generic::EvaluateWikiPageContents(ApiQuery *query, "\
-                                    "bool *failed, QDateTime *base, QString *comment, QString *user, int *revid)");
+        throw new Huggle::Exception("failed was NULL", BOOST_CURRENT_FUNCTION);
     }
     if (query == nullptr)
     {
@@ -147,7 +146,7 @@ QString Generic::ShrinkText(QString text, unsigned int size, bool html, unsigned
 {
     if (size < minimum)
     {
-        throw new Huggle::Exception("Parameter size must be more than 2", "QString Core::ShrinkText(QString text, int size)");
+        throw new Huggle::Exception("Parameter size must be more than 2", BOOST_CURRENT_FUNCTION);
     }
     // let's copy the text into new variable so that we don't break the original
     // who knows how these mutable strings are going to behave in qt :D
@@ -173,45 +172,47 @@ QString Generic::ShrinkText(QString text, unsigned int size, bool html, unsigned
     return text_;
 }
 
-int Generic::MessageBox(QString title, QString text, MessageBoxStyle st, bool enforce_stop)
+int Generic::MessageBox(QString title, QString text, MessageBoxStyle st, bool enforce_stop, QWidget *parent)
 {
-    QMessageBox mb;
-    mb.setWindowTitle(title);
-    mb.setText(text);
+    QMessageBox *mb = new QMessageBox(parent);
+    mb->setWindowTitle(title);
+    mb->setText(text);
+    int return_value = -1;
     switch (st)
     {
         case MessageBoxStyleQuestion:
-            mb.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-            mb.setDefaultButton(QMessageBox::Yes);
-            return mb.exec();
+            mb->setIcon(QMessageBox::Question);
+            mb->setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+            mb->setDefaultButton(QMessageBox::Yes);
+            return_value = mb->exec();
+            break;
         case MessageBoxStyleNormal:
+            mb->setIcon(QMessageBox::Information);
+            goto exec;
         case MessageBoxStyleError:
+            mb->setIcon(QMessageBox::Critical);
+            goto exec;
         case MessageBoxStyleWarning:
-            if (enforce_stop)
-                mb.exec();
-            else
-                mb.show();
-            return 0;
+            mb->setIcon(QMessageBox::Warning);
+            goto exec;
     }
-    return -1;
+    delete mb;
+    return return_value;
+    exec:
+        if (enforce_stop)
+        {
+            return_value = mb->exec();
+            delete mb;
+        }
+        else
+        {
+            mb->setAttribute(Qt::WA_DeleteOnClose, true);
+            mb->show();
+        }
+        return return_value;
 }
 
-bool Generic::CompareVersions(QString a, QString b)
+int Generic::pMessageBox(QWidget *parent, QString title, QString text, MessageBoxStyle st, bool enforce_stop)
 {
-    QStringList va = a.split('.');
-    QStringList vb = b.split('.');
-    int cv = 0;
-    while (cv < va.count())
-    {
-        if (vb.count() <= cv)
-            break;
-        // if it's greater we have a newer version
-        if (va[cv] > vb[cv])
-            return true;
-        // if it's smaller we have older version
-        if (vb[cv] > va[cv])
-            return false;
-        cv++;
-    }
-    return true;
+    return Generic::MessageBox(title, text, st, enforce_stop, parent);
 }

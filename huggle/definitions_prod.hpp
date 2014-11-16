@@ -16,13 +16,13 @@
 
 typedef char byte_ht;
 
-#define HUGGLE_VERSION                  "3.1.4"
+#define HUGGLE_VERSION                  "3.1.5"
 #define HUGGLE_BYTE_VERSION_MAJOR       0x3
 #define HUGGLE_BYTE_VERSION_MINOR       0x1
-#define HUGGLE_BYTE_VERSION_RELEASE     0x4
+#define HUGGLE_BYTE_VERSION_RELEASE     0x5
 
 // Version of mediawiki that we do support
-#define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.22"
+#define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.25"
 
 // How often the statistics get purged in seconds (smaller, more precise they will be)
 #define HUGGLE_STATISTICS_LIFETIME     200
@@ -108,6 +108,26 @@ namespace std { typedef decltype(nullptr) nullptr_t; }
 //! Change this to DEBIAN / UBUNTU / WINDOWS to get automatic updates for selected channels
 #define HUGGLE_UPDATER_PLATFORM_TYPE            "huggle-devs"
 #define HUGGLE_GLOBAL_EXTENSION_PATH            "/usr/share/huggle/extensions"
+
+// stolen from boost/current_function.hpp
+#ifndef BOOST_CURRENT_FUNCTION
+    #if defined(__GNUC__) || (defined(__MWERKS__) && (__MWERKS__ >= 0x3000)) || (defined(__ICC) && (__ICC >= 600))
+        #define BOOST_CURRENT_FUNCTION __PRETTY_FUNCTION__
+    #elif defined(__DMC__) && (__DMC__ >= 0x810)
+        #define BOOST_CURRENT_FUNCTION __PRETTY_FUNCTION__
+    #elif defined(__FUNCSIG__)
+        #define BOOST_CURRENT_FUNCTION __FUNCSIG__
+    #elif (defined(__INTEL_COMPILER) && (__INTEL_COMPILER >= 600)) || (defined(__IBMCPP__) && (__IBMCPP__ >= 500))
+        #define BOOST_CURRENT_FUNCTION __FUNCTION__
+    #elif defined(__BORLANDC__) && (__BORLANDC__ >= 0x550)
+        #define BOOST_CURRENT_FUNCTION __FUNC__
+    #elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
+        #define BOOST_CURRENT_FUNCTION __func__
+    #else
+        #define BOOST_CURRENT_FUNCTION "(unknown)"
+    #endif
+#endif
+
 //! Revid of edit that doesn't exist
 #define WIKI_UNKNOWN_REVID -1
 

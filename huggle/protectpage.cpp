@@ -9,8 +9,8 @@
 //GNU General Public License for more details.
 
 #include "protectpage.hpp"
-#include <QMessageBox>
 #include "configuration.hpp"
+#include "generic.hpp"
 #include "localization.hpp"
 #include "querypool.hpp"
 #include "syslog.hpp"
@@ -40,7 +40,7 @@ ProtectPage::~ProtectPage()
 
 void ProtectPage::setPageToProtect(WikiPage *Page)
 {
-    this->PageToProtect = Page;
+    this->PageToProtect = new WikiPage(Page);
 }
 
 void ProtectPage::getTokenToProtect()
@@ -132,12 +132,7 @@ void ProtectPage::on_pushButton_2_clicked()
 
 void ProtectPage::Failed(QString reason)
 {
-    QMessageBox *_pmb = new QMessageBox();
-    _pmb->setWindowTitle(_l("protect-message-title-fail"));
-    /// \todo LOCALIZE ME
-    _pmb->setText("Unable to protect the page because " + reason);
-    _pmb->exec();
-    delete _pmb;
+    Generic::MessageBox(_l("protect-message-title-fail"), _l("protect-error", reason), MessageBoxStyleWarning, true);
     this->tt->stop();
     delete this->tt;
     this->qProtection.Delete();

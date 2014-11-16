@@ -13,6 +13,8 @@
 #include "configuration.hpp"
 #include "huggleparser.hpp"
 #include "localization.hpp"
+#include "mainwindow.hpp"
+#include "hugglequeue.hpp"
 #include "syslog.hpp"
 #include "wikisite.hpp"
 using namespace Huggle;
@@ -49,7 +51,7 @@ WikiUser *WikiUser::RetrieveUser(QString user, WikiSite *site)
             WikiUser::ProblematicUserListLock.unlock();
             return u;
         }
-        User++;
+        ++User;
     }
     WikiUser::ProblematicUserListLock.unlock();
     return nullptr;
@@ -69,7 +71,7 @@ void WikiUser::TrimProblematicUsersList()
             delete user;
             continue;
         }
-        i++;
+        ++i;
     }
     WikiUser::ProblematicUserListLock.unlock();
 }
@@ -84,7 +86,14 @@ void WikiUser::UpdateUser(WikiUser *us)
         if (ProblematicUsers.at(c)->Username == us->Username)
         {
             ProblematicUsers.at(c)->BadnessScore = us->BadnessScore;
-            ProblematicUsers.at(c)->WarningLevel = us->WarningLevel;
+            if (ProblematicUsers.at(c)->WarningLevel != us->WarningLevel)
+            {
+                // houston, we have this user with a different warning level, what should we do now?? pls tell us
+                // You need to update the interface of huggle so that it display all latest information about it
+                ProblematicUsers.at(c)->WarningLevel = us->WarningLevel;
+                // let's update the queue first
+                MainWindow::HuggleMain->Queue1->UpdateUser(us);
+            }
             ProblematicUsers.at(c)->WhitelistInfo = us->WhitelistInfo;
             if (us->IsReported)
             {
@@ -100,10 +109,15 @@ void WikiUser::UpdateUser(WikiUser *us)
             WikiUser::ProblematicUserListLock.unlock();
             return;
         }
-        c++;
+        ++c;
     }
     ProblematicUsers.append(new WikiUser(us));
     WikiUser::ProblematicUserListLock.unlock();
+    if (us->GetWarningLevel() > 0)
+    {
+        // this user has higher warning level than 0 so we need to update interface in case it was already somewhere
+        MainWindow::HuggleMain->Queue1->UpdateUser(us);
+    }
 }
 
 bool WikiUser::IsIPv4(QString user)
@@ -229,7 +243,7 @@ WikiUser::WikiUser(QString user)
             WikiUser::ProblematicUserListLock.unlock();
             return;
         }
-        c++;
+        ++c;
     }
     WikiUser::ProblematicUserListLock.unlock();
     this->BadnessScore = 0;
@@ -411,4 +425,28 @@ bool WikiUser::GetBot() const
 void WikiUser::SetBot(bool value)
 {
     this->Bot = value;
+}
+
+void WikiUser::DecrementWarningLevel()
+{
+    this->WarningLevel--;
+    if (this->WarningLevel < 0)
+        this->WarningLevel = 0;
+}
+
+void WikiUser::IncrementWarningLevel()
+{
+    this->WarningLevel++;
+    if (this->WarningLevel > this->GetSite()->GetProjectConfig()->WarningLevel)
+        this->WarningLevel = this->GetSite()->GetProjectConfig()->WarningLevel;
+}
+
+void WikiUser::SetWarningLevel(byte_ht level)
+{
+    this->WarningLevel = level;
+}
+
+byte_ht WikiUser::GetWarningLevel() const
+{
+    return this->WarningLevel;
 }

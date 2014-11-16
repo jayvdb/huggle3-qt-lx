@@ -43,14 +43,9 @@ UpdateForm::~UpdateForm()
 void UpdateForm::Check()
 {
     this->qData = new WebserverQuery();
-    QString version = Configuration::HuggleConfiguration->HuggleVersion;
-    if (version.contains(" "))
-    {
-        // we don't need to send the irrelevant stuff
-        version = version.mid(0, version.indexOf(" "));
-    }
-    this->qData->URL = "http://tools.wmflabs.org/huggle/updater/?version=" + QUrl::toPercentEncoding(version)
-            + "&os=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->Platform);
+    this->qData->URL = "http://tools.wmflabs.org/huggle/updater/?version=" + QUrl::toPercentEncoding(HUGGLE_VERSION)
+            + "&os=" + QUrl::toPercentEncoding(Configuration::HuggleConfiguration->Platform)
+            + "&language=" + Localizations::HuggleLocalizations->PreferredLanguage;
     if (Configuration::HuggleConfiguration->SystemConfig_NotifyBeta)
     {
        this->qData->URL += "&notifybeta";
@@ -110,7 +105,7 @@ void UpdateForm::OnTick()
             // we don't know how to update o.O
             info = l.at(0).toElement().text();
             this->ui->pushButton->setEnabled(false);
-            info = info.replace("$LATESTHUGGLE", version);
+            info = info.replace("$LATESTHUGGLE", version).replace("$VERSION", hcfg->HuggleVersion);
             this->ui->label->setText(info);
             l = r.elementsByTagName("manualDownloadpage");
             if(l.count() > 0)
@@ -184,4 +179,5 @@ void UpdateForm::reject()
         Configuration::HuggleConfiguration->SaveSystemConfig();
     }
     Configuration::HuggleConfiguration->SystemConfig_NotifyBeta = this->ui->checkBox_2->isChecked();
+    QDialog::reject();
 }

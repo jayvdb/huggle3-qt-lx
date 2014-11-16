@@ -60,7 +60,7 @@ void UAAReport::setUserForUAA(WikiUser *user)
 void UAAReport::getPageContents()
 {
     if (this->User == nullptr)
-        throw new Huggle::NullPointerException("this->User", "void UAAReport::getPageContents()");
+        throw new Huggle::NullPointerException("this->User", BOOST_CURRENT_FUNCTION);
     if (this->qUAApage != nullptr)
         this->qUAApage->DecRef();
     this->qUAApage = Generic::RetrieveWikiPageContents(this->User->GetSite()->GetProjectConfig()->UAAPath, this->User->GetSite());
@@ -76,7 +76,7 @@ void UAAReport::onTick()
     if (this->User == nullptr)
     {
         this->Timer->stop();
-        throw new Huggle::NullPointerException("this->User", "void UAAReport::onTick()");
+        throw new Huggle::NullPointerException("this->User", BOOST_CURRENT_FUNCTION);
     }
     if (this->qUAApage == nullptr || !this->qUAApage->IsProcessed())
         return;
@@ -102,7 +102,7 @@ void UAAReport::onTick()
     /// \todo Check if user isn't already reported
     Huggle::Syslog::HuggleLogs->DebugLog("Contents of UAA: " + this->dr);
     /// \todo Insert this to project config so that each project can have their own system here
-    QString uaasum = Configuration::HuggleConfiguration->GenerateSuffix(QString("Reporting ") + this->User->Username + " to UAA",
+    QString uaasum = Configuration::GenerateSuffix(QString("Reporting ") + this->User->Username + " to UAA",
                                                                         this->User->GetSite()->GetProjectConfig());
     this->whatToReport();
     this->insertUsername();

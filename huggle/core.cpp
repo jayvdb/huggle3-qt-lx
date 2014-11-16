@@ -10,7 +10,6 @@
 
 #include "core.hpp"
 #include <QtXml>
-#include <QMessageBox>
 #include <QPluginLoader>
 #include "configuration.hpp"
 #include "exception.hpp"
@@ -518,7 +517,7 @@ void Core::LoadLocalizations()
     Localizations::HuggleLocalizations->LocalInit("fr"); // French
     Localizations::HuggleLocalizations->LocalInit("he"); // Hebrew
     Localizations::HuggleLocalizations->LocalInit("hi"); // Hindi
-    //Localizations::HuggleLocalizations->LocalInit("it"); // Italian
+    Localizations::HuggleLocalizations->LocalInit("it"); // Italian
     Localizations::HuggleLocalizations->LocalInit("ja"); // Japanese
     Localizations::HuggleLocalizations->LocalInit("ka"); // ?
     //Localizations::HuggleLocalizations->LocalInit("km"); // Khmer
