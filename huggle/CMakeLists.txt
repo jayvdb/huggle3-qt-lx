@@ -8,7 +8,7 @@ execute_process(COMMAND "${CMAKE_SOURCE_DIR}/update.sh" WORKING_DIRECTORY ${CMAK
 option(LIBCORE "Build core library" FALSE)
 option(PYTHON_BUILD "Build huggle with python" FALSE)
 option(QT5_BUILD "Build huggle using the Qt5 framework" FALSE)
-option(HUGGLE_EXT "Build huggle extensions" FALSE)
+option(HUGGLE_EXT "Build huggle extensions" TRUE)
 if (HUGGLE_EXT)
     add_subdirectory(extension_list/enwiki/)
     add_subdirectory(extension_list/mass-delivery/)
