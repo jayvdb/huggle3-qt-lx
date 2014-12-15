@@ -55,6 +55,8 @@ SpeedyForm::~SpeedyForm()
 
 void SpeedyForm::on_pushButton_clicked()
 {
+    if (!Hooks::Speedy_BeforeOK(this->edit, this))
+        return;
     if (this->edit->Page->IsUserpage())
     {
         QMessageBox::StandardButton qb = QMessageBox::question(Core::HuggleCore->Main, "Request",  _l("delete-user"), QMessageBox::Yes|QMessageBox::No);
@@ -65,10 +67,7 @@ void SpeedyForm::on_pushButton_clicked()
     }
     if (this->ui->comboBox->currentText().isEmpty())
     {
-        QMessageBox mb;
-        mb.setText(_l("speedy-wrong"));
-        mb.setWindowTitle("Wrong csd");
-        mb.exec();
+        Generic::MessageBox(_l("speedy-wrong"), "Wrong csd");
         return;
     }
     this->ui->checkBox->setEnabled(false);
@@ -96,12 +95,9 @@ void Finalize(Query *result)
 void SpeedyForm::Fail(QString reason)
 {
     this->qObtainText.Delete();
-    QMessageBox mb;
     this->Template.Delete();
-    mb.setWindowTitle("Error");
-    mb.setText(reason);
+    Generic::MessageBox("Error", reason, MessageBoxStyleError);
     Hooks::Speedy_Finished(this->edit, this->ui->comboBox->currentText(), false);
-    mb.exec();
     this->timer->stop();
 }
 
@@ -116,7 +112,9 @@ void SpeedyForm::processTags()
         return;
     }
     //! \todo make this cross wiki instead of checking random tag
-    if (this->Text.contains("{{db"))
+    QString lower = this->Text;
+    lower = lower.toLower();
+    if (lower.contains("{{db"))
     {
         this->Fail("There is already a CSD tag on the page.");
         this->close();
@@ -147,10 +145,31 @@ void SpeedyForm::Init(WikiEdit *edit_)
 {
     if (edit_ == nullptr)
     {
-        throw new Huggle::Exception("edit was NULL", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("WikiEdit *edit_", BOOST_CURRENT_FUNCTION);
     }
     this->edit = edit_;
     this->ui->label_2->setText(edit_->Page->PageName);
+}
+
+QString SpeedyForm::GetSelectedDBReason()
+{
+    return this->ui->comboBox->currentText();
+}
+
+QString SpeedyForm::GetSelectedTagID()
+{
+    QStringList vals = Configuration::HuggleConfiguration->ProjectConfig->SpeedyTemplates
+                       .at(this->ui->comboBox->currentIndex()).split(";");
+    if (vals.count() < 4)
+    {
+        return "";
+    }
+    return vals.at(2);
+}
+
+void SpeedyForm::SetMessageUserCheck(bool new_value)
+{
+    this->ui->checkBox->setChecked(new_value);
 }
 
 void SpeedyForm::OnTick()

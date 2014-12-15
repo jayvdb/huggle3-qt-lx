@@ -33,11 +33,11 @@ namespace Huggle
     /*!
      * \brief The RevertQuery class can be used to rollback any edit
      */
-    class RevertQuery : public QObject, public Query, public MediaWikiObject
+    class HUGGLE_EX RevertQuery : public QObject, public Query, public MediaWikiObject
     {
             Q_OBJECT
         public:
-            static QString GetCustomRevertStatus(QueryResult *result_data, WikiSite *site);
+            static QString GetCustomRevertStatus(QueryResult *result_data, WikiSite *site, bool *failed);
 
             RevertQuery();
             RevertQuery(WikiEdit *Edit);

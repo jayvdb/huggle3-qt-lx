@@ -18,7 +18,7 @@ WikiPageNS *WikiSite::Unknown = new WikiPageNS(0, "", "");
 
 WikiPageNS::WikiPageNS(int id, QString name, QString canonical_name)
 {
-    QString lc = canonical_name.toLower();
+    QString lc = canonical_name.toLower().replace("_", " ");
     QString lw = name.toLower();
     this->Talk = (lc.startsWith("talk") || lc.contains(" talk") || lw.startsWith("talk") || lw.contains(" talk"));
     this->ID = id;
@@ -129,11 +129,13 @@ WikiSite::~WikiSite()
 WikiPageNS *WikiSite::RetrieveNSFromTitle(QString title)
 {
     WikiPageNS *dns_ = nullptr;
+    QString lct_ = title.toLower();
+    lct_ = lct_.replace("_", " ");
     foreach(WikiPageNS *ns_, this->NamespaceList)
     {
         if (ns_->GetName().isEmpty())
             dns_ = ns_;
-        else if (title.startsWith(ns_->GetName() + ":"))
+        else if (lct_.startsWith(ns_->GetName().toLower() + ":"))
             return ns_;
     }
     // let's try canonical names
@@ -141,7 +143,7 @@ WikiPageNS *WikiSite::RetrieveNSFromTitle(QString title)
     {
         if (ns_->GetName().isEmpty())
             continue;
-        else if (title.startsWith(ns_->GetCanonicalName() + ":"))
+        else if (lct_.startsWith(ns_->GetCanonicalName().toLower() + ":"))
             return ns_;
     }
     if (!dns_)
@@ -168,7 +170,7 @@ WikiPageNS *WikiSite::RetrieveNSByCanonicalName(QString CanonicalName)
 ProjectConfiguration *WikiSite::GetProjectConfig()
 {
     if (this->ProjectConfig == nullptr)
-        throw new Huggle::Exception("There is no project config for this wiki");
+        throw new Huggle::Exception("There is no project config for this wiki", BOOST_CURRENT_FUNCTION);
 
     return this->ProjectConfig;
 }
@@ -176,7 +178,7 @@ ProjectConfiguration *WikiSite::GetProjectConfig()
 UserConfiguration *WikiSite::GetUserConfig()
 {
     if (this->UserConfig == nullptr)
-        throw new Huggle::Exception("There is no user configuration for this wiki");
+        throw new Huggle::Exception("There is no user configuration for this wiki", BOOST_CURRENT_FUNCTION);
     // we can return the local conf now
     return this->UserConfig;
 }

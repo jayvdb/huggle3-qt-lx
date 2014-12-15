@@ -62,7 +62,7 @@ namespace Huggle
     //! That means every query is either unmanaged or managed. In case it is managed,
     //! the GC will care about it being removed from operating memory and you must not
     //! call a delete on it, otherwise program will crash.
-    class Query : public Collectable
+    class HUGGLE_EX Query : public Collectable
     {
         public:
             //! We need to have a shared manager for all queries
@@ -127,6 +127,8 @@ namespace Huggle
             Callback FailureCallback = nullptr;
             //! This is a pointer to object returned by your callback function
             void* CallbackResult = nullptr;
+            //! You can use this to set a reference to a class which used this callback function
+            void* CallbackOwner = nullptr;
             bool RetryOnTimeoutFailure;
             QDateTime StartTime;
             int Timeout;

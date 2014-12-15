@@ -12,7 +12,6 @@
 #define EXCEPTION_H
 
 #include "definitions.hpp"
-
 #include <QString>
 
 //////////////////////////////////////////////////////////////////////////
@@ -36,11 +35,12 @@
 // remaining code must be surrounded with directives
 //////////////////////////////////////////////////////////////////////////
 
+#define HUGGLE_STACK 80
 
 namespace Huggle
 {
     //! Every exception raised by huggle is defined by this class
-    class Exception
+    class HUGGLE_EX Exception
     {
         public:
             /*!
@@ -51,6 +51,7 @@ namespace Huggle
              * \param Source
              */
             static void ThrowSoftException(QString Text, QString Source);
+            static QString GetCurrentStackTrace();
             static void InitBreakpad();
             static void ExitBreakpad();
 
@@ -60,6 +61,7 @@ namespace Huggle
             QString Source;
             //! Reason for crash
             QString Message;
+            QString StackTrace;
             //! ctor
             Exception(QString text, bool isRecoverable = true);
             Exception(QString text, QString source, bool isRecoverable = true);
@@ -76,7 +78,7 @@ namespace Huggle
             bool _IsRecoverable;
     };
 
-    class NullPointerException : public Exception
+    class HUGGLE_EX NullPointerException : public Exception
     {
         public:
             NullPointerException(QString name, QString source);

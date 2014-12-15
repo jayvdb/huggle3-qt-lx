@@ -11,6 +11,7 @@
 #include "wikiutil.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
+#include "editquery.hpp"
 #include "syslog.hpp"
 #include "querypool.hpp"
 #include "wikisite.hpp"
@@ -39,7 +40,7 @@ QString WikiUtil::MonthText(int n)
 {
     if (n < 1 || n > 12)
     {
-        throw new Huggle::Exception("Month must be between 1 and 12");
+        throw new Huggle::Exception("Month must be between 1 and 12", BOOST_CURRENT_FUNCTION);
     }
     n--;
     return Configuration::HuggleConfiguration->ProjectConfig->Months.at(n);
@@ -48,18 +49,18 @@ QString WikiUtil::MonthText(int n)
 Collectable_SmartPtr<RevertQuery> WikiUtil::RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback)
 {
     if (_e == nullptr)
-        throw new Huggle::Exception("NULL edit in RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback, bool keep) is not a valid edit");
+        throw new Huggle::NullPointerException("NULL edit in RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback, bool keep) is not a valid edit", BOOST_CURRENT_FUNCTION);
     if (_e->User == nullptr)
-        throw new Huggle::Exception("Object user was NULL in Core::Revert");
+        throw new Huggle::NullPointerException("Object user was NULL in Core::Revert", BOOST_CURRENT_FUNCTION);
     if (_e->Page == nullptr)
-        throw new Huggle::Exception("Object page was NULL");
+        throw new Huggle::NullPointerException("Object page was NULL", BOOST_CURRENT_FUNCTION);
 
     Collectable_SmartPtr<RevertQuery> query = new RevertQuery(_e, _e->GetSite());
     if (summary.length())
         query->Summary = summary;
     query->MinorEdit = minor;
     QueryPool::HugglePool->AppendQuery(query);
-    if (hcfg->UserConfig->EnforceManualSoftwareRollback)
+    if (hcfg->UserConfig->EnforceSoftwareRollback())
         query->SetUsingSR(true);
     else
         query->SetUsingSR(!rollback);
@@ -128,11 +129,13 @@ void WikiUtil::FinalizeMessages()
     }
 }
 
-Collectable_SmartPtr<EditQuery> WikiUtil::AppendTextToPage(QString page, QString text, QString summary, bool minor)
+Collectable_SmartPtr<EditQuery> WikiUtil::AppendTextToPage(QString page, QString text, QString summary, bool minor, WikiSite *site)
 {
-    ///! \todo assumes main project?
+    if (!site)
+        site = hcfg->Project;
     Collectable_SmartPtr<EditQuery> eq = new EditQuery();
     eq->Page = new WikiPage(page);
+    eq->Page->Site = site;
     eq->text = text;
     summary = Configuration::GenerateSuffix(summary, eq->Page->GetSite()->GetProjectConfig());
     eq->Summary = summary;
@@ -154,8 +157,7 @@ Collectable_SmartPtr<EditQuery> WikiUtil::EditPage(WikiPage *page, QString text,
 {
     if (page == nullptr)
     {
-        throw Huggle::Exception("Invalid page (NULL)", "EditQuery *WikiUtil::EditPage(WikiPage *page, QString text, QString"\
-                                " summary, bool minor, QString BaseTimestamp)");
+        throw Huggle::NullPointerException("WikiPage *page", BOOST_CURRENT_FUNCTION);
     }
     Collectable_SmartPtr<EditQuery> eq = new EditQuery();
     summary = Configuration::GenerateSuffix(summary, page->GetSite()->GetProjectConfig());
@@ -181,7 +183,7 @@ QString WikiUtil::SanitizeUser(QString username)
     return username;
 }
 
-ApiQuery *WikiUtil::Unwatchlist(WikiPage *page)
+Collectable_SmartPtr<ApiQuery> WikiUtil::Unwatchlist(WikiPage *page)
 {
     ApiQuery *wt = new ApiQuery(ActionUnwatch, page->GetSite());
     wt->RegisterConsumer(HUGGLECONSUMER_QP_WATCHLIST);
@@ -208,7 +210,7 @@ ApiQuery *WikiUtil::Unwatchlist(WikiPage *page)
     return wt;
 }
 
-ApiQuery *WikiUtil::Watchlist(WikiPage *page)
+Collectable_SmartPtr<ApiQuery> WikiUtil::Watchlist(WikiPage *page)
 {
     ApiQuery *wt = new ApiQuery(ActionWatch, page->GetSite());
     wt->RegisterConsumer(HUGGLECONSUMER_QP_WATCHLIST);
@@ -233,4 +235,33 @@ ApiQuery *WikiUtil::Watchlist(WikiPage *page)
     QueryPool::HugglePool->PendingWatches.append(wt);
     wt->Process();
     return wt;
+}
+
+
+Collectable_SmartPtr<EditQuery> WikiUtil::PrependTextToPage(QString page, QString text, QString summary, bool minor, WikiSite *site)
+{
+    if (!site)
+        site = hcfg->Project;
+    Collectable_SmartPtr<EditQuery> eq = new EditQuery();
+    eq->Page = new WikiPage(page);
+    eq->Page->Site = site;
+    eq->text = text;
+    summary = Configuration::GenerateSuffix(summary, eq->Page->GetSite()->GetProjectConfig());
+    eq->Summary = summary;
+    eq->Minor = minor;
+    eq->Prepend = true;
+    eq->RegisterConsumer(HUGGLECONSUMER_QP_MODS);
+    QueryPool::HugglePool->PendingMods.append(eq);
+    eq->Process();
+    return eq;
+}
+
+Collectable_SmartPtr<EditQuery> WikiUtil::PrependTextToPage(WikiPage *page, QString text, QString summary, bool minor)
+{
+    return WikiUtil::PrependTextToPage(page->PageName, text, summary, minor, page->GetSite());
+}
+
+Collectable_SmartPtr<EditQuery> WikiUtil::AppendTextToPage(WikiPage *page, QString text, QString summary, bool minor)
+{
+    return WikiUtil::AppendTextToPage(page->PageName, text, summary, minor, page->GetSite());
 }

@@ -52,21 +52,22 @@ ProjectConfiguration::~ProjectConfiguration()
     delete this->UAAP;
 }
 
-bool ProjectConfiguration::Parse(QString config, QString *reason)
+bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site)
 {
     Version version(HuggleParser::ConfigurationParse("min-version", config, "3.0.0"));
     Version huggle_version(HUGGLE_VERSION);
+    this->Site = site;
     if (huggle_version < version)
     {
         if (reason)
             *reason = "your huggle is too old, " + this->ProjectName + " supports only " + version.ToString() + " or newer.";
         return false;
     }
-    if (SafeBool(HuggleParser::ConfigurationParse("approval", config, "false")))
-        Syslog::HuggleLogs->WarningLog(this->ProjectName + " is using obsolete option 'approval' which is not supported");
+    this->Approval = SafeBool(HuggleParser::ConfigurationParse("approval", config, "false"));
     //AIV
     this->AIV = SafeBool(HuggleParser::ConfigurationParse("aiv-reports", config));
     this->AIVExtend = SafeBool(HuggleParser::ConfigurationParse("aiv-extend", config));
+    this->ApprovalPage = HuggleParser::ConfigurationParse("userlist", config, this->ApprovalPage);
     this->ReportAIV = HuggleParser::ConfigurationParse("aiv", config);
     this->ReportSt = HuggleParser::ConfigurationParse("aiv-section", config).toInt();
     // we use these to understand which format they use on a wiki for dates
@@ -82,6 +83,7 @@ bool ProjectConfiguration::Parse(QString config, QString *reason)
     this->RequireAutoconfirmed = SafeBool(HuggleParser::ConfigurationParse("require-autoconfirmed", config, "false"));
     this->RequireConfig = SafeBool(HuggleParser::ConfigurationParse("require-config", config, "false"));
     this->RequireEdits = HuggleParser::ConfigurationParse("require-edits", config, "0").toInt();
+    this->RequireTime = HuggleParser::ConfigurationParse("require-time", config, "0").toInt();
     this->RequireRollback = SafeBool(HuggleParser::ConfigurationParse("require-rollback", config));
     this->LargeRemoval = HuggleParser::ConfigurationParse("large-removal", config, "400").toInt();
     // IRC
@@ -273,12 +275,25 @@ bool ProjectConfiguration::Parse(QString config, QString *reason)
         this->_revertPatterns.append(QRegExp(this->RevertPatterns.at(xx)));
         xx++;
     }
-    HuggleQueueFilter::Filters += HuggleParser::ConfigurationParseQueueList(config, true);
+    if (!HuggleQueueFilter::Filters.contains(site))
+    {
+        HuggleQueueFilter::Filters.insert(site, new QList<HuggleQueueFilter*>());
+    } else
+    {
+        // we need to delete these
+        foreach (HuggleQueueFilter* filter_p, *HuggleQueueFilter::Filters[site])
+            delete filter_p;
+        // flush
+        HuggleQueueFilter::Filters[site]->clear();
+    }
+    HuggleQueueFilter::Filters[site]->clear();
+    HuggleQueueFilter::Filters[site]->append(HuggleQueueFilter::DefaultFilter);
+    (*HuggleQueueFilter::Filters[site]) += HuggleParser::ConfigurationParseQueueList(config, true);
     if (this->AIVP != nullptr)
         delete this->AIVP;
     this->AIVP = new WikiPage(this->ReportAIV);
-    HuggleParser::ParsePats(config);
-    HuggleParser::ParseWords(config);
+    HuggleParser::ParsePats(config, site);
+    HuggleParser::ParseWords(config, site);
     if (this->UAAP != nullptr)
         delete this->UAAP;
     this->UAAP = new WikiPage(this->UAAPath);
@@ -291,7 +306,7 @@ bool ProjectConfiguration::Parse(QString config, QString *reason)
         while (CurrentWarning <= 4)
         {
             QString xx = HuggleParser::ConfigurationParse(type + QString::number(CurrentWarning), config);
-            if (xx != "")
+            if (!xx.isEmpty())
             {
                 this->WarningTemplates.append(type + QString::number(CurrentWarning) + ";" + xx);
             }

@@ -23,7 +23,7 @@ void Huggle::Hooks::EditPreProcess(Huggle::WikiEdit *Edit)
 {
     if (Edit == nullptr)
     {
-        throw new Huggle::Exception("Huggle::WikiEdit *Edit must not be nullptr", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("Huggle::WikiEdit *Edit", BOOST_CURRENT_FUNCTION);
     }
     int extension = 0;
     while (extension < Huggle::Core::HuggleCore->Extensions.count())
@@ -41,7 +41,7 @@ void Huggle::Hooks::EditPostProcess(Huggle::WikiEdit *Edit)
 {
     if (Edit == nullptr)
     {
-        throw new Exception("Huggle::WikiEdit *Edit must not be nullptr", BOOST_CURRENT_FUNCTION);
+        throw new NullPointerException("Huggle::WikiEdit *Edit", BOOST_CURRENT_FUNCTION);
     }
     int extension = 0;
     while (extension < Huggle::Core::HuggleCore->Extensions.count())
@@ -79,7 +79,7 @@ void Huggle::Hooks::BadnessScore(Huggle::WikiUser *User, int Score)
 {
     if (User == nullptr)
     {
-        throw new Exception("Huggle::WikiUser *User must not be nullptr", BOOST_CURRENT_FUNCTION);
+        throw new NullPointerException("Huggle::WikiUser *User", BOOST_CURRENT_FUNCTION);
     }
     int extension = 0;
     while (extension < Huggle::Core::HuggleCore->Extensions.count())
@@ -127,4 +127,20 @@ void Huggle::Hooks::Shutdown()
 #ifdef HUGGLE_PYTHON
     Huggle::Core::HuggleCore->Python->Hook_HuggleShutdown();
 #endif
+}
+
+bool Huggle::Hooks::Speedy_BeforeOK(Huggle::WikiEdit *edit, Huggle::SpeedyForm *form)
+{
+    bool result = true;
+    foreach (Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
+    {
+        if (e->IsWorking())
+        {
+           if (!e->Hook_SpeedyBeforeOK((void*)edit, (void*)form))
+           {
+               result = false;
+           }
+        }
+    }
+    return result;
 }

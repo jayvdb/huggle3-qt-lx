@@ -19,7 +19,22 @@
 using namespace Huggle;
 
 HuggleQueueFilter *HuggleQueueFilter::DefaultFilter = new HuggleQueueFilter();
-QList<HuggleQueueFilter*> HuggleQueueFilter::Filters;
+QHash<WikiSite*,QList<HuggleQueueFilter*>*> HuggleQueueFilter::Filters;
+
+void HuggleQueueFilter::Delete()
+{
+    foreach (QList<HuggleQueueFilter*>*list, Filters)
+    {
+        while(list->count() > 0)
+        {
+            if (list->at(0) != DefaultFilter)
+                delete list->at(0);
+            list->removeAt(0);
+        }
+        delete list;
+    }
+    Filters.clear();
+}
 
 HuggleQueueFilter::HuggleQueueFilter()
 {
@@ -42,6 +57,9 @@ bool HuggleQueueFilter::Matches(WikiEdit *edit)
 {
     if (edit == nullptr)
         throw new Huggle::NullPointerException("WikiEdit *edit", BOOST_CURRENT_FUNCTION);
+
+    if (this->IgnoresNS(edit->Page->GetNS()->GetID()))
+        return false;
 
     if (this->UserSpace != HuggleQueueFilterMatchIgnore)
     {
@@ -116,4 +134,12 @@ bool HuggleQueueFilter::Matches(WikiEdit *edit)
             return false;
     }
     return true;
+}
+
+bool HuggleQueueFilter::IgnoresNS(int ns)
+{
+    if (this->Namespaces.contains(ns))
+        return this->Namespaces[ns];
+
+    return false;
 }

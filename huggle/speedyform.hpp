@@ -35,13 +35,16 @@ namespace Huggle
     /*!
      * \brief The window that is used to report a page for deletion
      */
-    class SpeedyForm : public QDialog
+    class HUGGLE_EX SpeedyForm : public QDialog
     {
             Q_OBJECT
         public:
             explicit SpeedyForm(QWidget *parent = nullptr);
             ~SpeedyForm();
             void Init(WikiEdit *edit_);
+            QString GetSelectedDBReason();
+            QString GetSelectedTagID();
+            void SetMessageUserCheck(bool new_value);
             Collectable_SmartPtr<WikiEdit> edit;
             QString Text;
             QString Header;

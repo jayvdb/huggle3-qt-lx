@@ -48,7 +48,7 @@ void DeleteForm::SetPage(WikiPage *Page, WikiUser *User)
 {
     if (Page == nullptr)
     {
-        throw new Huggle::Exception("Page must not be NULL", "void DeleteForm::setPage(WikiPage *Page)");
+        throw new Huggle::NullPointerException("WikiPage *Page", BOOST_CURRENT_FUNCTION);
     }
     this->page = new WikiPage(Page);
     foreach(QString summary, Page->GetSite()->GetProjectConfig()->DeletionSummaries)
@@ -183,8 +183,9 @@ void DeleteForm::Delete()
     }
     // let's assume the page was deleted
     this->ui->pushButton->setText(_l("deleted"));
-    HUGGLE_DEBUG("Deletion result: " + this->qDelete->Result->Data, 2);
     this->tDelete->stop();
+    HUGGLE_DEBUG("Deletion result: " + this->qDelete->Result->Data, 2);
+    this->close();
 }
 
 void DeleteForm::Failed(QString Reason)

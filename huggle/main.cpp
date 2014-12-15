@@ -11,6 +11,7 @@
 // this is nasty hack to ensure that Python.h is included first
 // see http://stackoverflow.com/questions/20300201/why-python-h-of-python-3-2-must-be-included-as-first-together-with-qt4
 
+#ifndef HUGGLE_LIBRARY
 #include "definitions.hpp"
 
 #include <QApplication>
@@ -22,6 +23,9 @@
 #include "terminalparser.hpp"
 #include "login.hpp"
 #include "exception.hpp"
+#ifdef _MSC_VER
+#    pragma comment(linker, "/subsystem:windows /ENTRY:mainCRTStartup")
+#endif
 
 //! This function just read the parameters and return true if we can continue or not
 bool TerminalParse(Huggle::TerminalParser *p)
@@ -41,7 +45,7 @@ bool TerminalParse(Huggle::TerminalParser *p)
 int Fatal(Huggle::Exception *fail)
 {
     Huggle::Syslog::HuggleLogs->ErrorLog("FATAL: Unhandled exception occured, description: " + fail->Message
-                                         + "\nSource: " + fail->Source);
+                                         + "\nSource: " + fail->Source + "\nStack: " + fail->StackTrace);
     delete Huggle::Core::HuggleCore;
     Huggle::Exception::ExitBreakpad();
     return fail->ErrorCode;
@@ -95,3 +99,4 @@ int main(int argc, char *argv[])
     }
 }
 
+#endif

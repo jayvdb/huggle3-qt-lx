@@ -150,11 +150,11 @@ bool WikiEdit::FinalizePostProcessing()
                 this->User->Groups.append(gn);
                 ++x;
             }
-            this->Score += (Configuration::HuggleConfiguration->ProjectConfig->ScoreFlag * this->User->Groups.count());
+            this->Score += (this->GetSite()->ProjectConfig->ScoreFlag * this->User->Groups.count());
             if (this->User->Groups.contains("bot"))
             {
                 // if it's a flagged bot we likely don't need to watch them
-                this->Score += Configuration::HuggleConfiguration->ProjectConfig->BotScore;
+                this->Score += this->GetSite()->ProjectConfig->BotScore;
             }
             // let's delete it now
             this->qUser = nullptr;
@@ -325,7 +325,7 @@ bool WikiEdit::FinalizePostProcessing()
 QString WikiEdit::GetPixmap()
 {
     if (this->User == nullptr)
-        throw new Huggle::NullPointerException("WikiEdit::User", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("local WikiUser User", BOOST_CURRENT_FUNCTION);
 
     if (this->OwnEdit)
         return ":/huggle/pictures/Resources/blob-me.png";
@@ -374,52 +374,53 @@ QString WikiEdit::GetPixmap()
 void WikiEdit::ProcessWords()
 {
     QString text = this->DiffText.toLower();
-    int xx = 0;
+    int wi = 0;
     if (this->Page->Contents.length() > 0)
     {
         text = this->Page->Contents.toLower();
     }
-    while (xx<Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.count())
+    // we cache the project config pointer
+    ProjectConfiguration *conf = this->GetSite()->GetProjectConfig();
+    while (wi < conf->ScoreParts.count())
     {
-        QString w = Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.at(xx).word;
+        QString w = conf->ScoreParts.at(wi).word;
         if (text.contains(w))
         {
-            this->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.at(xx).score;
+            this->Score += conf->ScoreParts.at(wi).score;
             ScoreWords.append(w);
         }
-        ++xx;
+        ++wi;
     }
-    xx = 0;
-    while (xx<Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.count())
+    wi = 0;
+    while (wi < conf->ScoreWords.count())
     {
-        QString w = Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.at(xx).word;
+        QString w = conf->ScoreWords.at(wi).word;
         // if there is no such a string in text we can skip it
         if (!text.contains(w))
         {
-            ++xx;
+            ++wi;
             continue;
         }
         int SD = 0;
         bool found = false;
         if (text == w)
             found = true;
-        while (!found && SD < Configuration::HuggleConfiguration->SystemConfig_WordSeparators.count())
+        while (!found && SD < hcfg->SystemConfig_WordSeparators.count())
         {
-            if (text.startsWith(w + Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SD)))
+            if (text.startsWith(w + hcfg->SystemConfig_WordSeparators.at(SD)))
             {
                 found = true;
                 break;
             }
-            if (text.endsWith(Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SD) + w))
+            if (text.endsWith(hcfg->SystemConfig_WordSeparators.at(SD) + w))
             {
                 found = true;
                 break;
             }
             int SL = 0;
-            while (SL <Configuration::HuggleConfiguration->SystemConfig_WordSeparators.count())
+            while (SL < hcfg->SystemConfig_WordSeparators.count())
             {
-                if (text.contains(Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SD) +
-                             w + Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SL)))
+                if (text.contains(hcfg->SystemConfig_WordSeparators.at(SD) + w + hcfg->SystemConfig_WordSeparators.at(SL)))
                 {
                     found = true;
                     break;
@@ -432,10 +433,10 @@ void WikiEdit::ProcessWords()
         }
         if (found)
         {
-            this->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.at(xx).score;
+            this->Score += conf->ScoreWords.at(wi).score;
             ScoreWords.append(w);
         }
-        ++xx;
+        ++wi;
     }
 }
 
@@ -469,17 +470,17 @@ void WikiEdit::PostProcess()
         return;
 
     if (this->Page == nullptr)
-        throw new Huggle::NullPointerException("Page", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("local WikiPage Page", BOOST_CURRENT_FUNCTION);
     if (this->Status == Huggle::StatusNone)
     {
         Exception::ThrowSoftException("Processing edit to " + this->Page->PageName + "which was requested to be post processed,"\
-                                      " but wasn't processed yet", "void WikiEdit::PostProcess()");
+                                      " but wasn't processed yet", BOOST_CURRENT_FUNCTION);
         QueryPool::HugglePool->PreProcessEdit(this);
     }
     if (this->Status == Huggle::StatusPostProcessed)
-        throw new Huggle::Exception("Unable to post process an edit that is already processed");
+        throw new Huggle::Exception("Unable to post process an edit that is already processed", BOOST_CURRENT_FUNCTION);
     if (this->Status != Huggle::StatusProcessed)
-        throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status");
+        throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status", BOOST_CURRENT_FUNCTION);
     this->PostProcessing = true;
     this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk(), this->GetSite());
     QueryPool::HugglePool->AppendQuery(this->qTalkpage);
@@ -594,7 +595,7 @@ WikiSite *WikiEdit::GetSite()
     if (this->Page == nullptr)
     {
         // this must never happen
-        throw new Huggle::Exception("NULL site", "WikiSite *WikiEdit::GetSite()");
+        throw new Huggle::NullPointerException("local WikiSite site", BOOST_CURRENT_FUNCTION);
     }
     return this->Page->Site;
 }
@@ -643,22 +644,22 @@ void ProcessorThread::Process(WikiEdit *edit)
     // score
     if (edit->User->IsIP())
     {
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->IPScore;
+        edit->Score += edit->GetSite()->GetProjectConfig()->IPScore;
     }
     if (edit->Bot)
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->BotScore;
+        edit->Score += edit->GetSite()->GetProjectConfig()->BotScore;
     if (edit->Page->IsUserpage() && !edit->Page->SanitizedName().contains(edit->User->Username))
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->ForeignUser;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ForeignUser;
     else if (edit->Page->IsUserpage())
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreUser;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreUser;
     if (edit->Page->IsTalk())
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreTalk;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreTalk;
     if (edit->Size > 1200 || edit->Size < -1200)
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->ScoreChange;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreChange;
     if (edit->Page->IsUserpage())
         IgnoreWords = true;
     if (edit->User->IsWhitelisted())
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig->WhitelistScore;
+        edit->Score += edit->GetSite()->GetProjectConfig()->WhitelistScore;
     edit->Score += edit->User->GetBadnessScore();
     if (!IgnoreWords)
         edit->ProcessWords();

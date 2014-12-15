@@ -36,6 +36,7 @@ BlockUser::BlockUser(QWidget *parent) : QDialog(parent), ui(new Ui::BlockUser)
     this->ui->checkBox_3->setText(_l("block-autoblock"));
     this->ui->checkBox_4->setText(_l("block-creation"));
     this->ui->checkBox_2->setText(_l("block-email"));
+    this->ui->cbMessageTarget->setText(_l("block-message-user"));
     this->ui->label_2->setText(_l("block-duration"));
     this->t0 = new QTimer(this);
     connect(this->t0, SIGNAL(timeout()), this, SLOT(onTick()));
@@ -53,7 +54,7 @@ void BlockUser::SetWikiUser(WikiUser *User)
 {
     if (User == nullptr)
     {
-        throw new Huggle::Exception("WikiUser *User can't be NULL", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("WikiUser *User", BOOST_CURRENT_FUNCTION);
     }
     this->user = new WikiUser(User);
     this->ui->comboBox_2->clear();
@@ -188,7 +189,8 @@ void BlockUser::Block()
     HUGGLE_DEBUG("block result: " + this->qUser->Result->Data, 2);
     this->qUser.Delete();
     this->t0->stop();
-    this->sendBlockNotice(nullptr);
+    if (this->ui->cbMessageTarget->isChecked())
+        this->sendBlockNotice(nullptr);
 }
 
 void BlockUser::Failed(QString reason)
@@ -196,8 +198,6 @@ void BlockUser::Failed(QString reason)
     Generic::pMessageBox(this, "Unable to block user", _l("block-fail", reason),
                          MessageBoxStyleError, true);
     this->t0->stop();
-    delete this->t0;
-    this->t0 = nullptr;
     this->ui->pushButton->setEnabled(true);
     // remove the pointers
     this->qTokenApi.Delete();
@@ -253,7 +253,7 @@ void Huggle::BlockUser::on_pushButton_3_clicked()
 void BlockUser::Recheck()
 {
     if (this->qUser == nullptr)
-        throw new Huggle::Exception("user must not be NULLPTR",  BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("local ApiQuery qUser",  BOOST_CURRENT_FUNCTION);
     if (this->qUser->IsProcessed())
     {
         ApiQueryResultNode *result = this->qUser->GetApiQueryResult()->GetNode("block");

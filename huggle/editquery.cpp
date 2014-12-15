@@ -46,7 +46,7 @@ void EditQuery::Process()
 {
     if (this->Page == nullptr)
     {
-        throw new Huggle::NullPointerException("EditQuery::Page", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("local Page", BOOST_CURRENT_FUNCTION);
     }
 
     this->Status = StatusProcessing;
@@ -208,7 +208,11 @@ bool EditQuery::IsProcessed()
 
 void EditQuery::EditPage()
 {
-    if (this->Append && !this->HasPreviousPageText)
+    if (this->Append && this->Prepend)
+    {
+        throw Huggle::Exception("You can't use both Append and Prepend for edit of page", BOOST_CURRENT_FUNCTION);
+    }
+    if ((this->Append || this->Prepend) && !this->HasPreviousPageText)
     {
         // we first need to get a text of current page
         this->qRetrieve = Generic::RetrieveWikiPageContents(this->Page);
@@ -217,17 +221,20 @@ void EditQuery::EditPage()
         return;
     }
     this->qEdit = new ApiQuery(ActionEdit, this->Page->Site);
-    this->qEdit->Target = "Writing " + this->Page->PageName;
+    this->qEdit->Target = _l("report-write") + " " + this->Page->PageName;
     this->qEdit->UsingPOST = true;
-    QString t;
     if (this->Append)
     {
         // we append new text now
         this->Section = 0;
-        t = this->OriginalText + this->text;
-    } else
+        this->text = this->OriginalText + this->text;
+    } else if (this->Prepend)
     {
-        t = this->text;
+        this->Section = 0;
+        this->text = this->text + this->OriginalText;
+    }
+    {
+        this->text = this->text;
     }
     QString base = "";
     QString start_ = "";

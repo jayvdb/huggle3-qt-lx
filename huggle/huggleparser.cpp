@@ -45,52 +45,37 @@ QString HuggleParser::ConfigurationParse(QString key, QString content, QString m
 
 QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
-    int id=0;
-    while (id < project_conf->RevertSummaries.count())
-    {
-        QString line = project_conf->RevertSummaries.at(id);
+    foreach (QString line, project_conf->RevertSummaries)
         if (line.startsWith(key + ";"))
-        {
             return HuggleParser::GetValueFromKey(line);
-        }
-        id++;
-    }
+
     return project_conf->DefaultSummary;
 }
 
 QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
-    int id=0;
-    while (id<project_conf->WarningTypes.count())
-    {
-        QString line = project_conf->WarningTypes.at(id);
+    // get a key
+    foreach (QString line, project_conf->WarningTypes)
         if (line.startsWith(key) + ";")
-        {
             return HuggleParser::GetValueFromKey(line);
-        }
-        id++;
-    }
     return key;
 }
 
 QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id, ProjectConfiguration *project_conf)
 {
-    int i=0;
-    while (i<project_conf->WarningTypes.count())
+    foreach (QString line, project_conf->WarningTypes)
     {
-        QString line = project_conf->WarningTypes.at(i);
         if (line.endsWith(id) || line.endsWith(id + ","))
         {
             return HuggleParser::GetKeyFromValue(line);
         }
-        i++;
     }
     return id;
 }
 
-void HuggleParser::ParsePats(QString text)
+void HuggleParser::ParsePats(QString text, WikiSite *site)
 {
-    Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.clear();
+    site->ProjectConfig->ScoreParts.clear();
     while (text.contains("score-parts("))
     {
         text = text.mid(text.indexOf("score-parts(") + 12);
@@ -112,31 +97,24 @@ void HuggleParser::ParsePats(QString text)
         {
             QString l = lines.at(line);
             QStringList items = l.split(",");
-            int CurrentItem = 0;
-            while (CurrentItem < items.count())
+            foreach (QString wx, items)
             {
-                QString w = items.at(CurrentItem).trimmed();
-                CurrentItem++;
-                if (w.length() == 0)
-                    continue;
-                word.append(w);
+                wx = wx.trimmed();
+                if (!wx.isEmpty())
+                    word.append(wx);
             }
             if (!l.endsWith(",") || l.trimmed().length() <= 0)
                 break;
             line++;
         }
-        line = 0;
-        while (line < word.count())
-        {
-            Configuration::HuggleConfiguration->ProjectConfig->ScoreParts.append(ScoreWord(word.at(line), score));
-            line++;
-        }
+        foreach (QString wx, word)
+            site->ProjectConfig->ScoreParts.append(ScoreWord(wx, score));
     }
 }
 
-void HuggleParser::ParseWords(QString text)
+void HuggleParser::ParseWords(QString text, WikiSite *site)
 {
-    Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.clear();
+    site->ProjectConfig->ScoreWords.clear();
     while (text.contains("score-words("))
     {
         text = text.mid(text.indexOf("score-words(") + 12);
@@ -161,30 +139,19 @@ void HuggleParser::ParseWords(QString text)
         {
             QString l = lines.at(line);
             QStringList items = l.split(",");
-            int CurrentItem = 0;
-            while ( CurrentItem < items.count() )
+            foreach (QString w, items)
             {
-                QString w = items.at(CurrentItem).trimmed();
-                if (w.length() == 0)
-                {
-                    CurrentItem++;
+                w = w.trimmed();
+                if (w.isEmpty())
                     continue;
-                }
                 word.append(w);
-                CurrentItem++;
             }
             if (l.trimmed().isEmpty() || !l.endsWith(","))
-            {
                 break;
-            }
             line++;
         }
-        line = 0;
-        while (line < word.count())
-        {
-            Configuration::HuggleConfiguration->ProjectConfig->ScoreWords.append(ScoreWord(word.at(line), score));
-            line++;
-        }
+        foreach (QString w, word)
+            site->ProjectConfig->ScoreWords.append(ScoreWord(w, score));
     }
 }
 
@@ -314,7 +281,7 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt, WikiSite *site)
                 i++;
             }
             month_name = month_name.trimmed();
-            byte_ht month = HuggleParser::GetIDOfMonth(month_name);
+            byte_ht month = HuggleParser::GetIDOfMonth(month_name, site);
 
              // let's create a new time string from converted one, just to make sure it will be parsed properly
             if (month > 0)
@@ -466,24 +433,24 @@ QStringList HuggleParser::ConfigurationParse_QL(QString key, QString content, QS
 QStringList HuggleParser::ConfigurationParseTrimmed_QL(QString key, QString content, bool CS, bool RemoveNull)
 {
     QStringList result = HuggleParser::ConfigurationParse_QL(key, content, CS);
-    int x = 0;
     QStringList trimmed;
-    while (x < result.count())
+    foreach (QString item, result)
     {
-        QString item = result.at(x);
-        if (RemoveNull && item.replace(",", "").length() < 1)
+        if (RemoveNull)
         {
-            x++;
-            continue;
+            // this replace must be done on copy of string because this Qt function will modify the original string
+            QString rp = item;
+            rp = rp.replace(",", "");
+            if (rp.isEmpty())
+            {
+                // we don't want to process a null string here
+                continue;
+            }
         }
         if (item.endsWith(","))
-        {
             trimmed.append(item.mid(0, item.length() - 1));
-        } else
-        {
+        else
             trimmed.append(item);
-        }
-        x++;
     }
     return trimmed;
 }
@@ -509,10 +476,8 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
     QStringList Filtered = content.replace("\r", "").split("\n");
     QStringList Info;
     // we need to assume that all queues are intended with at least 4 spaces
-    int line = 0;
-    while (line < Filtered.count())
+    foreach (QString lt, Filtered)
     {
-        QString lt = Filtered.at(line);
         if (lt.startsWith("    ") || lt.length() == 0)
         {
             Info.append(lt);
@@ -521,10 +486,9 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
             // we reached the end of block with queue defs
             break;
         }
-        line++;
     }
     // now we can split the queue info
-    line = 0;
+    int line = 0;
     while (line < Info.count())
     {
         QString text = Info.at(line);
@@ -576,6 +540,21 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
                     filter->setIgnoreBots(F2B(val));
                     continue;
                 }
+                if (key == "filtered-ns")
+                {
+                    QStringList ns = val.split(",");
+                    foreach (QString namespace_id, ns)
+                    {
+                        if (namespace_id.isEmpty())
+                            continue;
+                        int nsid = namespace_id.toInt();
+                        if (filter->Namespaces.contains(nsid))
+                            filter->Namespaces[nsid] = true;
+                        else
+                            filter->Namespaces.insert(nsid, true);
+                    }
+                    continue;
+                }
                 if (key == "filter-assisted")
                 {
                     filter->setIgnoreFriends(F2B(val));
@@ -621,20 +600,20 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
     return ReturnValue;
 }
 
-byte_ht HuggleParser::GetIDOfMonth(QString month)
+byte_ht HuggleParser::GetIDOfMonth(QString month, WikiSite *site)
 {
     int i = 0;
     month = month.toLower();
-    while (i < Configuration::HuggleConfiguration->ProjectConfig->Months.count())
+    while (i < site->ProjectConfig->Months.count())
     {
-        if (Configuration::HuggleConfiguration->ProjectConfig->Months.at(i).toLower() == month)
+        if (site->ProjectConfig->Months.at(i).toLower() == month)
             return i+1;
         i++;
     }
     i = 1;
     while (i < 13)
     {
-        if (Configuration::HuggleConfiguration->ProjectConfig->AlternativeMonths[i].contains(month, Qt::CaseInsensitive))
+        if (site->ProjectConfig->AlternativeMonths[i].contains(month, Qt::CaseInsensitive))
             return i;
         i++;
     }

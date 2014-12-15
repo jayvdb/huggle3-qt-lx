@@ -24,7 +24,7 @@ namespace Huggle
     class WikiPage;
 
     //! Modifications of mediawiki pages can be done using this query
-    class EditQuery : public Query
+    class HUGGLE_EX EditQuery : public Query
     {
         public:
             EditQuery();
@@ -32,6 +32,7 @@ namespace Huggle
             void Process();
             bool IsProcessed();
             bool Append = false;
+            bool Prepend = false;
             bool InsertTargetToWatchlist = false;
             //! Page that is going to be edited
             WikiPage *Page = nullptr;

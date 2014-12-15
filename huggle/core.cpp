@@ -86,7 +86,6 @@ void Core::Init()
     // despite it will fail more to detect vandals. Keep it low but precise enough!!
     Configuration::HuggleConfiguration->SystemConfig_WordSeparators << " " << "." << "," << "(" << ")" << ":" << ";" << "!"
                                                                     << "?" << "/" << "<" << ">" << "[" << "]";
-    HuggleQueueFilter::Filters.append(HuggleQueueFilter::DefaultFilter);
     if (!Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
 #ifdef HUGGLE_PYTHON
@@ -292,8 +291,11 @@ void Core::ExtensionLoad()
         if (QDir().exists(HUGGLE_GLOBAL_EXTENSION_PATH))
         {
             QString globalpath(HUGGLE_GLOBAL_EXTENSION_PATH);
-            // ensure it's finished with slash
+#ifdef HUGGLE_WIN
+            globalpath += "\\";
+#else
             globalpath += "/";
+#endif
             QDir g(globalpath);
             files = g.entryList();
             foreach (QString e_, files)
@@ -303,14 +305,22 @@ void Core::ExtensionLoad()
             }
         }
 #endif
-        int xx = 0;
-        while (xx < extensions.count())
+        foreach (QString ename, extensions)
         {
-            QString name = extensions.at(xx).toLower();
+            if (hcfg->IgnoredExtensions.contains(ename))
+            {
+                ExtensionHolder *extension = new ExtensionHolder();
+                extension->Name = QFile(ename).fileName();
+                extension->huggle__internal_SetPath(ename);
+                // we append this so that it's possible to re enable it
+                Extensions.append(extension);
+                HUGGLE_DEBUG1("Path was ignored: " + ename);
+                continue;
+            }
+            QString name = ename.toLower();
             if (name.endsWith(".so") || name.endsWith(".dll"))
             {
-                name = extensions.at(xx);
-                QPluginLoader *extension = new QPluginLoader(name);
+                QPluginLoader *extension = new QPluginLoader(ename);
                 if (extension->load())
                 {
                     QObject* root = extension->instance();
@@ -319,9 +329,10 @@ void Core::ExtensionLoad()
                         iExtension *interface = qobject_cast<iExtension*>(root);
                         if (!interface)
                         {
-                            Huggle::Syslog::HuggleLogs->Log("Unable to cast the library to extension");
+                            Huggle::Syslog::HuggleLogs->Log("Unable to cast the library to extension: " + ename);
                         } else
                         {
+                            interface->huggle__internal_SetPath(ename);
                             if (interface->RequestNetwork())
                             {
                                 interface->Networking = Query::NetworkManager;
@@ -338,33 +349,31 @@ void Core::ExtensionLoad()
                             if (interface->Register())
                             {
                                 Core::Extensions.append(interface);
-                                Huggle::Syslog::HuggleLogs->Log("Successfully loaded: " + extensions.at(xx));
+                                Huggle::Syslog::HuggleLogs->Log("Successfully loaded: " + ename);
                             }
                             else
                             {
-                                Huggle::Syslog::HuggleLogs->Log("Unable to register: " + extensions.at(xx));
+                                Huggle::Syslog::HuggleLogs->Log("Unable to register: " + ename);
                             }
                         }
                     }
                 } else
                 {
-                    Huggle::Syslog::HuggleLogs->Log("Failed to load (reason: " + extension->errorString() + "): " + extensions.at(xx));
+                    Huggle::Syslog::HuggleLogs->Log("Failed to load (reason: " + extension->errorString() + "): " + ename);
                     delete extension;
                 }
             } else if (name.endsWith(".py"))
             {
 #ifdef HUGGLE_PYTHON
-                name = extensions.at(xx);
-                if (Core::Python->LoadScript(name))
+                if (Core::Python->LoadScript(ename))
                 {
-                    Huggle::Syslog::HuggleLogs->Log("Loaded python script: " + name);
+                    Huggle::Syslog::HuggleLogs->Log("Loaded python script: " + ename);
                 } else
                 {
-                    Huggle::Syslog::HuggleLogs->Log("Failed to load a python script: " + name);
+                    Huggle::Syslog::HuggleLogs->Log("Failed to load a python script: " + ename);
                 }
 #endif
             }
-            xx++;
         }
     } else
     {
@@ -454,6 +463,9 @@ void Core::Shutdown()
 #endif
     Syslog::HuggleLogs->DebugLog("GC: " + QString::number(GC::gc->list.count()) + " objects");
     delete GC::gc;
+    HuggleQueueFilter::Delete();
+    // why not
+    delete HuggleQueueFilter::DefaultFilter;
     GC::gc = nullptr;
     this->gc = nullptr;
     delete Configuration::HuggleConfiguration;

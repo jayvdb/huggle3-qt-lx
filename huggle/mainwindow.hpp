@@ -18,6 +18,10 @@
 #include "editquery.hpp"
 #include "revertquery.hpp"
 #include "wlquery.hpp"
+// windows fix
+#ifdef DeleteForm
+    #undef DeleteForm
+#endif
 class QLabel;
 class QTimer;
 class QMenu;
@@ -84,7 +88,7 @@ namespace Huggle
     };
 
     //! Primary huggle window
-    class MainWindow : public QMainWindow
+    class HUGGLE_EX MainWindow : public QMainWindow
     {
             Q_OBJECT
         public:
@@ -93,6 +97,7 @@ namespace Huggle
             explicit MainWindow(QWidget *parent = nullptr);
             ~MainWindow();
             void DisplayReportUserWindow(WikiUser *User = nullptr);
+            WikiEdit *GetCurrentWikiEdit();
             /*!
              * \brief ProcessEdit Will display an edit in huggle window
              * \param e Edit

@@ -43,6 +43,8 @@ namespace Huggle
             virtual bool IsWorking() { return false; }
             virtual ~iExtension() {}
             virtual bool Register() { return false; }
+            void huggle__internal_SetPath(QString path);
+            HUGGLE_EX QString GetExtensionFullPath();
             /*!
              * \brief This is called when the extension is removed from system
              */
@@ -53,6 +55,13 @@ namespace Huggle
              */
             virtual void Hook_EditPreProcess(void *edit) {}
             virtual void Hook_SpeedyFinished(void *edit, QString tags, bool successfull) {}
+            /*!
+             * \brief Hook_SpeedyBeforeOK Called right after user request processing of speedy form
+             * \param edit
+             * \param form
+             * \return if false is returned whole operation is refused
+             */
+            virtual bool Hook_SpeedyBeforeOK(void *edit, void *form) { return true; }
             virtual void Hook_Shutdown() {}
             /*!
              * \brief Hook_EditScore is called after edit score is calculated
@@ -80,6 +89,15 @@ namespace Huggle
             void *Configuration;
             void *Localization;
             QNetworkAccessManager *Networking;
+        private:
+            QString huggle__internal_ExtensionPath;
+    };
+
+    class ExtensionHolder : public iExtension
+    {
+        public:
+            QString GetExtensionName() { return this->Name; }
+            QString Name;
     };
 }
 

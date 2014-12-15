@@ -30,6 +30,7 @@
 namespace Huggle
 {
     class WikiPage;
+    class WikiSite;
 
     enum Headings
     {
@@ -56,20 +57,23 @@ namespace Huggle
     };
 
     //! Project configuration, each project needs to have own instance of this
-    class ProjectConfiguration
+    class HUGGLE_EX ProjectConfiguration
     {
         public:
             ProjectConfiguration(QString project_name);
             ~ProjectConfiguration();
-            QString ProjectName;
             QDateTime ServerTime();
             //! Parse all information from local config, this function is used in login
-            bool Parse(QString config, QString *reason);
+            bool Parse(QString config, QString *reason, WikiSite *site);
             void RequestLogin();
             //! \todo This needs to be later used as a default value for user config, however it's not being ensured
             //!       this value is loaded before the user config right now
             bool AutomaticallyResolveConflicts = false;
             bool IsSane = false;
+            bool Approval = false;
+            QString ApprovalPage = "Project:Huggle/Users";
+            QString ProjectName;
+            WikiSite    *Site = nullptr;
             QString     EditToken = "";
             QStringList Months;
             //! Pointer to AIV page
@@ -87,6 +91,8 @@ namespace Huggle
             //! If autoconfirmed is required to use huggle
             bool            RequireAutoconfirmed = false;
             bool            RequireConfig = false;
+            //! Number of days for user since registration that is needed for login
+            int             RequireTime = 0;
             //! Amount of edits required to use huggle
             int             RequireEdits = 0;
             //! If rollback right is required to use huggle

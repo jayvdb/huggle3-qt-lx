@@ -96,7 +96,7 @@ ReportUser::~ReportUser()
 bool ReportUser::SetUser(WikiUser *user)
 {
     if (!user)
-        throw new Huggle::NullPointerException("user", BOOST_CURRENT_FUNCTION);
+        throw new Huggle::NullPointerException("WikiUser *user", BOOST_CURRENT_FUNCTION);
 
     if (this->ReportedUser)
         delete this->ReportedUser;
@@ -378,7 +378,7 @@ void ReportUser::Test()
         QDomDocument d;
         d.setContent(this->qCheckIfBlocked->Result->Data);
         QMessageBox mb;
-        mb.setWindowTitle("Result");
+        mb.setWindowTitle(_l("result"));
         QDomNodeList l = d.elementsByTagName("block");
         if (l.count() > 0)
         {
@@ -387,7 +387,7 @@ void ReportUser::Test()
             this->ReportedUser->Update();
         } else
         {
-            mb.setText("User is not blocked");
+            mb.setText(_l("block-not"));
         }
         mb.exec();
         this->qCheckIfBlocked.Delete();
