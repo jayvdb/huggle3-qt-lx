@@ -9,6 +9,8 @@
 //GNU General Public License for more details.
 
 #include "wikiutil.hpp"
+#include "apiquery.hpp"
+#include "apiqueryresult.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
 #include "editquery.hpp"
@@ -190,21 +192,14 @@ Collectable_SmartPtr<ApiQuery> WikiUtil::Unwatchlist(WikiPage *page)
     wt->UsingPOST = true;
     wt->Target = page->PageName;
     // first of all we need to check if current watchlist token is valid or not
-    if (page->GetSite()->GetProjectConfig()->WatchlistToken.isEmpty())
+    if (page->GetSite()->GetProjectConfig()->Token_Watch.isEmpty())
     {
-        // we need to append this query to watchlist queries that just wait for token
-        ApiQuery *token = new ApiQuery(ActionQuery, page->GetSite());
-        token->Parameters = "prop=info&intoken=watch&titles=" + page->EncodedName();
-        token->Target = "Watchlist token";
-        token->IncRef();
-        wt->Dependency = token;
-        QueryPool::HugglePool->PendingWatches.append(wt);
-        QueryPool::HugglePool->AppendQuery(token);
-        token->Process();
-        Syslog::HuggleLogs->Log("There is no watchlist token, retrieving some");
+        wt->Result = new QueryResult(true);
+        wt->Result->SetError("No watchlist token");
+        wt->Status = StatusInError;
         return wt;
     }
-    wt->Parameters = "titles=" + page->EncodedName() + "&unwatch=1&token=" + QUrl::toPercentEncoding(page->GetSite()->GetProjectConfig()->WatchlistToken);
+    wt->Parameters = "titles=" + page->EncodedName() + "&unwatch=1&token=" + QUrl::toPercentEncoding(page->GetSite()->GetProjectConfig()->Token_Watch);
     QueryPool::HugglePool->PendingWatches.append(wt);
     wt->Process();
     return wt;
@@ -217,21 +212,14 @@ Collectable_SmartPtr<ApiQuery> WikiUtil::Watchlist(WikiPage *page)
     wt->UsingPOST = true;
     wt->Target = page->PageName;
     // first of all we need to check if current watchlist token is valid or not
-    if (page->GetSite()->GetProjectConfig()->WatchlistToken.isEmpty())
+    if (page->GetSite()->GetProjectConfig()->Token_Watch.isEmpty())
     {
-        // we need to append this query to watchlist queries that just wait for token
-        ApiQuery *token = new ApiQuery(ActionQuery, page->GetSite());
-        token->Parameters = "prop=info&intoken=watch&titles=" + page->EncodedName();
-        token->Target = "Watchlist token";
-        token->IncRef();
-        wt->Dependency = token;
-        QueryPool::HugglePool->PendingWatches.append(wt);
-        QueryPool::HugglePool->AppendQuery(token);
-        token->Process();
-        Syslog::HuggleLogs->Log("There is no watchlist token, retrieving some");
+        wt->Result = new QueryResult(true);
+        wt->Result->SetError("No watchlist token");
+        wt->Status = StatusInError;
         return wt;
     }
-    wt->Parameters = "titles=" + page->EncodedName() + "&token=" + QUrl::toPercentEncoding(page->GetSite()->GetProjectConfig()->WatchlistToken);
+    wt->Parameters = "titles=" + page->EncodedName() + "&token=" + QUrl::toPercentEncoding(page->GetSite()->GetProjectConfig()->Token_Watch);
     QueryPool::HugglePool->PendingWatches.append(wt);
     wt->Process();
     return wt;
@@ -264,4 +252,58 @@ Collectable_SmartPtr<EditQuery> WikiUtil::PrependTextToPage(WikiPage *page, QStr
 Collectable_SmartPtr<EditQuery> WikiUtil::AppendTextToPage(WikiPage *page, QString text, QString summary, bool minor)
 {
     return WikiUtil::AppendTextToPage(page->PageName, text, summary, minor, page->GetSite());
+}
+
+static void FinishTokens(Query *token)
+{
+    ApiQuery *q = (ApiQuery*) token;
+    WikiSite *site = (WikiSite*) token->CallbackOwner;
+    ApiQueryResultNode *tokens = q->GetApiQueryResult()->GetNode("tokens");
+    if (tokens != nullptr)
+    {
+        if (tokens->Attributes.contains("rollbacktoken"))
+        {
+            site->GetProjectConfig()->Token_Rollback = tokens->GetAttribute("rollbacktoken");
+            HUGGLE_DEBUG("Token for " + site->Name + " rollback " + site->GetProjectConfig()->Token_Rollback, 2);
+        } else
+        {
+            HUGGLE_DEBUG1("No rollback for " + site->Name + " result: " + q->Result->Data);
+        }
+        if (tokens->Attributes.contains("csrftoken"))
+        {
+            site->GetProjectConfig()->Token_Csrf = tokens->GetAttribute("csrftoken");
+            HUGGLE_DEBUG("Token for " + site->Name + " csrf " + site->GetProjectConfig()->Token_Csrf, 2);
+        } else
+        {
+            HUGGLE_DEBUG1("No csrf for " + site->Name + " result: " + q->Result->Data);
+        }
+        if (tokens->Attributes.contains("watchtoken"))
+        {
+            site->GetProjectConfig()->Token_Watch = tokens->GetAttribute("watchtoken");
+            HUGGLE_DEBUG("Token for " + site->Name + " watch " + site->GetProjectConfig()->Token_Watch, 2);
+        } else
+        {
+            HUGGLE_DEBUG1("No watch for " + site->Name + " result: " + q->Result->Data);
+        }
+    }
+    token->UnregisterConsumer(HUGGLECONSUMER_CALLBACK);
+    token->DecRef();
+}
+
+static void FailureTokens(Query *token)
+{
+    Syslog::HuggleLogs->ErrorLog("Failed to process: " + token->GetFailureReason());
+    token->DecRef();
+}
+
+void WikiUtil::RetrieveTokens(WikiSite *wiki_site)
+{
+    ApiQuery *qr = new ApiQuery(ActionQuery, wiki_site);
+    qr->IncRef();
+    qr->Parameters = "meta=tokens&type=" + QUrl::toPercentEncoding("csrf|patrol|rollback|watch");
+    qr->Target = "Tokens";
+    qr->CallbackOwner = wiki_site;
+    qr->FailureCallback = (Callback)FailureTokens;
+    qr->callback = (Callback)FinishTokens;
+    qr->Process();
 }

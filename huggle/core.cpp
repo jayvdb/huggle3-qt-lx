@@ -41,7 +41,7 @@ void Core::Init()
     HUGGLE_PROFILER_RESET;
     this->StartupTime = QDateTime::currentDateTime();
     // preload of config
-    Configuration::HuggleConfiguration->WikiDB = Configuration::GetConfigurationPath() + "wikidb.xml";
+    Configuration::HuggleConfiguration->WikiDB = Generic::SanitizePath(Configuration::GetConfigurationPath() + "wikidb.xml");
     if (Configuration::HuggleConfiguration->SystemConfig_SafeMode)
     {
         Syslog::HuggleLogs->Log("DEBUG: Huggle is running in a safe mode");
@@ -93,7 +93,7 @@ void Core::Init()
         this->Python = new Python::PythonEngine(Configuration::GetExtensionsRootPath());
 #endif
 #ifdef HUGGLE_GLOBAL_EXTENSION_PATH
-        Syslog::HuggleLogs->Log("Loading plugins in " + QString(HUGGLE_GLOBAL_EXTENSION_PATH) + " and " + Configuration::GetExtensionsRootPath());
+        Syslog::HuggleLogs->Log("Loading plugins in " + Generic::SanitizePath(QString(HUGGLE_GLOBAL_EXTENSION_PATH)) + " and " + Configuration::GetExtensionsRootPath());
 #else
         Syslog::HuggleLogs->Log("Loading plugins in " + Configuration::GetExtensionsRootPath());
 #endif
@@ -288,20 +288,15 @@ void Core::ExtensionLoad()
             extensions << path_ + e_;
         }
 #ifdef HUGGLE_GLOBAL_EXTENSION_PATH
-        if (QDir().exists(HUGGLE_GLOBAL_EXTENSION_PATH))
+        QString global_path = Generic::SanitizePath(QString(HUGGLE_GLOBAL_EXTENSION_PATH) + "/");
+        if (QDir().exists(global_path))
         {
-            QString globalpath(HUGGLE_GLOBAL_EXTENSION_PATH);
-#ifdef HUGGLE_WIN
-            globalpath += "\\";
-#else
-            globalpath += "/";
-#endif
-            QDir g(globalpath);
+            QDir g(global_path);
             files = g.entryList();
             foreach (QString e_, files)
             {
                 // we need to prefix the files here so that we can track the full path
-                extensions << globalpath + e_;
+                extensions << global_path + e_;
             }
         }
 #endif
@@ -330,7 +325,12 @@ void Core::ExtensionLoad()
                         if (!interface)
                         {
                             Huggle::Syslog::HuggleLogs->Log("Unable to cast the library to extension: " + ename);
-                        } else
+                        }
+                        else if (interface->CompiledFor() != QString(HUGGLE_VERSION))
+                        {
+                            Huggle::Syslog::HuggleLogs->WarningLog("Extension " + ename + " was compiled for huggle " + interface->CompiledFor() + " which is not compatible, unloading");
+                            delete interface;
+                        }
                         {
                             interface->huggle__internal_SetPath(ename);
                             if (interface->RequestNetwork())
@@ -468,6 +468,7 @@ void Core::Shutdown()
     delete HuggleQueueFilter::DefaultFilter;
     GC::gc = nullptr;
     this->gc = nullptr;
+    delete Query::NetworkManager;
     delete Configuration::HuggleConfiguration;
     delete Localizations::HuggleLocalizations;
     QApplication::quit();

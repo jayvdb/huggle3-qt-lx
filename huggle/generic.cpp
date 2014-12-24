@@ -18,11 +18,6 @@
 #include "wikiedit.hpp"
 #include "wikipage.hpp"
 
-#ifdef MessageBox
-    // fix GCC for windows headers port
-    #undef MessageBox
-#endif
-
 using namespace Huggle;
 
 // we need to preload this thing so that we don't need to create this string so frequently and toast teh PC
@@ -52,6 +47,18 @@ bool Generic::ReportPreFlightCheck()
         return true;
     QMessageBox::StandardButton q = QMessageBox::question(nullptr, _l("report-tu"), _l("report-warn"), QMessageBox::Yes|QMessageBox::No);
     return (q != QMessageBox::No);
+}
+
+QString Generic::SanitizePath(QString name)
+{
+    QString new_name = name;
+    while (new_name.contains("//"))
+        new_name = new_name.replace("//", "/");
+#ifdef HUGGLE_WIN
+    return new_name.replace("/", "\\");
+#else
+    return name;
+#endif // HUGGLE_WIN
 }
 
 ApiQuery *Generic::RetrieveWikiPageContents(QString page, WikiSite *site, bool parse)

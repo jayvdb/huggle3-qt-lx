@@ -192,10 +192,11 @@ QString RevertQuery::GetCustomRevertStatus(QueryResult *result_data, WikiSite *s
                 return "ERROR: Cannot rollback - page only has one author";
             if (Error == "badtoken")
             {
-                QString msg = "ERROR: Cannot rollback, token " + site->GetProjectConfig()->RollbackToken + " is not valid for some reason (mediawiki bug), please try it once more";
-                site->GetProjectConfig()->RollbackToken.clear();
-                site->UserConfig->EnforceManualSRT = true;
-                Syslog::HuggleLogs->WarningLog("Temporarily enforcing software rollback in order to fix the mediawiki bug");
+                QString msg = "ERROR: Cannot rollback, token " + site->GetProjectConfig()->Token_Rollback + " is not valid for some reason (mediawiki bug), please try it once more";
+                Configuration::Logout(site);
+                //site->GetProjectConfig()->Token_Rollback.clear();
+                //site->UserConfig->EnforceManualSRT = true;
+                //Syslog::HuggleLogs->WarningLog("Temporarily enforcing software rollback in order to fix the mediawiki bug");
                 return msg;
             }
             return "In error (" + Error +")";
@@ -653,7 +654,7 @@ void RevertQuery::Rollback()
         return;
     }
     if (this->Token.isEmpty())
-        this->Token = this->edit->RollbackToken;
+        this->Token = this->edit->GetSite()->GetProjectConfig()->Token_Rollback;
     if (this->Token.isEmpty())
     {
         Huggle::Syslog::HuggleLogs->ErrorLog(_l("revert-fail", this->edit->Page->PageName, "rollback token was empty"));

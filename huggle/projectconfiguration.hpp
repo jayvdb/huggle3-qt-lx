@@ -74,7 +74,6 @@ namespace Huggle
             QString ApprovalPage = "Project:Huggle/Users";
             QString ProjectName;
             WikiSite    *Site = nullptr;
-            QString     EditToken = "";
             QStringList Months;
             //! Pointer to AIV page
             WikiPage    *AIVP = nullptr;
@@ -142,10 +141,12 @@ namespace Huggle
             QStringList     RevertSummaries;
             QStringList     Goto;
             QString         SoftwareRevertDefaultSummary;
+            QString         Token_Csrf;
+            //! This is a token returned by tokens query from mw which should be same for all rollback execs
+            QString         Token_Rollback;
+            QString         Token_Watch;
             /// \todo use rollback summary at least at mw-rollback
             QString         RollbackSummary = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to last revision by $2";
-            //! This is a token returned by tokens query from mw which should be same for all rollback execs
-            QString         RollbackToken;
             QString         RollbackSummaryUnknownTarget = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]])";
             QString         DefaultSummary = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to last revision by $2";
             QString         SingleRevert = "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]])";
@@ -227,7 +228,6 @@ namespace Huggle
             QStringList             SpeedyTemplates;
             QStringList             WelcomeTypes;
             long                    WhitelistScore = -800;
-            QString                 WatchlistToken = "";
             // UAA
             QString                 UAAPath = "Project:Usernames for administrator attention";
             bool                    UAAavailable = false;
@@ -241,7 +241,12 @@ namespace Huggle
     inline void ProjectConfiguration::RequestLogin()
     {
         if (this->IsLoggedIn && !this->RequestingLogin)
+        {
             this->IsLoggedIn = false;
+            this->Token_Csrf = "";
+            this->Token_Rollback = "";
+            this->Token_Watch = "";
+        }
     }
 }
 

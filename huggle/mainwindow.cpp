@@ -22,6 +22,8 @@
 #include <QSplitter>
 #include <QDockWidget>
 #include "aboutform.hpp"
+#include "apiquery.hpp"
+#include "apiqueryresult.hpp"
 #include "configuration.hpp"
 #include "editbar.hpp"
 #include "reloginform.hpp"
@@ -403,7 +405,7 @@ void MainWindow::ProcessEdit(WikiEdit *e, bool IgnoreHistory, bool KeepHistory, 
     }
     // we need to safely delete the edit later
     e->IncRef();
-    // if there are actually some totaly old edits in history that we need to delete
+    // if there are actually some totally old edits in history that we need to delete
     while (this->Historical.count() > Configuration::HuggleConfiguration->SystemConfig_HistorySize)
     {
         WikiEdit *prev = this->Historical.at(0);
@@ -919,16 +921,10 @@ Collectable_SmartPtr<RevertQuery> MainWindow::Revert(QString summary, bool next,
         Syslog::HuggleLogs->ErrorLog("This edit is still being processed, please wait");
         return ptr_;
     }
-    if (this->CurrentEdit->RollbackToken.isEmpty())
+    if (this->CurrentEdit->GetSite()->GetProjectConfig()->Token_Rollback.isEmpty())
     {
-        if (!this->CurrentEdit->GetSite()->GetProjectConfig()->RollbackToken.isEmpty())
-        {
-            this->CurrentEdit->RollbackToken = this->CurrentEdit->GetSite()->GetProjectConfig()->RollbackToken;
-        } else
-        {
-            Syslog::HuggleLogs->WarningLog(_l("main-revert-manual", this->CurrentEdit->Page->PageName));
-            rollback = false;
-        }
+        Syslog::HuggleLogs->WarningLog(_l("main-revert-manual", this->CurrentEdit->Page->PageName));
+        rollback = false;
     }
     if (this->PreflightCheck(this->CurrentEdit))
     {
@@ -1163,9 +1159,10 @@ void MainWindow::OnMainTimerTick()
         delete this->fRelogin;
         // we need to flag it here so that we don't reload the form next tick
         cfg->RequestingLogin = true;
-        this->fRelogin = new ReloginForm(this);
+        this->fRelogin = new ReloginForm(this->GetCurrentWikiSite(), this);
         // exec to freeze
-        this->fRelogin->show();
+        this->fRelogin->exec();
+        return;
     }
     if (Configuration::HuggleConfiguration->ReloadOfMainformNeeded)
         this->ReloadSc();
@@ -2648,7 +2645,7 @@ void Huggle::MainWindow::on_actionDelete_all_edits_with_score_lower_than_200_tri
 
 void Huggle::MainWindow::on_actionRelog_triggered()
 {
-    ReloginForm *form = new ReloginForm(this);
+    ReloginForm *form = new ReloginForm(this->GetCurrentWikiSite(), this);
     form->exec();
     delete form;
 }
@@ -2876,10 +2873,31 @@ void Huggle::MainWindow::on_actionOpen_new_tab_triggered()
 
 void Huggle::MainWindow::on_actionVerbosity_2_triggered()
 {
-    hcfg->Verbosity += 1;
+    hcfg->Verbosity++;
 }
 
 void Huggle::MainWindow::on_actionVerbosity_triggered()
 {
-    hcfg->Verbosity -= 1;
+    if (hcfg->Verbosity > 0)
+        hcfg->Verbosity--;
+}
+
+static void FinishLogout(Query *query)
+{
+    Configuration::Logout((WikiSite*)query->CallbackOwner);
+    query->UnregisterConsumer(HUGGLECONSUMER_CALLBACK);
+}
+
+void Huggle::MainWindow::on_actionLog_out_triggered()
+{
+    ApiQuery *qx = new ApiQuery(ActionLogout, this->GetCurrentWikiSite());
+    qx->CallbackOwner = this->GetCurrentWikiSite();
+    qx->callback = (Callback)FinishLogout;
+    QueryPool::HugglePool->AppendQuery(qx);
+    qx->Process();
+}
+
+void Huggle::MainWindow::on_actionReload_tokens_triggered()
+{
+    WikiUtil::RetrieveTokens(this->GetCurrentWikiSite());
 }

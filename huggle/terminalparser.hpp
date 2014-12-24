@@ -24,10 +24,26 @@ namespace Huggle
         public:
             TerminalParser(int argc, char *argv[]);
             TerminalParser(QStringList argv);
+            /*!
+             * \brief Checks the given arguments for an argument requesting help
+             * \return true if help was requested (-h or --help was there)
+             */
             bool Init();
+            /*!
+             * \brief Parses the given arguments
+             * \returns true if it requests the application to terminate and false if it we can continue with run
+             */
             bool Parse();
+            /*!
+             * \brief Parses a single letter argument
+             * \returns true if it requests the application to terminate and false if it we can continue with run
+             */
             bool ParseChar(QChar x);
+            /*!
+             * \brief Displays help text listing the different arguments 
+             */
             void DisplayHelp();
+            //! Whether or not output should be displayed
             bool Silent = false;
         private:
             QStringList args;

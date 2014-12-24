@@ -51,18 +51,12 @@ void EditQuery::Process()
 
     this->Status = StatusProcessing;
     this->StartTime = QDateTime::currentDateTime();
-    this->Token = this->Page->GetSite()->GetProjectConfig()->EditToken;
-    if (this->Token.isEmpty())
+    if (this->Page->GetSite()->GetProjectConfig()->Token_Csrf.isEmpty())
     {
-        this->qToken = new ApiQuery(ActionQuery, this->Page->Site);
-        this->qToken->Parameters = "prop=info&intoken=edit&titles=" + QUrl::toPercentEncoding(this->Page->PageName);
-        this->qToken->Target = _l("editquery-token", this->Page->PageName);
-        QueryPool::HugglePool->AppendQuery(this->qToken);
-        this->qToken->Process();
-    } else
-    {
-        this->EditPage();
+        this->SetError("No CSRF token");
+        return;
     }
+    this->EditPage();
 }
 
 bool EditQuery::IsProcessed()
@@ -74,10 +68,8 @@ bool EditQuery::IsProcessed()
     {
         if (this->qRetrieve->IsFailed())
         {
-            this->Result = new QueryResult(true);
-            this->Result->SetError("Unable to retrieve the previous content of page: " + this->qRetrieve->Result->ErrorMessage);
+            this->SetError("Unable to retrieve the previous content of page: " + this->qRetrieve->Result->ErrorMessage);
             this->qRetrieve.Delete();
-            this->ProcessFailure();
             return true;
         }
         bool failed = false;
@@ -86,9 +78,7 @@ bool EditQuery::IsProcessed()
         this->qRetrieve.Delete();
         if (failed)
         {
-            this->Result = new QueryResult(true);
-            this->Result->SetError("Unable to retrieve the previous content of page: " + this->OriginalText);
-            this->ProcessFailure();
+            this->SetError("Unable to retrieve the previous content of page: " + this->OriginalText);
             return true;
         }
         this->HasPreviousPageText = true;
@@ -96,44 +86,7 @@ bool EditQuery::IsProcessed()
         this->EditPage();
         return false;
     }
-    if (this->qToken != nullptr)
-    {
-        if (!this->qToken->IsProcessed())
-            return false;
 
-        if (this->qToken->IsFailed())
-        {
-            this->Result = new QueryResult();
-            this->Result->SetError(_l("editquery-token-error") + ": " + this->qToken->GetFailureReason());
-            this->qToken.Delete();
-            this->ProcessFailure();
-            return true;
-        }
-        ApiQueryResultNode *page = this->qToken->GetApiQueryResult()->GetNode("page");
-        if (page == nullptr)
-        {
-            this->Result = new QueryResult();
-            this->Result->SetError(_l("editquery-token-error"));
-            HUGGLE_DEBUG1("Debug message for edit: " + this->qToken->Result->Data);
-            this->qToken.Delete();
-            this->ProcessFailure();
-            return true;
-        }
-        if (!page->Attributes.contains("edittoken"))
-        {
-            this->Result = new QueryResult();
-            this->Result->SetError(_l("editquery-token-error"));
-            HUGGLE_DEBUG1("Debug message for edit: " + this->qToken->Result->Data);
-            this->qToken.Delete();
-            this->ProcessFailure();
-            return true;
-        }
-        this->Token = page->GetAttribute("edittoken");
-        this->Page->GetSite()->GetProjectConfig()->EditToken = this->Token;
-        this->qToken.Delete();
-        this->EditPage();
-        return false;
-    }
     if (this->qEdit != nullptr)
     {
         if (!this->qEdit->IsProcessed())
@@ -156,14 +109,14 @@ bool EditQuery::IsProcessed()
                     // this is some fine hacking here :)
                     // we use this later in main form
                     HUGGLE_DEBUG1("Session expired requesting a new login");
-                    this->Page->GetSite()->GetProjectConfig()->RequestLogin();
+                    Configuration::Logout(this->Page->GetSite());
                 }
                 if (ec == "badtoken")
                 {
                     reason = "Bad token";
                     hec = HUGGLE_ETOKEN;
-                    // we invalidate the token so that next time we get a fresh one
-                    this->Page->GetSite()->GetProjectConfig()->EditToken = "";
+                    // we log off the site
+                    Configuration::Logout(this->Page->GetSite());
                     Syslog::HuggleLogs->ErrorLog("Unable to edit " + this->Page->PageName + " because token I had in cache is no longer valid, please try to edit that page once more");
                 }
                 this->Result = new QueryResult(true);
@@ -252,7 +205,15 @@ void EditQuery::EditPage()
         start_ = "&starttimestamp=" + QUrl::toPercentEncoding(this->StartTimestamp);
     this->qEdit->Parameters = "title=" + QUrl::toPercentEncoding(this->Page->PageName) + "&text=" + QUrl::toPercentEncoding(this->text) + section +
                               wl + "&summary=" + QUrl::toPercentEncoding(this->Summary) + base + start_ + "&token=" +
-                              QUrl::toPercentEncoding(this->Token);
+                              QUrl::toPercentEncoding(this->Page->GetSite()->GetProjectConfig()->Token_Csrf);
     QueryPool::HugglePool->AppendQuery(this->qEdit);
     this->qEdit->Process();
+}
+
+void EditQuery::SetError(QString reason)
+{
+    this->Result = new QueryResult(true);
+    this->Result->SetError(reason);
+    this->FailureReason = reason;
+    this->Status = StatusInError;
 }

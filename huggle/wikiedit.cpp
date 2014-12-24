@@ -19,6 +19,7 @@
 #include "syslog.hpp"
 #include "mediawiki.hpp"
 #include "wikipage.hpp"
+#include "wikiutil.hpp"
 #include "wikisite.hpp"
 #include "wikiuser.hpp"
 
@@ -41,7 +42,6 @@ WikiEdit::WikiEdit()
     this->OwnEdit = false;
     this->EditMadeByHuggle = false;
     this->TrustworthEdit = false;
-    this->RollbackToken = "";
     this->PostProcessing = false;
     this->ProcessingDiff = false;
     this->ProcessingRevs = false;
@@ -257,22 +257,17 @@ bool WikiEdit::FinalizePostProcessing()
                 // check if this revision matches our user
                 if (e.attributes().contains("user"))
                 {
-                    if (e.attribute("user") == this->User->Username)
+                    if (WikiUtil::SanitizeUser(e.attribute("user")).toUpper() != WikiUtil::SanitizeUser(this->User->Username).toUpper())
                     {
-                        if (this->GetSite()->GetProjectConfig()->RollbackToken.isEmpty() && this->RollbackToken.isEmpty() && e.attributes().contains("rollbacktoken"))
-                        {
-                            // let's update it from fresh diff
-                            this->RollbackToken = e.attribute("rollbacktoken");
-                            this->GetSite()->GetProjectConfig()->RollbackToken = e.attribute("rollbacktoken");
-                        }
+                        HUGGLE_DEBUG("User " + e.attribute("user") + " != " + this->User->Username, 3);
+                        this->IsValid = false;
                     }
-                    if (e.attributes().contains("revid"))
-                        this->RevID = e.attribute("revid").toInt();
                 } else
                 {
-                    HUGGLE_DEBUG1("Ignoring revision information for revision " + QString::number(this->RevID) + " because user " + this->User->Username +
-                                  " is not " + e.attribute("user"));
+                    this->IsValid = false;
                 }
+                if (e.attributes().contains("revid"))
+                    this->RevID = e.attribute("revid").toInt();
                 if (e.attributes().contains("timestamp"))
                     this->Time = MediaWiki::FromMWTimestamp(e.attribute("timestamp"));
                 if (e.attributes().contains("comment"))
@@ -492,23 +487,13 @@ void WikiEdit::PostProcess()
         if (this->RevID != WIKI_UNKNOWN_REVID)
         {
             // &rvprop=content can't be used because of fuck up of mediawiki
-            if (this->GetSite()->GetProjectConfig()->RollbackToken.isEmpty())
-            {
-                // this is here for compatibility reason and when mediawiki gets fucked up
-                this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
-                                            "&rvlimit=1&rvtoken=rollback&rvstartid=" +
-                                            QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
+            this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
+                                            "&rvlimit=1&rvstartid=" + QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
-            } else
-            {
-                this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
-                                                "&rvlimit=1&rvstartid=" + QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
-                                                QUrl::toPercentEncoding(this->Page->PageName);
-            }
         } else
         {
             this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
-                                            "&rvlimit=1&rvtoken=rollback&rvdiffto=" + this->DiffTo + "&titles=" +
+                                            "&rvlimit=1&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         }
         this->qDifference->Target = Page->PageName;

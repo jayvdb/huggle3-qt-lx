@@ -515,7 +515,7 @@ void Login::FinishLogin(WikiSite *site)
         qr = new ApiQuery(ActionQuery, site);
         this->qTokenInfo.insert(site, qr);
         qr->IncRef();
-        qr->Parameters = "meta=tokens&type=" + QUrl::toPercentEncoding("watch|patrol|rollback");
+        qr->Parameters = "meta=tokens&type=" + QUrl::toPercentEncoding("csrf|patrol|rollback|watch");
         qr->Process();
         this->Statuses[site] = RetrievingProjectConfig;
     }
@@ -571,7 +571,18 @@ void Login::RetrieveProjectConfig(WikiSite *site)
                 return;
             }
             QStringList users = result.toLower().split("\n");
-            if (!users.contains(QString("* [[Special:Contributions/" + hcfg->SystemConfig_Username + "|" + hcfg->SystemConfig_Username + "]]").toLower()))
+            QStringList sanitized;
+            // sanitize user list
+            foreach (QString user, users)
+            {
+                user = user.replace("_", " ");
+                user = user.trimmed();
+                sanitized.append(user);
+            }
+            QString sanitized_name = hcfg->SystemConfig_Username;
+            sanitized_name = sanitized_name.toLower();
+            sanitized_name = sanitized_name.replace("_", " ");
+            if (!sanitized.contains("* [[special:contributions/" + sanitized_name + "|" + sanitized_name + "]]"))
             {
                 this->DisplayError(_l("login-error-approval", site->Name));
                 return;
@@ -694,7 +705,7 @@ void Login::RetrieveUserConfig(WikiSite *site)
                 {
                     // if we loaded the old config we write that to debug log because othewise we hardly check this
                     // piece of code really works
-                    Syslog::HuggleLogs->DebugLog("We successfuly loaded and converted the old config for " + site->Name + " (huggle.css) :)");
+                    Syslog::HuggleLogs->DebugLog("We successfully loaded and converted the old config for " + site->Name + " (huggle.css) :)");
                 }
                 if (!site->ProjectConfig->EnableAll)
                 {
@@ -843,11 +854,27 @@ void Login::ProcessSiteInfo(WikiSite *site)
             {
                 if (tokens->Attributes.contains("rollbacktoken"))
                 {
-                    site->GetProjectConfig()->RollbackToken = tokens->GetAttribute("rollbacktoken");
-                    HUGGLE_DEBUG("Token for " + site->Name + " rollback " + site->GetProjectConfig()->RollbackToken, 2);
+                    site->GetProjectConfig()->Token_Rollback = tokens->GetAttribute("rollbacktoken");
+                    HUGGLE_DEBUG("Token for " + site->Name + " rollback " + site->GetProjectConfig()->Token_Rollback, 2);
                 } else
                 {
-                    HUGGLE_DEBUG1("No rollback for " + site->Name + "result: " + this->qTokenInfo[site]->Result->Data);
+                    HUGGLE_DEBUG1("No rollback for " + site->Name + " result: " + this->qTokenInfo[site]->Result->Data);
+                }
+                if (tokens->Attributes.contains("csrftoken"))
+                {
+                    site->GetProjectConfig()->Token_Csrf = tokens->GetAttribute("csrftoken");
+                    HUGGLE_DEBUG("Token for " + site->Name + " csrf " + site->GetProjectConfig()->Token_Csrf, 2);
+                } else
+                {
+                    HUGGLE_DEBUG1("No csrf for " + site->Name + " result: " + this->qTokenInfo[site]->Result->Data);
+                }
+                if (tokens->Attributes.contains("watchtoken"))
+                {
+                    site->GetProjectConfig()->Token_Watch = tokens->GetAttribute("watchtoken");
+                    HUGGLE_DEBUG("Token for " + site->Name + " watch " + site->GetProjectConfig()->Token_Watch, 2);
+                } else
+                {
+                    HUGGLE_DEBUG1("No watch for " + site->Name + " result: " + this->qTokenInfo[site]->Result->Data);
                 }
             }
         } else

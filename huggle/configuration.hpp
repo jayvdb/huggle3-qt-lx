@@ -178,6 +178,7 @@ namespace Huggle
             static void LoadSystemConfig(QString fn);
             //! This function appends the huggle suffix to a edit summary
             static QString GenerateSuffix(QString text, ProjectConfiguration *conf);
+            static void Logout(WikiSite *site);
             static Configuration *HuggleConfiguration;
 
             Configuration();
@@ -202,6 +203,8 @@ namespace Huggle
             QString           HANMask = "$feed.huggle";
             QByteArray        WebqueryAgent;
             bool              Multiple = false;
+            bool              SystemConfig_UM = false;
+            QString           UpdaterRoot;
             //! Every site in which the user is currently logged to
             QList<WikiSite *> Projects;
             //! currently selected project

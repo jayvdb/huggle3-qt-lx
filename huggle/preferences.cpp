@@ -65,7 +65,7 @@ Preferences::Preferences(QWidget *parent) : QDialog(parent), ui(new Ui::Preferen
     this->ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     this->ui->tableWidget_3->setColumnCount(2);
     header.clear();
-    header << "Namespace" << "Ignore";
+    header << _l("namespace") << _l("main-user-ignore");
     this->ui->tableWidget_3->setHorizontalHeaderLabels(header);
     this->ui->tableWidget_3->verticalHeader()->setVisible(false);
     this->ui->tableWidget_3->setShowGrid(false);
@@ -124,24 +124,6 @@ Preferences::Preferences(QWidget *parent) : QDialog(parent), ui(new Ui::Preferen
         this->ui->tableWidget->setItem(0, 4, new QTableWidgetItem(script->GetVersion()));
     }
 #endif
-    switch(hcfg->UserConfig->GoNext)
-    {
-        case Configuration_OnNext_Stay:
-            this->ui->radioButton_5->setChecked(true);
-            this->ui->radioButton_4->setChecked(false);
-            this->ui->radioButton_3->setChecked(false);
-            break;
-        case Configuration_OnNext_Revert:
-            this->ui->radioButton_5->setChecked(false);
-            this->ui->radioButton_4->setChecked(true);
-            this->ui->radioButton_3->setChecked(false);
-            break;
-        case Configuration_OnNext_Next:
-            this->ui->radioButton_5->setChecked(false);
-            this->ui->radioButton_3->setChecked(true);
-            this->ui->radioButton_4->setChecked(false);
-            break;
-    }
     this->Disable();
     this->ui->checkBox->setText(_l("config-conflicts-revert"));
     this->ui->checkBox_2->setText(_l("config-confirm-user"));
@@ -161,6 +143,9 @@ Preferences::Preferences(QWidget *parent) : QDialog(parent), ui(new Ui::Preferen
     this->ui->checkBox_12->setText(_l("config-enable-irc"));
     this->ui->checkBox_15->setText(_l("config-remove-reverted"));
     this->ui->checkBox_19->setText(_l("config-remove-old"));
+    this->ui->checkBox_12->setText(_l("config-ircmode"));
+    this->ui->checkBox_notifyBeta->setText(_l("config-notify-beta"));
+    this->ui->checkBox_notifyUpdate->setText(_l("config-notify-update"));
     this->ui->checkBox_14->setText(_l("config-auto-load-history"));
     this->ui->checkBox_21->setText(_l("config-last-revision"));
     this->ui->checkBox_26->setText(_l("config-require-delay"));
@@ -189,45 +174,9 @@ Preferences::Preferences(QWidget *parent) : QDialog(parent), ui(new Ui::Preferen
     this->ui->pushButton->setText(_l("config-close-without"));
 
     // options
-    this->ui->checkBox_26->setChecked(hcfg->SystemConfig_RequestDelay);
-    this->ui->checkBox_15->setChecked(hcfg->UserConfig->DeleteEditsAfterRevert);
-    this->ui->checkBox_5->setChecked(hcfg->UserConfig->EnforceSoftwareRollback());
-    this->ui->checkBox_6->setChecked(!hcfg->SystemConfig_SuppressWarnings);
-    this->ui->checkBox_2->setChecked(hcfg->WarnUserSpaceRoll);
-    this->ui->checkBox->setChecked(hcfg->UserConfig->AutomaticallyResolveConflicts);
-    this->ui->checkBox_12->setText(_l("config-ircmode"));
-    this->ui->checkBox_12->setChecked(hcfg->UsingIRC);
-    this->ui->checkBox_14->setChecked(hcfg->UserConfig->HistoryLoad);
-    this->ui->checkBox_3->setChecked(hcfg->ProjectConfig->ConfirmOnSelfRevs);
-    this->ui->checkBox_4->setChecked(hcfg->ProjectConfig->ConfirmWL);
-    this->ui->checkBox_11->setChecked(hcfg->ProjectConfig->ConfirmTalk);
-    this->ui->checkBox_16->setChecked(hcfg->UserConfig->EnforceMonthsAsHeaders);
-    this->ui->checkBox_19->setChecked(hcfg->UserConfig->TruncateEdits);
-    this->ui->lineEdit_2->setText(QString::number(hcfg->SystemConfig_DelayVal));
-    this->ui->radioButton->setChecked(!hcfg->UserConfig->RevertOnMultipleEdits);
-    this->ui->checkBox_21->setChecked(hcfg->UserConfig->LastEdit);
-    this->ui->checkBox_17->setChecked(hcfg->UserConfig->SectionKeep);
-    this->ui->radioButton_2->setChecked(hcfg->UserConfig->RevertOnMultipleEdits);
-    this->ui->checkBox_20->setEnabled(this->ui->checkBox->isChecked());
-    this->ui->radioButton_2->setEnabled(this->ui->checkBox->isChecked());
-    this->ui->checkBox_20->setChecked(hcfg->UserConfig->RevertNewBySame);
-    this->ui->radioButton->setEnabled(this->ui->checkBox->isChecked());
-    this->ui->lineEdit_3->setText(QString::number(hcfg->SystemConfig_RevertDelay));
-    this->ui->checkBox_24->setChecked(hcfg->UserConfig->ManualWarning);
-    this->ui->checkBox_25->setChecked(hcfg->UserConfig->CheckTP);
-    this->ui->checkBox_27->setChecked(hcfg->SystemConfig_InstantReverts);
-    this->ui->checkBox_22->setChecked(hcfg->SystemConfig_DynamicColsInList);
-    this->ui->checkBox_23->setChecked(hcfg->UserConfig->DisplayTitle);
-    this->ui->checkBox_30->setChecked(hcfg->UserConfig->WelcomeGood);
-    this->ui->checkBox_31->setChecked(hcfg->UserConfig->HtmlAllowedInIrc);
-    this->ui->checkBox_notifyUpdate->setText(_l("config-notify-update"));
-    this->ui->lineEdit_5->setText(hcfg->UserConfig->Font);
-    this->ui->checkBox_notifyUpdate->setChecked(hcfg->SystemConfig_UpdatesEnabled);
-    this->ui->checkBox_notifyBeta->setText(_l("config-notify-beta"));
-    this->ui->checkBox_notifyBeta->setChecked(hcfg->SystemConfig_NotifyBeta);
+    this->ResetItems();
     this->on_checkBox_26_clicked();
     this->on_checkBox_27_clicked();
-    this->ui->lineEdit_4->setText(QString::number(hcfg->UserConfig->FontSize));
 }
 
 Preferences::~Preferences()
@@ -321,6 +270,7 @@ void Preferences::EnableQueues()
 
 void Preferences::on_pushButton_clicked()
 {
+    this->ResetItems();
     this->hide();
 }
 
@@ -716,4 +666,60 @@ void Huggle::Preferences::on_tableWidget_customContextMenuRequested(const QPoint
             }
         }
     }
+}
+
+void Preferences::ResetItems()
+{
+    switch(hcfg->UserConfig->GoNext)
+    {
+        case Configuration_OnNext_Stay:
+            this->ui->radioButton_5->setChecked(true);
+            this->ui->radioButton_4->setChecked(false);
+            this->ui->radioButton_3->setChecked(false);
+            break;
+        case Configuration_OnNext_Revert:
+            this->ui->radioButton_5->setChecked(false);
+            this->ui->radioButton_4->setChecked(true);
+            this->ui->radioButton_3->setChecked(false);
+            break;
+        case Configuration_OnNext_Next:
+            this->ui->radioButton_5->setChecked(false);
+            this->ui->radioButton_3->setChecked(true);
+            this->ui->radioButton_4->setChecked(false);
+            break;
+    }
+    this->ui->checkBox_26->setChecked(hcfg->SystemConfig_RequestDelay);
+    this->ui->checkBox_15->setChecked(hcfg->UserConfig->DeleteEditsAfterRevert);
+    this->ui->checkBox_5->setChecked(hcfg->UserConfig->EnforceSoftwareRollback());
+    this->ui->checkBox_6->setChecked(!hcfg->SystemConfig_SuppressWarnings);
+    this->ui->checkBox_2->setChecked(hcfg->WarnUserSpaceRoll);
+    this->ui->checkBox->setChecked(hcfg->UserConfig->AutomaticallyResolveConflicts);
+    this->ui->checkBox_12->setChecked(hcfg->UsingIRC);
+    this->ui->checkBox_14->setChecked(hcfg->UserConfig->HistoryLoad);
+    this->ui->checkBox_3->setChecked(hcfg->ProjectConfig->ConfirmOnSelfRevs);
+    this->ui->checkBox_4->setChecked(hcfg->ProjectConfig->ConfirmWL);
+    this->ui->checkBox_11->setChecked(hcfg->ProjectConfig->ConfirmTalk);
+    this->ui->checkBox_16->setChecked(hcfg->UserConfig->EnforceMonthsAsHeaders);
+    this->ui->checkBox_19->setChecked(hcfg->UserConfig->TruncateEdits);
+    this->ui->lineEdit_2->setText(QString::number(hcfg->SystemConfig_DelayVal));
+    this->ui->radioButton->setChecked(!hcfg->UserConfig->RevertOnMultipleEdits);
+    this->ui->checkBox_21->setChecked(hcfg->UserConfig->LastEdit);
+    this->ui->checkBox_17->setChecked(hcfg->UserConfig->SectionKeep);
+    this->ui->radioButton_2->setChecked(hcfg->UserConfig->RevertOnMultipleEdits);
+    this->ui->checkBox_20->setEnabled(this->ui->checkBox->isChecked());
+    this->ui->radioButton_2->setEnabled(this->ui->checkBox->isChecked());
+    this->ui->checkBox_20->setChecked(hcfg->UserConfig->RevertNewBySame);
+    this->ui->radioButton->setEnabled(this->ui->checkBox->isChecked());
+    this->ui->lineEdit_3->setText(QString::number(hcfg->SystemConfig_RevertDelay));
+    this->ui->checkBox_24->setChecked(hcfg->UserConfig->ManualWarning);
+    this->ui->checkBox_25->setChecked(hcfg->UserConfig->CheckTP);
+    this->ui->checkBox_27->setChecked(hcfg->SystemConfig_InstantReverts);
+    this->ui->checkBox_22->setChecked(hcfg->SystemConfig_DynamicColsInList);
+    this->ui->checkBox_23->setChecked(hcfg->UserConfig->DisplayTitle);
+    this->ui->checkBox_30->setChecked(hcfg->UserConfig->WelcomeGood);
+    this->ui->checkBox_31->setChecked(hcfg->UserConfig->HtmlAllowedInIrc);
+    this->ui->lineEdit_5->setText(hcfg->UserConfig->Font);
+    this->ui->lineEdit_4->setText(QString::number(hcfg->UserConfig->FontSize));
+    this->ui->checkBox_notifyUpdate->setChecked(hcfg->SystemConfig_UpdatesEnabled);
+    this->ui->checkBox_notifyBeta->setChecked(hcfg->SystemConfig_NotifyBeta);
 }
