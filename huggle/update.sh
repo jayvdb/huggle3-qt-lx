@@ -7,4 +7,4 @@ else
   hash=""
 fi
 
-#echo "build: $c $hash" > version.txt
+echo "build: $c $hash" > version.txt
