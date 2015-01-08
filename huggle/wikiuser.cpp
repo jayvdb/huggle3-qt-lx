@@ -9,8 +9,14 @@
 //GNU General Public License for more details.
 
 #include "wikiuser.hpp"
+#include <QMutex>
 #include "configuration.hpp"
+#include "huggleparser.hpp"
+#include "localization.hpp"
+#include "mainwindow.hpp"
+#include "hugglequeue.hpp"
 #include "syslog.hpp"
+#include "wikisite.hpp"
 using namespace Huggle;
 
 //QRegExp WikiUser::IPv4Regex("^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$");
@@ -30,25 +36,25 @@ QDateTime WikiUser::InvalidTime = QDateTime::fromMSecsSinceEpoch(2);
 
 WikiUser *WikiUser::RetrieveUser(WikiUser *user)
 {
-    return WikiUser::RetrieveUser(user->Username);
+    return WikiUser::RetrieveUser(user->Username, user->GetSite());
 }
 
-WikiUser *WikiUser::RetrieveUser(QString user)
+WikiUser *WikiUser::RetrieveUser(QString user, WikiSite *site)
 {
     WikiUser::ProblematicUserListLock.lock();
     int User = 0;
     while (User < WikiUser::ProblematicUsers.count())
     {
-        if (user == WikiUser::ProblematicUsers.at(User)->Username)
+        if (site == WikiUser::ProblematicUsers.at(User)->Site && user == WikiUser::ProblematicUsers.at(User)->Username)
         {
             WikiUser *u = WikiUser::ProblematicUsers.at(User);
             WikiUser::ProblematicUserListLock.unlock();
             return u;
         }
-        User++;
+        ++User;
     }
     WikiUser::ProblematicUserListLock.unlock();
-    return NULL;
+    return nullptr;
 }
 
 void WikiUser::TrimProblematicUsersList()
@@ -65,7 +71,7 @@ void WikiUser::TrimProblematicUsersList()
             delete user;
             continue;
         }
-        i++;
+        ++i;
     }
     WikiUser::ProblematicUserListLock.unlock();
 }
@@ -80,7 +86,14 @@ void WikiUser::UpdateUser(WikiUser *us)
         if (ProblematicUsers.at(c)->Username == us->Username)
         {
             ProblematicUsers.at(c)->BadnessScore = us->BadnessScore;
-            ProblematicUsers.at(c)->WarningLevel = us->WarningLevel;
+            if (ProblematicUsers.at(c)->WarningLevel != us->WarningLevel)
+            {
+                // houston, we have this user with a different warning level, what should we do now?? pls tell us
+                // You need to update the interface of huggle so that it display all latest information about it
+                ProblematicUsers.at(c)->WarningLevel = us->WarningLevel;
+                // let's update the queue first
+                MainWindow::HuggleMain->Queue1->UpdateUser(us);
+            }
             ProblematicUsers.at(c)->WhitelistInfo = us->WhitelistInfo;
             if (us->IsReported)
             {
@@ -96,10 +109,15 @@ void WikiUser::UpdateUser(WikiUser *us)
             WikiUser::ProblematicUserListLock.unlock();
             return;
         }
-        c++;
+        ++c;
     }
     ProblematicUsers.append(new WikiUser(us));
     WikiUser::ProblematicUserListLock.unlock();
+    if (us->GetWarningLevel() > 0)
+    {
+        // this user has higher warning level than 0 so we need to update interface in case it was already somewhere
+        MainWindow::HuggleMain->Queue1->UpdateUser(us);
+    }
 }
 
 bool WikiUser::IsIPv4(QString user)
@@ -115,18 +133,19 @@ bool WikiUser::IsIPv6(QString user)
 void WikiUser::UpdateWl(WikiUser *us, long score)
 {
     if (!us->IsIP() &&
-        score <= Configuration::HuggleConfiguration->ProjectConfig_WhitelistScore &&
+        score <= Configuration::HuggleConfiguration->ProjectConfig->WhitelistScore &&
         !us->IsWhitelisted())
     {
-        if (Configuration::HuggleConfiguration->WhiteList.contains(us->Username))
+        if (us->GetSite()->GetProjectConfig()->WhiteList.contains(us->Username))
         {
             us->WhitelistInfo = 1;
             us->Update();
             return;
         }
-        Syslog::HuggleLogs->Log(Localizations::HuggleLocalizations->Localize("whitelisted", us->Username, QString::number(score)));
-        Configuration::HuggleConfiguration->NewWhitelist.append(us->Username);
-        Configuration::HuggleConfiguration->WhiteList.append(us->Username);
+        QStringList pm = QStringList() << us->Username << QString::number(score) << us->GetSite()->Name;
+        Syslog::HuggleLogs->Log(_l("whitelisted", pm));
+        us->GetSite()->GetProjectConfig()->NewWhitelist.append(us->Username);
+        us->GetSite()->GetProjectConfig()->WhiteList.append(us->Username);
         us->WhitelistInfo = 1;
         us->Update();
     }
@@ -139,7 +158,7 @@ WikiUser::WikiUser()
     this->IP = true;
     this->BadnessScore = 0;
     this->WarningLevel = 0;
-    this->IsBanned = false;
+    this->IsBlocked = false;
     this->ContentsOfTalkPage = "";
     this->DateOfTalkPage = InvalidTime;
     this->IsReported = false;
@@ -151,7 +170,7 @@ WikiUser::WikiUser()
     this->Bot = false;
 }
 
-WikiUser::WikiUser(WikiUser *u)
+WikiUser::WikiUser(WikiUser *u) : MediaWikiObject(u)
 {
     this->UserLock = new QMutex(QMutex::Recursive);
     this->IP = u->IP;
@@ -159,18 +178,17 @@ WikiUser::WikiUser(WikiUser *u)
     this->WarningLevel = u->WarningLevel;
     this->BadnessScore = u->BadnessScore;
     this->DateOfTalkPage = u->DateOfTalkPage;
-    this->IsBanned = u->IsBanned;
+    this->IsBlocked = u->IsBlocked;
     this->ContentsOfTalkPage = u->ContentsOfTalkPage;
     this->IsReported = u->IsReported;
     this->_talkPageWasRetrieved = u->_talkPageWasRetrieved;
-    this->Site = u->Site;
-    this->WhitelistInfo = u->WhitelistInfo;
+    this->WhitelistInfo = 0;
     this->Bot = u->Bot;
     this->EditCount = u->EditCount;
     this->RegistrationDate = u->RegistrationDate;
 }
 
-WikiUser::WikiUser(const WikiUser &u)
+WikiUser::WikiUser(const WikiUser &u) : MediaWikiObject(u)
 {
     this->UserLock = new QMutex(QMutex::Recursive);
     this->WarningLevel = u.WarningLevel;
@@ -178,12 +196,11 @@ WikiUser::WikiUser(const WikiUser &u)
     this->IP = u.IP;
     this->Username = u.Username;
     this->BadnessScore = u.BadnessScore;
-    this->IsBanned = u.IsBanned;
+    this->IsBlocked = u.IsBlocked;
     this->DateOfTalkPage = u.DateOfTalkPage;
     this->ContentsOfTalkPage = u.ContentsOfTalkPage;
-    this->Site = u.Site;
     this->_talkPageWasRetrieved = u._talkPageWasRetrieved;
-    this->WhitelistInfo = u.WhitelistInfo;
+    this->WhitelistInfo = 0;
     this->Bot = u.Bot;
     this->EditCount = u.EditCount;
     this->RegistrationDate = u.RegistrationDate;
@@ -193,7 +210,7 @@ WikiUser::WikiUser(QString user)
 {
     this->UserLock = new QMutex(QMutex::Recursive);
     this->IP = false;
-    if (user.length() != 0)
+    if (!user.isEmpty())
     {
         if (WikiUser::IPv6Regex.exactMatch(user))
         {
@@ -205,12 +222,16 @@ WikiUser::WikiUser(QString user)
     }
     this->Username = user;
     this->Sanitize();
-    this->IsBanned = false;
+    this->IsBlocked = false;
     this->_talkPageWasRetrieved = false;
     this->DateOfTalkPage = InvalidTime;
     int c=0;
     this->ContentsOfTalkPage = "";
     this->Site = Configuration::HuggleConfiguration->Project;
+    this->EditCount = -1;
+    this->Bot = false;
+    this->RegistrationDate = "";
+    this->WhitelistInfo = 0;
     WikiUser::ProblematicUserListLock.lock();
     while (c<ProblematicUsers.count())
     {
@@ -222,15 +243,12 @@ WikiUser::WikiUser(QString user)
             WikiUser::ProblematicUserListLock.unlock();
             return;
         }
-        c++;
+        ++c;
     }
     WikiUser::ProblematicUserListLock.unlock();
     this->BadnessScore = 0;
     this->WarningLevel = 0;
-    this->Bot = false;
     this->IsReported = false;
-    this->EditCount = -1;
-    this->RegistrationDate = "";
 }
 
 WikiUser::~WikiUser()
@@ -242,7 +260,7 @@ void WikiUser::Resync()
 {
     WikiUser::ProblematicUserListLock.lock();
     WikiUser *user = WikiUser::RetrieveUser(this);
-    if (user != NULL)
+    if (user)
     {
         this->BadnessScore = user->BadnessScore;
         this->ContentsOfTalkPage = user->TalkPage_GetContents();
@@ -266,7 +284,7 @@ QString WikiUser::TalkPage_GetContents()
     // we need to copy the value to local variable so that if someone change it from different
     // thread we are still working with same data
     QString contents = "";
-    if (user != NULL && user->TalkPage_WasRetrieved())
+    if (user != nullptr && user->TalkPage_WasRetrieved())
     {
         // we return a value of user from global db instead of local
         contents = user->ContentsOfTalkPage;
@@ -295,7 +313,7 @@ void WikiUser::Update(bool MatchingOnly)
     {
         // here we want to update the user only if it already is in database so we
         // need to check if it is there and if yes, we continue
-        if (WikiUser::RetrieveUser(this) == NULL)
+        if (WikiUser::RetrieveUser(this) == nullptr)
         {
             WikiUser::ProblematicUserListLock.unlock();
             return;
@@ -305,32 +323,17 @@ void WikiUser::Update(bool MatchingOnly)
     WikiUser::ProblematicUserListLock.unlock();
 }
 
-void WikiUser::Sanitize()
-{
-    this->Username = this->Username.replace(" ", "_");
-}
-
-void WikiUser::ForceIP()
-{
-    this->IP = true;
-}
-
-bool WikiUser::IsIP() const
-{
-    return this->IP;
-}
-
 void WikiUser::ParseTP(QDate bt)
 {
     QString tp = this->TalkPage_GetContents();
     if (tp.length() > 0)
-        this->WarningLevel = HuggleParser::GetLevel(tp, bt);
+        this->WarningLevel = HuggleParser::GetLevel(tp, bt, this->GetSite());
 }
 
 QString WikiUser::GetTalk()
 {
     // get a usertalk prefix for this site
-    WikiPageNS *ns = this->Site->RetrieveNSByCanonicalName("User talk");
+    WikiPageNS *ns = this->GetSite()->RetrieveNSByCanonicalName("User talk");
     QString prefix = ns->GetName();
     if (!prefix.size())
         prefix = "User talk";
@@ -338,18 +341,13 @@ QString WikiUser::GetTalk()
     return prefix + this->Username;
 }
 
-bool WikiUser::TalkPage_WasRetrieved()
-{
-    return this->_talkPageWasRetrieved;
-}
-
 bool WikiUser::TalkPage_ContainsSharedIPTemplate()
 {
-    if (Configuration::HuggleConfiguration->ProjectConfig_SharedIPTemplateTags.length() < 1)
+    if (Configuration::HuggleConfiguration->ProjectConfig->SharedIPTemplateTags.length() < 1)
         return false;
     if (this->TalkPage_WasRetrieved())
     {
-        return this->TalkPage_GetContents().contains(Configuration::HuggleConfiguration->ProjectConfig_SharedIPTemplateTags);
+        return this->TalkPage_GetContents().contains(Configuration::HuggleConfiguration->ProjectConfig->SharedIPTemplateTags);
     }
     return false;
 }
@@ -362,8 +360,10 @@ bool WikiUser::IsWhitelisted()
         return false;
     QString spaced = this->Username;
     spaced.replace("_", " ");
-    if (Configuration::HuggleConfiguration->WhiteList.contains(this->Username) ||
-            Configuration::HuggleConfiguration->WhiteList.contains(spaced))
+    if (this->GetSite()->GetProjectConfig()->NewWhitelist.contains(this->Username) ||
+            this->GetSite()->GetProjectConfig()->NewWhitelist.contains(spaced) ||
+            this->GetSite()->GetProjectConfig()->WhiteList.contains(this->Username) ||
+            this->GetSite()->GetProjectConfig()->WhiteList.contains(spaced))
     {
         this->WhitelistInfo = 1;
         return true;
@@ -372,27 +372,6 @@ bool WikiUser::IsWhitelisted()
         this->WhitelistInfo = 2;
         return false;
     }
-}
-
-QDateTime WikiUser::TalkPage_RetrievalTime()
-{
-    return this->DateOfTalkPage;
-}
-
-long WikiUser::GetBadnessScore(bool _resync)
-{
-    if (_resync)
-    {
-        this->Resync();
-    }
-    return this->BadnessScore;
-}
-
-void WikiUser::SetBadnessScore(long value)
-{
-    this->Resync();
-    this->BadnessScore = value;
-    this->Update(true);
 }
 
 QString WikiUser::Flags()
@@ -437,6 +416,7 @@ QString WikiUser::Flags()
     }
     return flags;
 }
+
 bool WikiUser::GetBot() const
 {
     return this->Bot;
@@ -445,4 +425,28 @@ bool WikiUser::GetBot() const
 void WikiUser::SetBot(bool value)
 {
     this->Bot = value;
+}
+
+void WikiUser::DecrementWarningLevel()
+{
+    this->WarningLevel--;
+    if (this->WarningLevel < 0)
+        this->WarningLevel = 0;
+}
+
+void WikiUser::IncrementWarningLevel()
+{
+    this->WarningLevel++;
+    if (this->WarningLevel > this->GetSite()->GetProjectConfig()->WarningLevel)
+        this->WarningLevel = this->GetSite()->GetProjectConfig()->WarningLevel;
+}
+
+void WikiUser::SetWarningLevel(byte_ht level)
+{
+    this->WarningLevel = level;
+}
+
+byte_ht WikiUser::GetWarningLevel() const
+{
+    return this->WarningLevel;
 }

@@ -9,6 +9,10 @@
 //GNU General Public License for more details.
 
 #include "syslog.hpp"
+#include <iostream>
+#include <QMutex>
+#include <QDateTime>
+#include <QFile>
 #include "configuration.hpp"
 
 using namespace Huggle;
@@ -18,10 +22,12 @@ Syslog *Syslog::HuggleLogs = new Syslog();
 Syslog::Syslog()
 {
     this->WriterLock = new QMutex(QMutex::Recursive);
+    this->lUnwrittenLogs = new QMutex(QMutex::Recursive);
 }
 
 Syslog::~Syslog()
 {
+    delete this->lUnwrittenLogs;
     delete this->WriterLock;
 }
 
@@ -41,9 +47,9 @@ void Syslog::Log(QString Message, bool TerminalOnly, HuggleLogType Type)
     if (!TerminalOnly)
     {
         this->InsertToRingLog(line);
-        this->lUnwrittenLogs.lock();
+        this->lUnwrittenLogs->lock();
         this->UnwrittenLogs.append(line);
-        this->lUnwrittenLogs.unlock();
+        this->lUnwrittenLogs->unlock();
         if (Configuration::HuggleConfiguration->SystemConfig_Log2File)
         {
             this->WriterLock->lock();

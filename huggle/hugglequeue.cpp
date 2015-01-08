@@ -9,10 +9,16 @@
 //GNU General Public License for more details.
 
 #include "hugglequeue.hpp"
-#include "core.hpp"
+#include "mainwindow.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
+#include "vandalnw.hpp"
+#include "localization.hpp"
 #include "ui_hugglequeue.h"
+#include "syslog.hpp"
+#include "wikipage.hpp"
+#include "wikiuser.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
 
@@ -20,38 +26,42 @@ HuggleQueue::HuggleQueue(QWidget *parent) : QDockWidget(parent), ui(new Ui::Hugg
 {
     this->ui->setupUi(this);
     this->CurrentFilter = HuggleQueueFilter::DefaultFilter;
-    this->setWindowTitle(Localizations::HuggleLocalizations->Localize("main-queue"));
+    this->setWindowTitle(_l("main-queue"));
     this->Filters();
 }
 
 HuggleQueue::~HuggleQueue()
 {
-    delete this->CurrentFilter;
     delete this->ui;
 }
 
 void HuggleQueue::AddItem(WikiEdit *page)
 {
     if (page == nullptr)
+        throw new Huggle::NullPointerException("WikiEdit *page", BOOST_CURRENT_FUNCTION);
+
+    if (!page->IsValid)
     {
-        throw new Exception("WikiEdit *page must not be nullptr", "void HuggleQueue::AddItem(WikiEdit *page)");
+        HUGGLE_DEBUG1("Not inserting edit " + page->Page->PageName + " because it's broken");
+        return;
     }
+
     page->RegisterConsumer(HUGGLECONSUMER_QUEUE);
-    if (Core::HuggleCore->Main != nullptr)
+    if (MainWindow::HuggleMain != nullptr)
     {
-        if (Core::HuggleCore->Main->VandalDock != nullptr)
+        if (MainWindow::HuggleMain->VandalDock != nullptr)
         {
-            if (Core::HuggleCore->Main->VandalDock->IsParsed(page))
+            if (MainWindow::HuggleMain->VandalDock->IsParsed(page))
             {
                 // we don't even need to insert this page to queue
                 page->UnregisterConsumer(HUGGLECONSUMER_QUEUE);
                 return;
             }
-            Core::HuggleCore->Main->VandalDock->Rescore(page);
+            MainWindow::HuggleMain->VandalDock->Rescore(page);
         }
     }
     // in case that we don't want to have this edit in queue, we can ignore this
-    if (Configuration::HuggleConfiguration->UserConfig_DeleteEditsAfterRevert)
+    if (Configuration::HuggleConfiguration->UserConfig->DeleteEditsAfterRevert)
     {
         // check if there was a revert to this edit which is newer than itself
         int i = 0;
@@ -74,14 +84,14 @@ void HuggleQueue::AddItem(WikiEdit *page)
             if (edit->Page->PageName != page->Page->PageName)
                 continue;
             // we found it
-            Huggle::Syslog::HuggleLogs->DebugLog("Ignoring edit to " + page->Page->PageName + " because it was reverted by someone");
+            HUGGLE_DEBUG("Ignoring edit to " + page->Page->PageName + " because it was reverted by someone", 1);
             WikiEdit::Lock_EditList->unlock();
             page->UnregisterConsumer(HUGGLECONSUMER_QUEUE);
             return;
         }
         WikiEdit::Lock_EditList->unlock();
     }
-    if (Configuration::HuggleConfiguration->UserConfig_TruncateEdits)
+    if (Configuration::HuggleConfiguration->UserConfig->TruncateEdits)
     {
         // if we want to keep only newest edits in queue we can remove all older edits made to this page
         this->DeleteOlder(page);
@@ -96,7 +106,7 @@ void HuggleQueue::AddItem(WikiEdit *page)
         if (this->ui->itemList->count() == 0)
         {
             // this should never happen - if there were 0 items in a queue it means there is no spacer, let's crash here
-            throw Huggle::Exception("The container must have at least one spacer", "void HuggleQueue::AddItem(WikiEdit *page)");
+            throw Huggle::Exception("The container must have at least one spacer", BOOST_CURRENT_FUNCTION);
         }
         this->ui->itemList->insertWidget(this->ui->itemList->count() - 1, label);
     } else
@@ -127,6 +137,7 @@ void HuggleQueue::AddItem(WikiEdit *page)
         this->ui->itemList->insertWidget(id, label);
     }
     this->Items.append(label);
+    this->RedrawTitle();
 }
 
 void HuggleQueue::Next()
@@ -140,20 +151,20 @@ void HuggleQueue::Next()
     if (i == this->ui->verticalSpacer)
     {
         // this should never happen
-        Syslog::HuggleLogs->DebugLog("Reached spacer");
+        HUGGLE_DEBUG("Reached spacer", 1);
         return;
     }
     HuggleQueueItemLabel *label = (HuggleQueueItemLabel*)i->widget();
     label->Process(i);
 }
 
-WikiEdit *HuggleQueue::GetWikiEditByRevID(int RevID)
+WikiEdit *HuggleQueue::GetWikiEditByRevID(int RevID, WikiSite *site)
 {
     int c = 0;
     while (c < this->Items.count())
     {
         HuggleQueueItemLabel *item = this->Items.at(c);
-        if (item->Page->RevID == RevID)
+        if (item->Page->RevID == RevID && item->Page->GetSite() == site)
         {
             return item->Page;
         }
@@ -162,15 +173,15 @@ WikiEdit *HuggleQueue::GetWikiEditByRevID(int RevID)
     return nullptr;
 }
 
-bool HuggleQueue::DeleteByRevID(int RevID)
+bool HuggleQueue::DeleteByRevID(int RevID, WikiSite *site)
 {
     int c = 0;
     while (c < this->Items.count())
     {
         HuggleQueueItemLabel *item = this->Items.at(c);
-        if (item->Page->RevID == RevID)
+        if (item->Page->RevID == RevID && item->Page->GetSite() == site)
         {
-            if (Core::HuggleCore->Main->CurrentEdit == item->Page)
+            if (MainWindow::HuggleMain->CurrentEdit == item->Page)
             {
                 // we can't delete item that is being reviewed now
                 return false;
@@ -227,7 +238,7 @@ void HuggleQueue::ResortItem(QLayoutItem *item, int position)
         }
         if (position == this->ui->itemList->count() - 1)
         {
-            Syslog::HuggleLogs->DebugLog("Unable to sort the queue because item wasn't present");
+            HUGGLE_DEBUG("Unable to sort the queue because item wasn't present", 1);
             return;
         }
     }
@@ -289,6 +300,7 @@ bool HuggleQueue::DeleteItem(HuggleQueueItemLabel *item)
     this->Delete(item);
     if (removed > 0)
     {
+        this->RedrawTitle();
         return true;
     }
     return false;
@@ -298,8 +310,7 @@ void HuggleQueue::Delete(HuggleQueueItemLabel *item, QLayoutItem *qi)
 {
     if (item == nullptr)
     {
-        throw new Exception("HuggleQueueItemLabel *item must not be nullptr in this context",
-               "void HuggleQueue::Delete(HuggleQueueItemLabel *item, QLayoutItem *qi)");
+        throw new Huggle::NullPointerException("HuggleQueueItemLabel *item", BOOST_CURRENT_FUNCTION);
     }
     if (qi != nullptr)
     {
@@ -340,7 +351,7 @@ int HuggleQueue::DeleteByScore(long Score)
         HuggleQueueItemLabel *item = this->Items.at(c);
         if (item->Page->Score < Score)
         {
-            if (Core::HuggleCore->Main->CurrentEdit == item->Page)
+            if (MainWindow::HuggleMain->CurrentEdit == item->Page)
             {
                 // we can't delete item that is being reviewed now
                 c++;
@@ -359,16 +370,12 @@ int HuggleQueue::DeleteByScore(long Score)
         }
         c++;
     }
+    this->RedrawTitle();
     return result;
 }
 
-void HuggleQueue::Trim(int i)
+void HuggleQueue::Trim(unsigned int i)
 {
-    if (i < 1)
-    {
-        throw new Huggle::Exception("Parameter i must be greater than 0 in HuggleQueue::Trim(i)");
-    }
-
     while (i > 0)
     {
         Trim();
@@ -386,8 +393,7 @@ void HuggleQueue::Trim()
     QLayoutItem *i = this->ui->itemList->itemAt(x);
     if (i == this->ui->verticalSpacer)
     {
-        throw new Huggle::Exception("Vertical spacer was not last in queue",
-                                    "void HuggleQueue::Trim()");
+        throw new Huggle::Exception("Vertical spacer was not last in queue", BOOST_CURRENT_FUNCTION);
     }
     HuggleQueueItemLabel *label = (HuggleQueueItemLabel*)i->widget();
     label->Remove();
@@ -399,10 +405,12 @@ void HuggleQueue::Filters()
     this->ui->comboBox->clear();
     int x = 0;
     int id = 0;
-    while (x < HuggleQueueFilter::Filters.count())
+    if (!HuggleQueueFilter::Filters.contains(this->CurrentSite()))
+        throw new Huggle::Exception("The filter list doesn't contain current site", BOOST_CURRENT_FUNCTION);
+    while (x < HuggleQueueFilter::Filters[this->CurrentSite()]->count())
     {
-        HuggleQueueFilter *FilthyFilter = HuggleQueueFilter::Filters.at(x);
-        if (Configuration::HuggleConfiguration->UserConfig_QueueID == FilthyFilter->QueueName)
+        HuggleQueueFilter *FilthyFilter = HuggleQueueFilter::Filters[this->CurrentSite()]->at(x);
+        if (this->CurrentSite()->UserConfig->QueueID == FilthyFilter->QueueName)
         {
             id = x;
         }
@@ -423,15 +431,32 @@ void HuggleQueue::DeleteOlder(WikiEdit *edit)
         {
             if (edit->Page->PageName == _e->Page->PageName)
             {
-                Huggle::Syslog::HuggleLogs->DebugLog("Deleting old edit to page " + _e->Page->PageName);
+                HUGGLE_DEBUG("Deleting old edit to page " + _e->Page->PageName, 3);
                 // remove it
-                if (this->DeleteByRevID(_e->RevID))
+                if (this->DeleteByRevID(_e->RevID, _e->GetSite()))
                 {
                     // we can only continue if some edit was deleted
                     // otherwise we end up looping here
                     continue;
                 }
             }
+        }
+        i++;
+    }
+    this->RedrawTitle();
+}
+
+void HuggleQueue::UpdateUser(WikiUser *user)
+{
+    int i = 0;
+    while (i < this->Items.count())
+    {
+        WikiEdit *ed = this->Items.at(i)->Page;
+        if (ed->User->Username == user->Username)
+        {
+            // we have a match, let's update the icon
+            ed->User->SetWarningLevel(user->GetWarningLevel());
+            this->Items.at(i)->UpdatePixmap();
         }
         i++;
     }
@@ -446,9 +471,32 @@ void HuggleQueue::Clear()
         {
             // we failed to remove the item, break or we end up
             // looping here
-            Huggle::Syslog::HuggleLogs->DebugLog("Failed to clear the queue");
+            HUGGLE_DEBUG("Failed to clear the queue", 1);
             return;
         }
+    }
+    this->RedrawTitle();
+}
+
+void HuggleQueue::RedrawTitle()
+{
+    this->setWindowTitle(_l("main-queue") + "[" + QString::number(this->Items.count()) + "]");
+}
+
+WikiSite *HuggleQueue::CurrentSite()
+{
+    if (this->Site == nullptr)
+        return hcfg->Project;
+    return this->Site;
+}
+
+void HuggleQueue::ChangeSite(WikiSite *site)
+{
+    if (this->CurrentSite() != site)
+    {
+        // let's switch the list of queues
+        this->Site = site;
+        this->Filters();
     }
 }
 
@@ -463,7 +511,7 @@ long HuggleQueue::GetScore(int id)
     HuggleQueueItemLabel *label = (HuggleQueueItemLabel*)i->widget();
     if (!label)
     {
-        throw new Huggle::Exception("label was nullptr", "long HuggleQueue::GetScore(int id)");
+        throw new Huggle::NullPointerException("label was nullptr", BOOST_CURRENT_FUNCTION);
     }
     if (label->Page == nullptr)
     {
@@ -476,11 +524,13 @@ void HuggleQueue::on_comboBox_currentIndexChanged(int index)
 {
     if (!this->loading)
     {
-        if (index > -1 && index < HuggleQueueFilter::Filters.count())
+        if (!HuggleQueueFilter::Filters.contains(this->CurrentSite()))
+            throw new Huggle::Exception("The filter list doesn't contain site", BOOST_CURRENT_FUNCTION);
+        if (index > -1 && index < HuggleQueueFilter::Filters[this->CurrentSite()]->count())
         {
-            this->CurrentFilter = HuggleQueueFilter::Filters.at(index);
+            this->CurrentFilter = HuggleQueueFilter::Filters[this->CurrentSite()]->at(index);
         }
-        Configuration::HuggleConfiguration->UserConfig_QueueID = this->CurrentFilter->QueueName;
+        hcfg->UserConfig->QueueID = this->CurrentFilter->QueueName;
     }
 }
 

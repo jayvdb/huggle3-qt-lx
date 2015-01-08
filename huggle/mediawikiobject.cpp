@@ -8,17 +8,34 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
-#include "hugglemassrollback.hpp"
-#include "ui_hugglemassrollback.h"
-
+#include "mediawikiobject.hpp"
+#include "configuration.hpp"
+#include "wikisite.hpp"
 using namespace Huggle;
 
-HuggleMassRollback::HuggleMassRollback(QWidget *parent) : QDialog(parent), ui(new Ui::HuggleMassRollback)
+MediaWikiObject::MediaWikiObject()
 {
-    this->ui->setupUi(this);
+    this->Site = nullptr;
 }
 
-HuggleMassRollback::~HuggleMassRollback()
+MediaWikiObject::MediaWikiObject(MediaWikiObject *m)
 {
-    delete this->ui;
+    this->Site = m->Site;
+}
+
+MediaWikiObject::MediaWikiObject(const MediaWikiObject &m)
+{
+    this->Site = m.Site;
+}
+
+MediaWikiObject::~MediaWikiObject()
+{
+
+}
+
+WikiSite *MediaWikiObject::GetSite()
+{
+    if (this->Site == nullptr)
+        return Configuration::HuggleConfiguration->Project;
+    return this->Site;
 }

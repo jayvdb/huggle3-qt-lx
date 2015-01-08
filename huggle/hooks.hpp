@@ -12,29 +12,19 @@
 #define HOOKS_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
-#include "wikipage.hpp"
-#include "iextension.hpp"
-#include "wikiuser.hpp"
-#include "wikiedit.hpp"
-#include "mainwindow.hpp"
 
 namespace Huggle
 {
     class WikiUser;
     class WikiEdit;
-    class WikiPage;
     class Exception;
     class MainWindow;
+    class SpeedyForm;
 
     //! Hooks that can be used to attach some 3rd code to existing functions
-    class Hooks
+    class HUGGLE_EX Hooks
     {
         public:
             /*!
@@ -73,11 +63,14 @@ namespace Huggle
              * \param Score New score of user
              */
             static void BadnessScore(WikiUser *User, int Score);
+            static bool Speedy_BeforeOK(Huggle::WikiEdit *edit, SpeedyForm *form);
+            static void Speedy_Finished(Huggle::WikiEdit *edit, QString tags, bool success);
             /*!
              * \brief Window is loaded
              * \param window
              */
             static void MainWindowIsLoaded(MainWindow *window);
+            static void Shutdown();
     };
 }
 

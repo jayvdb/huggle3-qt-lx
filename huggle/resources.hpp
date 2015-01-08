@@ -12,11 +12,6 @@
 #define RESOURCES_HPP
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it
-// simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QFile>
 #include <QString>
@@ -24,7 +19,7 @@
 namespace Huggle
 {
     //! Embedded resource files
-    class Resources
+    class HUGGLE_EX Resources
     {
         public:
             static void Init();

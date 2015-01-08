@@ -12,23 +12,17 @@
 #define HUGGLEFEEDPROVIDERIRC_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first, because it simply suck :P
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QString>
 #include <QThread>
 #include <QList>
 #include <QMutex>
 #include <QTcpSocket>
-#include "mainwindow.hpp"
-#include "networkirc.hpp"
 #include "hugglefeed.hpp"
-#include "wikiedit.hpp"
 
 namespace Huggle
 {
+    class WikiEdit;
     namespace IRC
     {
         class NetworkIrc;
@@ -36,7 +30,7 @@ namespace Huggle
     class HuggleFeedProviderIRC;
 
     //! Thread which process the IRC feed
-    class HuggleFeedProviderIRC_t : public QThread
+    class HUGGLE_EX HuggleFeedProviderIRC_t : public QThread
     {
             Q_OBJECT
         public:
@@ -52,10 +46,10 @@ namespace Huggle
     };
 
     //! Provider that uses a wikimedia irc recent changes feed to retrieve information about edits
-    class HuggleFeedProviderIRC : public HuggleFeed
+    class HUGGLE_EX HuggleFeedProviderIRC : public HuggleFeed
     {
         public:
-            HuggleFeedProviderIRC();
+            HuggleFeedProviderIRC(WikiSite *site);
             ~HuggleFeedProviderIRC();
             Huggle::IRC::NetworkIrc *Network;
             bool Start();

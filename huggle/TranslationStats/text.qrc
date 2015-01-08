@@ -3,6 +3,7 @@
         <file>../Localization/en.xml</file>
         <file>../Localization/ar.xml</file>
         <file>../Localization/bg.xml</file>
+        <file>../Localization/br.xml</file>
         <file>../Localization/bn.xml</file>
         <file>../Localization/de.xml</file>
         <file>../Localization/es.xml</file>
@@ -16,6 +17,8 @@
         <file>../Localization/kn.xml</file>
         <file>../Localization/ko.xml</file>
         <file>../Localization/ml.xml</file>
+        <file>../Localization/mk.xml</file>
+        <file>../Localization/lb.xml</file>
         <file>../Localization/nl.xml</file>
         <file>../Localization/mr.xml</file>
         <file>../Localization/no.xml</file>
@@ -24,6 +27,7 @@
         <file>../Localization/pt.xml</file>
         <file>../Localization/ru.xml</file>
         <file>../Localization/sv.xml</file>
+        <file>../Localization/tr.xml</file>
         <file>../Localization/zh.xml</file>
         <file>../Localization/pt-BR.xml</file>
         <file>../Localization/cz.xml</file>

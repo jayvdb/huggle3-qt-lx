@@ -8,18 +8,21 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
-#include "hugglenuke.hpp"
-#include "ui_hugglenuke.h"
+#include "huggleoption.hpp"
 
 using namespace Huggle;
 
-HuggleNuke::HuggleNuke(QWidget *parent) : QDialog(parent), ui(new Ui::HuggleNuke)
+HuggleOption::HuggleOption(QString name, QVariant value, bool isdefault)
 {
-    this->ui->setupUi(this);
+    this->Name = name;
+    this->isDefault = isdefault;
+    this->Value = value;
 }
 
-HuggleNuke::~HuggleNuke()
+void HuggleOption::SetVariant(QVariant value)
 {
-    delete this->ui;
+    this->isDefault = false;
+    this->Value = value;
 }
+
 

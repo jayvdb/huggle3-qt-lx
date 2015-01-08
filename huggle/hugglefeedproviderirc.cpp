@@ -9,29 +9,37 @@
 //GNU General Public License for more details.
 
 #include "hugglefeedproviderirc.hpp"
-#include "querypool.hpp"
 #include "configuration.hpp"
+#include "mainwindow.hpp"
 #include "exception.hpp"
+#include "hugglequeue.hpp"
 #include "localization.hpp"
+#include "networkirc.hpp"
+#include "querypool.hpp"
+#include "syslog.hpp"
+#include "wikiedit.hpp"
+#include "wikipage.hpp"
+#include "wikisite.hpp"
+#include "wikiuser.hpp"
 
 using namespace Huggle;
 
-HuggleFeedProviderIRC::HuggleFeedProviderIRC()
+HuggleFeedProviderIRC::HuggleFeedProviderIRC(WikiSite *site) : HuggleFeed(site)
 {
     this->Paused = false;
     this->Connected = false;
-    this->thread = NULL;
-    this->Network = NULL;
+    this->thread = nullptr;
+    this->Network = nullptr;
 }
 
 HuggleFeedProviderIRC::~HuggleFeedProviderIRC()
 {
+    this->Stop();
     while (this->Buffer.count() > 0)
     {
         this->Buffer.at(0)->DecRef();
         this->Buffer.removeAt(0);
     }
-    this->Stop();
     delete this->thread;
     delete this->Network;
 }
@@ -40,10 +48,10 @@ bool HuggleFeedProviderIRC::Start()
 {
     if (this->Connected)
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Attempted to start connection which was already started");
+        HUGGLE_DEBUG1("Attempted to start connection which was already started");
         return false;
     }
-    if (this->Network != NULL)
+    if (this->Network != nullptr)
     {
         delete this->Network;
     }
@@ -55,15 +63,14 @@ bool HuggleFeedProviderIRC::Start()
     this->Network->UserName = Configuration::HuggleConfiguration->HuggleVersion;
     if (!this->Network->Connect())
     {
-        Huggle::Syslog::HuggleLogs->Log(Huggle::Localizations::HuggleLocalizations->Localize("irc-error",
-                                        Configuration::HuggleConfiguration->IRCServer));
+        Huggle::Syslog::HuggleLogs->Log(_l("irc-error", Configuration::HuggleConfiguration->IRCServer, this->Network->ErrorMs));
         delete this->Network;
-        this->Network = NULL;
+        this->Network = nullptr;
         return false;
     }
-    this->Network->Join(Configuration::HuggleConfiguration->Project->IRCChannel);
-    Huggle::Syslog::HuggleLogs->Log(Huggle::Localizations::HuggleLocalizations->Localize("irc-connected"));
-    if (this->thread != NULL)
+    this->Network->Join(this->GetSite()->IRCChannel);
+    Huggle::Syslog::HuggleLogs->Log(_l("irc-connected", this->Site->Name));
+    if (this->thread != nullptr)
     {
         delete this->thread;
     }
@@ -71,12 +78,13 @@ bool HuggleFeedProviderIRC::Start()
     this->thread->p = this;
     this->thread->start();
     this->Connected = true;
+    this->UptimeDate = QDateTime::currentDateTime();
     return true;
 }
 
 bool HuggleFeedProviderIRC::IsWorking()
 {
-    if (this->Network != NULL)
+    if (this->Network != nullptr)
     {
         return this->Connected && (this->Network->IsConnected() || this->Network->IsConnecting());
     }
@@ -85,18 +93,18 @@ bool HuggleFeedProviderIRC::IsWorking()
 
 void HuggleFeedProviderIRC::Stop()
 {
-    if (!this->Connected || this->Network == NULL)
+    if (!this->Connected || this->Network == nullptr)
     {
         return;
     }
-    if (this->thread != NULL)
+    if (this->thread != nullptr)
     {
         this->thread->Running = false;
     }
     this->Network->Disconnect();
     while (!IsStopped())
     {
-        Huggle::Syslog::HuggleLogs->Log(Huggle::Localizations::HuggleLocalizations->Localize("irc-stop"));
+        Huggle::Syslog::HuggleLogs->Log(_l("irc-stop", this->GetSite()->Name));
         Sleeper::usleep(200000);
     }
     this->Connected = false;
@@ -104,23 +112,28 @@ void HuggleFeedProviderIRC::Stop()
 
 void HuggleFeedProviderIRC::InsertEdit(WikiEdit *edit)
 {
-    if (edit == NULL)
-    {
-        throw new Exception("WikiEdit *edit must not be NULL", "void HuggleFeedProviderIRC::InsertEdit(WikiEdit *edit)");
-    }
-    this->EditCounter++;
+    if (edit == nullptr)
+        throw new Huggle::NullPointerException("WikiEdit *edit", BOOST_CURRENT_FUNCTION);
+
+    // Increase the number of edits that were made since provider is up, this is used for statistics
+    this->IncrementEdits();
+    // We need to pre process edit so that we have all its properties ready for queue filter
     QueryPool::HugglePool->PreProcessEdit(edit);
+    // We only insert it to buffer in case that current filter matches the edit, this is probably not needed
+    // but it might be a performance improvement at some point
     if (MainWindow::HuggleMain->Queue1->CurrentFilter->Matches(edit))
     {
         this->lock.lock();
         if (this->Buffer.size() > Configuration::HuggleConfiguration->SystemConfig_ProviderCache)
         {
+            // If the buffer is full we need to remove 10 oldest edits
+            // we also show a warning to user
             while (this->Buffer.size() > (Configuration::HuggleConfiguration->SystemConfig_ProviderCache - 10))
             {
                 this->Buffer.at(0)->DecRef();
                 this->Buffer.removeAt(0);
             }
-            Huggle::Syslog::HuggleLogs->Log("WARNING: insufficient space in irc cache, increase ProviderCache size, otherwise you will be loosing edits");
+            Huggle::Syslog::HuggleLogs->WarningLog("insufficient space in irc cache, increase ProviderCache size, otherwise you will be losing edits");
         }
         this->Buffer.append(edit);
         this->lock.unlock();
@@ -139,21 +152,22 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
     }
     if (!line.contains(QString(QChar(003)) + "07"))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no07):" + line);
+        HUGGLE_DEBUG("Invalid line (no07):" + line, 1);
         return;
     }
     line = line.mid(line.indexOf(QString(QChar(003)) + "07") + 3);
     if (!line.contains(QString(QChar(003)) + "14"))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no14):" + line);
+        HUGGLE_DEBUG("Invalid line (no14):" + line, 1);
         return;
     }
     WikiEdit *edit = new WikiEdit();
     edit->Page = new WikiPage(line.mid(0, line.indexOf(QString(QChar(003)) + "14")));
+    edit->Page->Site = this->GetSite();
     edit->IncRef();
     if (!line.contains(QString(QChar(003)) + "4 "))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no:x4:" + line);
+        HUGGLE_DEBUG("Invalid line (no:x4:" + line, 1);
         edit->DecRef();
         return;
     }
@@ -171,11 +185,12 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
         flags.contains("helpful")  || flags.contains("approve") ||
         flags.contains("resolve")  || flags.contains("upload") ||
         flags.contains("feature")  || flags.contains("noaction") ||
-        flags.contains("selfadd")  || flags.contains("overwrite") ||
+        flags.contains("byemail")  || flags.contains("overwrite") ||
         flags.contains("create")   || flags.contains("delete") ||
         flags.contains("restore")  || flags.contains("move") ||
         flags.contains("tag")      || /* abuse filter */flags.contains("hit") ||
-        flags.contains("patrol")   || flags.contains("revision"))
+        flags.contains("patrol")   || flags.contains("revision") ||
+        flags.contains("add")      || flags.contains("selfadd"))
     {
         edit->DecRef();
         return;
@@ -184,7 +199,7 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
     {
         if (!line.contains("?diff="))
         {
-            Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (flags: " + flags + ") (no diff):" + line);
+            HUGGLE_DEBUG("Invalid line (flags: " + flags + ") (no diff):" + line, 1);
             edit->DecRef();
             return;
         }
@@ -193,7 +208,7 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
 
         if (!line.contains("&"))
         {
-            Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no &):" + line);
+            HUGGLE_DEBUG("Invalid line (no &):" + line, 1);
             edit->DecRef();
             return;
         }
@@ -202,28 +217,28 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
     }
     if (!line.contains("oldid="))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no oldid?):" + line);
+        HUGGLE_DEBUG("Invalid line (no oldid?):" + line, 1);
         edit->DecRef();
         return;
     }
     line = line.mid(line.indexOf("oldid=") + 6);
     if (!line.contains(QString(QChar(003))))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no termin):" + line);
+        HUGGLE_DEBUG("Invalid line (no termin):" + line, 1);
         edit->DecRef();
         return;
     }
     edit->OldID = line.mid(0, line.indexOf(QString(QChar(003)))).toInt();
     if (!line.contains(QString(QChar(003)) + "03"))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line, no user: " + line);
+        HUGGLE_DEBUG("Invalid line, no user: " + line, 1);
         edit->DecRef();
         return;
     }
     line = line.mid(line.indexOf(QString(QChar(003)) + "03") + 3);
     if (!line.contains(QString(QChar(3))))
     {
-        Huggle::Syslog::HuggleLogs->DebugLog("Invalid line (no termin):" + line);
+        HUGGLE_DEBUG("Invalid line (no termin):" + line, 1);
         edit->DecRef();
         return;
     }
@@ -234,6 +249,7 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
         return;
     }
     edit->User = new WikiUser(name);
+    edit->User->Site = this->GetSite();
     if (line.contains(QString(QChar(3)) + " ("))
     {
         line = line.mid(line.indexOf(QString(QChar(3)) + " (") + 3);
@@ -241,28 +257,28 @@ void HuggleFeedProviderIRC::ParseEdit(QString line)
         {
             QString xx = line.mid(0, line.indexOf(")"));
             xx = xx.replace("\002", "");
-            int size = 0;
+            long size = 0;
             if (xx.startsWith("+"))
             {
                 xx = xx.mid(1);
-                size = xx.toInt();
-                edit->Size = size;
+                size = xx.toLong();
+                edit->SetSize(size);
             } else if (xx.startsWith("-"))
             {
                 xx = xx.mid(1);
-                size = xx.toInt() * -1;
-                edit->Size = size;
+                size = xx.toLong() * -1;
+                edit->SetSize(size);
             } else
             {
-                Syslog::HuggleLogs->DebugLog("No size information for " + edit->Page->PageName);
+                HUGGLE_DEBUG("No size information for " + edit->Page->PageName, 1);
             }
         }else
         {
-            Syslog::HuggleLogs->DebugLog("No size information for " + edit->Page->PageName);
+            HUGGLE_DEBUG("No size information for " + edit->Page->PageName, 1);
         }
     } else
     {
-        Syslog::HuggleLogs->DebugLog("No size information for " + edit->Page->PageName);
+        HUGGLE_DEBUG("No size information for " + edit->Page->PageName, 1);
     }
     if (line.contains(QString(QChar(3)) + "10"))
     {
@@ -281,7 +297,7 @@ bool HuggleFeedProviderIRC::IsStopped()
     {
         return false;
     }
-    if (this->thread != NULL)
+    if (this->thread != nullptr)
     {
         if (this->thread->Running || !this->thread->IsFinished())
         {
@@ -298,10 +314,10 @@ bool HuggleFeedProviderIRC::ContainsEdit()
 
 void HuggleFeedProviderIRC_t::run()
 {
-    if (this->p == NULL)
+    if (this->p == nullptr)
     {
         this->Stopped = true;
-        throw new Exception("Pointer to parent IRC feed is NULL");
+        throw new Huggle::NullPointerException("Pointer to parent IRC feed is NULL", BOOST_CURRENT_FUNCTION);
     }
     // wait until we finish connecting to a network
     while (this->Running && !this->p->Network->IsConnected())
@@ -311,7 +327,7 @@ void HuggleFeedProviderIRC_t::run()
     while (this->Running && this->p->Network->IsConnected())
     {
         Huggle::IRC::Message *message = p->Network->GetMessage();
-        if (message != NULL)
+        if (message != nullptr)
         {
             QString text = message->Text;
             this->p->ParseEdit(text);
@@ -330,7 +346,7 @@ HuggleFeedProviderIRC_t::HuggleFeedProviderIRC_t()
 {
     this->Stopped = false;
     this->Running = true;
-    this->p = NULL;
+    this->p = nullptr;
 }
 
 HuggleFeedProviderIRC_t::~HuggleFeedProviderIRC_t()
@@ -349,7 +365,7 @@ WikiEdit *HuggleFeedProviderIRC::RetrieveEdit()
     if (this->Buffer.size() == 0)
     {
         this->lock.unlock();
-        return NULL;
+        return nullptr;
     }
     WikiEdit *edit = this->Buffer.at(0);
     this->Buffer.removeAt(0);

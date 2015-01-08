@@ -16,6 +16,25 @@ def huggle_version():
     """
     return "unknown";
 
+def configuration_get_project_wiki_url():
+    """Returns a project /wiki url"""
+
+    return "http://en.wikipedia.org/wiki/";
+
+def configuration_get_project_script_url():
+    return "http://en.wikipedia.org/w/";
+
+def configuration_get_user():
+    """Returns a username as stored in huggle configuration"""
+    return "JimmyWales";
+
+def wikipage_append(wikipage, summary, text):
+    """Appends a text to a page, this is a background async task so you will not know if
+    it was successfull or not.
+
+    This function return true unless it's not possible to edit"""
+    return true;
+
 def log(str_message):
     """Logs a message to huggle system log
     Calls Huggle::Python::Log @pythonengine.cpp

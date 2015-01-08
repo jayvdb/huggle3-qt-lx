@@ -10,74 +10,86 @@
 
 #include "huggleparser.hpp"
 #include "configuration.hpp"
+#include "projectconfiguration.hpp"
+#include "syslog.hpp"
+#include "wikisite.hpp"
 
 using namespace Huggle;
 
-QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key)
+QString HuggleParser::ConfigurationParse(QString key, QString content, QString missing)
 {
-    int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig_RevertSummaries.count())
+    /// \todo this parses the config a lot different than HG2 (here only one line, mising replaces...)
+    // if first line in config
+    if (content.startsWith(key + ":"))
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig_RevertSummaries.at(id);
-        if (line.startsWith(key + ";"))
+        QString value = content.mid(key.length() + 1);
+        if (value.contains("\n"))
         {
-            return HuggleParser::GetValueFromKey(line);
+            value = value.mid(0, value.indexOf("\n"));
         }
-        id++;
+        return value;
     }
-    return Configuration::HuggleConfiguration->ProjectConfig_DefaultSummary;
+
+    // make sure it's not inside of some string
+    if (content.contains("\n" + key + ":"))
+    {
+        QString value = content.mid(content.indexOf("\n" + key + ":") + key.length() + 2);
+        if (value.contains("\n"))
+        {
+            value = value.mid(0, value.indexOf("\n"));
+        }
+        return value;
+    }
+    return missing;
 }
 
-QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key)
+QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
-    int id=0;
-    while (id<Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.count())
-    {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.at(id);
-        if (line.startsWith(key) + ";")
-        {
+    foreach (QString line, project_conf->RevertSummaries)
+        if (line.startsWith(key + ";"))
             return HuggleParser::GetValueFromKey(line);
-        }
-        id++;
-    }
+
+    return project_conf->DefaultSummary;
+}
+
+QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
+{
+    // get a key
+    foreach (QString line, project_conf->WarningTypes)
+        if (line.startsWith(key) + ";")
+            return HuggleParser::GetValueFromKey(line);
     return key;
 }
 
-QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id)
+QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id, ProjectConfiguration *project_conf)
 {
-    int i=0;
-    while (i<Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.count())
+    foreach (QString line, project_conf->WarningTypes)
     {
-        QString line = Configuration::HuggleConfiguration->ProjectConfig_WarningTypes.at(i);
         if (line.endsWith(id) || line.endsWith(id + ","))
         {
             return HuggleParser::GetKeyFromValue(line);
         }
-        i++;
     }
     return id;
 }
 
-void HuggleParser::ParsePats(QString text)
+void HuggleParser::ParsePats(QString text, WikiSite *site)
 {
-    Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.clear();
+    site->ProjectConfig->ScoreParts.clear();
     while (text.contains("score-parts("))
     {
         text = text.mid(text.indexOf("score-parts(") + 12);
         if (!text.contains(")"))
-        {
             return;
-        }
+
         int score = text.mid(0, text.indexOf(")")).toInt();
         if (score == 0)
-        {
             continue;
-        }
+
         QStringList word;
         if (!text.contains(":"))
-        {
             return;
-        }
+
         text = text.mid(text.indexOf(":") + 1);
         QStringList lines = text.split("\n");
         int line = 1;
@@ -85,36 +97,24 @@ void HuggleParser::ParsePats(QString text)
         {
             QString l = lines.at(line);
             QStringList items = l.split(",");
-            int CurrentItem = 0;
-            while ( CurrentItem < items.count() )
+            foreach (QString wx, items)
             {
-                QString w = items.at(CurrentItem).trimmed();
-                if (w.length() == 0)
-                {
-                    CurrentItem++;
-                    continue;
-                }
-                word.append(w);
-                CurrentItem++;
+                wx = wx.trimmed();
+                if (!wx.isEmpty())
+                    word.append(wx);
             }
             if (!l.endsWith(",") || l.trimmed().length() <= 0)
-            {
                 break;
-            }
             line++;
         }
-        line = 0;
-        while (line < word.count())
-        {
-            Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.append(ScoreWord(word.at(line), score));
-            line++;
-        }
+        foreach (QString wx, word)
+            site->ProjectConfig->ScoreParts.append(ScoreWord(wx, score));
     }
 }
 
-void HuggleParser::ParseWords(QString text)
+void HuggleParser::ParseWords(QString text, WikiSite *site)
 {
-    Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.clear();
+    site->ProjectConfig->ScoreWords.clear();
     while (text.contains("score-words("))
     {
         text = text.mid(text.indexOf("score-words(") + 12);
@@ -139,30 +139,19 @@ void HuggleParser::ParseWords(QString text)
         {
             QString l = lines.at(line);
             QStringList items = l.split(",");
-            int CurrentItem = 0;
-            while ( CurrentItem < items.count() )
+            foreach (QString w, items)
             {
-                QString w = items.at(CurrentItem).trimmed();
-                if (w.length() == 0)
-                {
-                    CurrentItem++;
+                w = w.trimmed();
+                if (w.isEmpty())
                     continue;
-                }
                 word.append(w);
-                CurrentItem++;
             }
-            if (!l.endsWith(",") || l.trimmed().length() == 0)
-            {
+            if (l.trimmed().isEmpty() || !l.endsWith(","))
                 break;
-            }
             line++;
         }
-        line = 0;
-        while (line < word.count())
-        {
-            Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.append(ScoreWord(word.at(line), score));
-            line++;
-        }
+        foreach (QString w, word)
+            site->ProjectConfig->ScoreWords.append(ScoreWord(w, score));
     }
 }
 
@@ -190,16 +179,14 @@ QString HuggleParser::GetKeyFromValue(QString item)
     return item;
 }
 
-static int DateMark(QString page)
+static int DateMark(QString page, WikiSite *site)
 {
-    QStringList marks;
-    marks << "(UTC)" << "(CET)" << "(CEST)";
     int m = 0;
     int position = 0;
     QString mark = "";
-    while (m < marks.count())
+    while (m < site->GetProjectConfig()->Parser_Date_Suffix.count())
     {
-        QString m_ = marks.at(m);
+		QString m_ = site->GetProjectConfig()->Parser_Date_Suffix.at(m);
         if (page.contains(m_))
         {
             int mp = page.lastIndexOf(m_);
@@ -214,8 +201,13 @@ static int DateMark(QString page)
     return position;
 }
 
-byte_ht HuggleParser::GetLevel(QString page, QDate bt)
+byte_ht HuggleParser::GetLevel(QString page, QDate bt, WikiSite *site)
 {
+    if (!site)
+    {
+        // for compatibilty purposes
+        site = Configuration::HuggleConfiguration->Project;
+    }
     if (Configuration::HuggleConfiguration->TrimOldWarnings)
     {
         // we need to get rid of old warnings now
@@ -248,7 +240,7 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
         page = "";
         while (CurrentIndex < sections.count())
         {
-            int dp = DateMark(sections.at(CurrentIndex));
+            int dp = DateMark(sections.at(CurrentIndex), site);
             // we need to find a date in this section
             if (!dp)
             {
@@ -258,59 +250,57 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
             }
             QString section = sections.at(CurrentIndex);
             section = section.mid(0, dp).trimmed();
-            if (!section.contains(","))
+            if (!section.contains(site->GetProjectConfig()->Parser_Date_Prefix))
             {
                 // this is some borked date let's remove it
                 CurrentIndex++;
                 continue;
             }
-            QString time = section.mid(section.lastIndexOf(","));
-            if (time.length() < 2)
-            {
-                // what the fuck
-                Syslog::HuggleLogs->DebugLog("Negative position: " + time);
-                CurrentIndex++;
-                continue;
-            }
-            // we remove the comma
-            time = time.mid(2);
+            QString time = section.mid(section.lastIndexOf(site->GetProjectConfig()->Parser_Date_Prefix) + site->GetProjectConfig()->Parser_Date_Prefix.length());
             // now we need this uberhack so that we can get a month name from localized version
             // let's hope that month is a word in a middle of string
-            QString month_name = time;
+            time = time.trimmed();
+            QString month_name = "";
             QStringList parts_time = time.split(' ');
             if (parts_time.count() < 3)
             {
                 // this is invalid string
-                Syslog::HuggleLogs->DebugLog("Unable to split month: " + time, 12);
+                HUGGLE_DEBUG("Unable to split month: " + time, 12);
                 CurrentIndex++;
                 continue;
             }
             QString day = parts_time.at(0);
             // e.g. dewiki's days end with dot
-            if(day.endsWith('.')){
+            if(day.endsWith('.'))
                 day = day.mid(0, day.length() - 1);
+            // on some wikis months have spaces in name
+            int i = 1;
+            while (i < parts_time.count() - 1)
+            {
+                month_name += parts_time.at(i) + " ";
+                i++;
             }
-            month_name = parts_time.at(1);
-            byte_ht month = HuggleParser::GetIDOfMonth(month_name);
+            month_name = month_name.trimmed();
+            byte_ht month = HuggleParser::GetIDOfMonth(month_name, site);
 
              // let's create a new time string from converted one, just to make sure it will be parsed properly
             if (month > 0)
             {
-                time = day + " " + QString::number(month) + " " + parts_time.at(2);
+                time = day + " " + QString::number(month) + " " + parts_time.last();
             } else
             {
-                time = day + " " + parts_time.at(1); + " " + parts_time.at(2);
+                time = day + " " + parts_time.at(1); + " " + parts_time.last();
             }
             QDate date = QDate::fromString(time, "d M yyyy");
             if (!date.isValid())
             {
-                Syslog::HuggleLogs->DebugLog("Invalid date: " + time);
+                HUGGLE_DEBUG("Invalid date: " + time, 1);
                 CurrentIndex++;
                 continue;
             } else
             {
                 // now check if it's at least 1 month old
-                if (bt.addDays(Configuration::HuggleConfiguration->ProjectConfig_TemplateAge) > date)
+                if (bt.addDays(site->ProjectConfig->TemplateAge) > date)
                 {
                     // we don't want to parse this thing
                     CurrentIndex++;
@@ -324,18 +314,12 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt)
     byte_ht level = 4;
     while (level > 0)
     {
-        int xx=0;
-        while (xx<Configuration::HuggleConfiguration->ProjectConfig_WarningDefs.count())
+        foreach (QString df, site->ProjectConfig->WarningDefs)
         {
-            QString defs=Configuration::HuggleConfiguration->ProjectConfig_WarningDefs.at(xx);
-            if (HuggleParser::GetKeyFromValue(defs).toInt() == level)
+            if (HuggleParser::GetKeyFromValue(df).toInt() == level && page.contains(HuggleParser::GetValueFromKey(df)))
             {
-                if (page.contains(HuggleParser::GetValueFromKey(defs)))
-                {
-                    return level;
-                }
+                return level;
             }
-            xx++;
         }
         level--;
     }
@@ -449,31 +433,35 @@ QStringList HuggleParser::ConfigurationParse_QL(QString key, QString content, QS
 QStringList HuggleParser::ConfigurationParseTrimmed_QL(QString key, QString content, bool CS, bool RemoveNull)
 {
     QStringList result = HuggleParser::ConfigurationParse_QL(key, content, CS);
-    int x = 0;
     QStringList trimmed;
-    while (x < result.count())
+    foreach (QString item, result)
     {
-        QString item = result.at(x);
-        if (RemoveNull && item.replace(",", "").length() < 1)
+        if (RemoveNull)
         {
-            x++;
-            continue;
+            // this replace must be done on copy of string because this Qt function will modify the original string
+            QString rp = item;
+            rp = rp.replace(",", "");
+            if (rp.isEmpty())
+            {
+                // we don't want to process a null string here
+                continue;
+            }
         }
         if (item.endsWith(","))
-        {
             trimmed.append(item.mid(0, item.length() - 1));
-        } else
-        {
+        else
             trimmed.append(item);
-        }
-        x++;
     }
     return trimmed;
 }
 
-static bool F2B(QString result)
+static HuggleQueueFilterMatch F2B(QString result)
 {
-    return result == "exclude";
+    if (result == "exclude")
+        return HuggleQueueFilterMatchExclude;
+    if (result == "require")
+        return HuggleQueueFilterMatchRequire;
+    return HuggleQueueFilterMatchIgnore;
 }
 
 QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString content, bool locked)
@@ -488,10 +476,8 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
     QStringList Filtered = content.replace("\r", "").split("\n");
     QStringList Info;
     // we need to assume that all queues are intended with at least 4 spaces
-    int line = 0;
-    while (line < Filtered.count())
+    foreach (QString lt, Filtered)
     {
-        QString lt = Filtered.at(line);
         if (lt.startsWith("    ") || lt.length() == 0)
         {
             Info.append(lt);
@@ -500,10 +486,9 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
             // we reached the end of block with queue defs
             break;
         }
-        line++;
     }
     // now we can split the queue info
-    line = 0;
+    int line = 0;
     while (line < Info.count())
     {
         QString text = Info.at(line);
@@ -512,27 +497,32 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
             // this is a queue definition beginning, because it is intended with 4 spaces
             HuggleQueueFilter *filter = new HuggleQueueFilter();
             // we need to disable all filters because that's how is it expected in config for some reason
-            filter->setIgnoreBots(false);
-            filter->setIgnoreFriends(false);
-            filter->setIgnoreIP(false);
-            filter->setIgnoreMinor(false);
-            filter->setIgnoreNP(false);
-            filter->setIgnoreReverts(false);
-            filter->setIgnoreSelf(false);
-            filter->setIgnore_UserSpace(false);
-            filter->setIgnoreUsers(false);
-            filter->setIgnoreWL(false);
+            filter->setIgnoreBots(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreFriends(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreIP(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreMinor(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreNP(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreTalk(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreReverts(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreSelf(HuggleQueueFilterMatchIgnore);
+            filter->setIgnore_UserSpace(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreUsers(HuggleQueueFilterMatchIgnore);
+            filter->setIgnoreWL(HuggleQueueFilterMatchIgnore);
             ReturnValue.append(filter);
             filter->ProjectSpecific = locked;
             QString name = text.trimmed();
             name.replace(":", "");
             filter->QueueName = name;
             line++;
+            if (line >= Info.count())
+                goto exit;
             text = Info.at(line);
             while (text.startsWith("        ") && text.contains(":") && line < Info.count())
             {
                 // we need to parse the info
                 line++;
+                if (line >= Info.count())
+                    goto exit;
                 while (text.startsWith(" "))
                 {
                     text = text.mid(1);
@@ -550,9 +540,29 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
                     filter->setIgnoreBots(F2B(val));
                     continue;
                 }
+                if (key == "filtered-ns")
+                {
+                    QStringList ns = val.split(",");
+                    foreach (QString namespace_id, ns)
+                    {
+                        if (namespace_id.isEmpty())
+                            continue;
+                        int nsid = namespace_id.toInt();
+                        if (filter->Namespaces.contains(nsid))
+                            filter->Namespaces[nsid] = true;
+                        else
+                            filter->Namespaces.insert(nsid, true);
+                    }
+                    continue;
+                }
                 if (key == "filter-assisted")
                 {
                     filter->setIgnoreFriends(F2B(val));
+                    continue;
+                }
+                if (key == "filter-talk")
+                {
+                    filter->setIgnoreTalk(F2B(val));
                     continue;
                 }
                 if (key == "filter-ip")
@@ -562,13 +572,7 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
                 }
                 if (key == "filter-reverts")
                 {
-                    if (val == "exclude")
-                    {
-                        filter->setIgnoreReverts(true);
-                    } else
-                    {
-                        filter->setIgnoreReverts(false);
-                    }
+                    filter->setIgnoreReverts(F2B(val));
                     continue;
                 }
                 if (key == "filter-new-pages")
@@ -592,23 +596,24 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
             line++;
         }
     }
+  exit:
     return ReturnValue;
 }
 
-byte_ht HuggleParser::GetIDOfMonth(QString month)
+byte_ht HuggleParser::GetIDOfMonth(QString month, WikiSite *site)
 {
     int i = 0;
     month = month.toLower();
-    while (i < Configuration::HuggleConfiguration->Months.count())
+    while (i < site->ProjectConfig->Months.count())
     {
-        if (Configuration::HuggleConfiguration->Months.at(i).toLower() == month)
+        if (site->ProjectConfig->Months.at(i).toLower() == month)
             return i+1;
         i++;
     }
     i = 1;
     while (i < 13)
     {
-        if (Configuration::HuggleConfiguration->ProjectConfig_AlternativeMonths[i].contains(month, Qt::CaseInsensitive))
+        if (site->ProjectConfig->AlternativeMonths[i].contains(month, Qt::CaseInsensitive))
             return i;
         i++;
     }

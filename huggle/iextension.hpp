@@ -12,10 +12,6 @@
 #define IEXTENSION_H
 
 #include "definitions.hpp"
-// now we need to ensure that python is included first
-#ifdef PYTHONENGINE
-#include <Python.h>
-#endif
 
 #include <QtPlugin>
 #include <QList>
@@ -47,6 +43,13 @@ namespace Huggle
             virtual bool IsWorking() { return false; }
             virtual ~iExtension() {}
             virtual bool Register() { return false; }
+            void huggle__internal_SetPath(QString path);
+            HUGGLE_EX QString GetExtensionFullPath();
+            virtual QString CompiledFor()
+            {
+                // version of huggle this extension was built for
+                return QString(HUGGLE_VERSION);
+            }
             /*!
              * \brief This is called when the extension is removed from system
              */
@@ -56,6 +59,15 @@ namespace Huggle
              * \param edit is a pointer to edit in question
              */
             virtual void Hook_EditPreProcess(void *edit) {}
+            virtual void Hook_SpeedyFinished(void *edit, QString tags, bool successfull) {}
+            /*!
+             * \brief Hook_SpeedyBeforeOK Called right after user request processing of speedy form
+             * \param edit
+             * \param form
+             * \return if false is returned whole operation is refused
+             */
+            virtual bool Hook_SpeedyBeforeOK(void *edit, void *form) { return true; }
+            virtual void Hook_Shutdown() {}
             /*!
              * \brief Hook_EditScore is called after edit score is calculated
              * \param edit
@@ -80,7 +92,17 @@ namespace Huggle
             void *HuggleCore;
             //! Pointer to global system configuration
             void *Configuration;
+            void *Localization;
             QNetworkAccessManager *Networking;
+        private:
+            QString huggle__internal_ExtensionPath;
+    };
+
+    class ExtensionHolder : public iExtension
+    {
+        public:
+            QString GetExtensionName() { return this->Name; }
+            QString Name;
     };
 }
 

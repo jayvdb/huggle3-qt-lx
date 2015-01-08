@@ -9,11 +9,21 @@
 //GNU General Public License for more details.
 
 #include "wikiedit.hpp"
+#include <QtXml>
+#include <QMutex>
+#include "configuration.hpp"
 #include "generic.hpp"
 #include "core.hpp"
-#include "collectable.hpp"
 #include "querypool.hpp"
+#include "exception.hpp"
+#include "syslog.hpp"
 #include "mediawiki.hpp"
+#include "wikipage.hpp"
+#include "wikiutil.hpp"
+#include "wikisite.hpp"
+#include "wikiuser.hpp"
+#include "localization.hpp"
+
 using namespace Huggle;
 QList<WikiEdit*> WikiEdit::EditList;
 QMutex *WikiEdit::Lock_EditList = new QMutex(QMutex::Recursive);
@@ -21,7 +31,7 @@ QMutex *WikiEdit::Lock_EditList = new QMutex(QMutex::Recursive);
 WikiEdit::WikiEdit()
 {
     this->Bot = false;
-    this->User = NULL;
+    this->User = nullptr;
     this->Minor = false;
     this->NewPage = false;
     this->Size = 0;
@@ -33,12 +43,7 @@ WikiEdit::WikiEdit()
     this->OwnEdit = false;
     this->EditMadeByHuggle = false;
     this->TrustworthEdit = false;
-    this->RollbackToken = "";
     this->PostProcessing = false;
-    this->qDifference = NULL;
-    this->qTalkpage = NULL;
-    this->qText = NULL;
-    this->qUser = NULL;
     this->ProcessingDiff = false;
     this->ProcessingRevs = false;
     this->DiffText = "";
@@ -47,12 +52,12 @@ WikiEdit::WikiEdit()
     this->IsRevert = false;
     this->TPRevBaseTime = "";
     this->PatrolToken = "";
-    this->Previous = NULL;
+    this->Previous = nullptr;
     // this is a problem we can't do this if we don't know the datetime because then the older edits
     // become newer and preflight checks will slap us for no reason
     // this->Time = QDateTime::currentDateTime();
     this->Time = GetUnknownEditTime();
-    this->Next = NULL;
+    this->Next = nullptr;
     this->ProcessingByWorkerThread = false;
     this->ProcessedByWorkerThread = false;
     this->RevID = WIKI_UNKNOWN_REVID;
@@ -66,24 +71,21 @@ WikiEdit::~WikiEdit()
     WikiEdit::Lock_EditList->lock();
     WikiEdit::EditList.removeAll(this);
     WikiEdit::Lock_EditList->unlock();
-    if (this->Previous != NULL && this->Next != NULL)
+    if (this->Previous != nullptr && this->Next != nullptr)
     {
         this->Previous->Next = this->Next;
         this->Next->Previous = this->Previous;
     } else
     {
-        if (this->Previous != NULL)
+        if (this->Previous != nullptr)
         {
-            this->Previous->Next = NULL;
+            this->Previous->Next = nullptr;
         }
-        if (this->Next != NULL)
+        if (this->Next != nullptr)
         {
-            this->Next->Previous = NULL;
+            this->Next->Previous = nullptr;
         }
     }
-    GC_DECNAMEDREF(this->qDifference, HUGGLECONSUMER_WIKIEDIT);
-    GC_DECNAMEDREF(this->qTalkpage, HUGGLECONSUMER_WIKIEDIT);
-    GC_DECNAMEDREF(this->qUser, HUGGLECONSUMER_WIKIEDIT);
     delete this->User;
     delete this->Page;
 }
@@ -101,7 +103,7 @@ bool WikiEdit::FinalizePostProcessing()
         return false;
     }
 
-    if (this->qUser != NULL && this->qUser->IsProcessed())
+    if (this->qUser != nullptr && this->qUser->IsProcessed())
     {
         if (this->qUser->IsFailed())
         {
@@ -109,8 +111,7 @@ bool WikiEdit::FinalizePostProcessing()
             Syslog::HuggleLogs->ErrorLog("Unable to fetch user information for " + this->User->Username + ": " +
                                          this->qUser->Result->ErrorMessage);
             // we can remove this query now
-            this->qUser->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
-            this->qUser = NULL;
+            this->qUser = nullptr;
 
         } else
         {
@@ -148,17 +149,16 @@ bool WikiEdit::FinalizePostProcessing()
                 QString gn = group.text();
                 if (gn != "*" && gn != "user")
                 this->User->Groups.append(gn);
-                x++;
+                ++x;
             }
-            this->Score += (Configuration::HuggleConfiguration->ProjectConfig_ScoreFlag * this->User->Groups.count());
+            this->Score += (this->GetSite()->ProjectConfig->ScoreFlag * this->User->Groups.count());
             if (this->User->Groups.contains("bot"))
             {
                 // if it's a flagged bot we likely don't need to watch them
-                this->Score += Configuration::HuggleConfiguration->ProjectConfig_BotScore;
+                this->Score += this->GetSite()->ProjectConfig->BotScore;
             }
             // let's delete it now
-            this->qUser->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
-            this->qUser = NULL;
+            this->qUser = nullptr;
         }
     }
 
@@ -166,14 +166,11 @@ bool WikiEdit::FinalizePostProcessing()
     {
         // check if api was processed
         if (!this->qTalkpage->IsProcessed())
-        {
             return false;
-        }
 
-        if (this->qTalkpage->Result->Failed)
+        if (this->qTalkpage->IsFailed())
         {
-            /// \todo LOCALIZE ME
-            Huggle::Syslog::HuggleLogs->Log("Unable to retrieve " + this->User->GetTalk() + " warning level will not be scored by it");
+            Huggle::Syslog::HuggleLogs->Log(_l("wikiedit-tp-fail", this->User->GetTalk()));
         } else
         {
             // parse the talk page now
@@ -206,8 +203,7 @@ bool WikiEdit::FinalizePostProcessing()
                     this->User->TalkPage_SetContents(e.text());
                 } else
                 {
-                    /// \todo LOCALIZE ME
-                    Huggle::Syslog::HuggleLogs->Log("Unable to retrieve " + this->User->GetTalk() + " warning level will not be scored by it");
+                    Huggle::Syslog::HuggleLogs->Log(_l("wikiedit-tp-fail", this->User->GetTalk()));
                 }
             } else
             {
@@ -217,9 +213,8 @@ bool WikiEdit::FinalizePostProcessing()
                     this->User->TalkPage_SetContents("");
                 } else
                 {
-                    /// \todo LOCALIZE ME
-                    Huggle::Syslog::HuggleLogs->Log("Unable to retrieve " + this->User->GetTalk() + " warning level will not be scored by it");
-                    Huggle::Syslog::HuggleLogs->DebugLog(this->qTalkpage->Result->Data);
+                    Huggle::Syslog::HuggleLogs->Log(_l("wikiedit-tp-fail", this->User->GetTalk()));
+                    HUGGLE_DEBUG(this->qTalkpage->Result->Data, 1);
                 }
             }
         }
@@ -234,13 +229,12 @@ bool WikiEdit::FinalizePostProcessing()
             return false;
         }
 
-        if (this->qDifference->Result->Failed)
+        if (this->qDifference->IsFailed())
         {
             // whoa it ended in error, we need to get rid of this edit somehow now
             Huggle::Syslog::HuggleLogs->WarningLog("Failed to obtain diff for " + this->Page->PageName + " the error was: "
-                                                 + this->qDifference->Result->Data);
-            this->qDifference->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
-            this->qDifference = NULL;
+                                                   + this->qDifference->Result->Data);
+            this->qDifference = nullptr;
             this->PostProcessing = false;
             return true;
         }
@@ -261,17 +255,17 @@ bool WikiEdit::FinalizePostProcessing()
                 // check if this revision matches our user
                 if (e.attributes().contains("user"))
                 {
-                    if (e.attribute("user") == this->User->Username)
+                    if (WikiUtil::SanitizeUser(e.attribute("user")).toUpper() != WikiUtil::SanitizeUser(this->User->Username).toUpper())
                     {
-                        if (e.attributes().contains("rollbacktoken"))
-                        {
-                            // let's update it from fresh diff
-                            this->RollbackToken = e.attribute("rollbacktoken");
-                        }
+                        HUGGLE_DEBUG("User " + e.attribute("user") + " != " + this->User->Username, 3);
+                        this->IsValid = false;
                     }
-                    if (e.attributes().contains("revid"))
-                        this->RevID = e.attribute("revid").toInt();
+                } else
+                {
+                    this->IsValid = false;
                 }
+                if (e.attributes().contains("revid"))
+                    this->RevID = e.attribute("revid").toInt();
                 if (e.attributes().contains("timestamp"))
                     this->Time = MediaWiki::FromMWTimestamp(e.attribute("timestamp"));
                 if (e.attributes().contains("comment"))
@@ -287,13 +281,12 @@ bool WikiEdit::FinalizePostProcessing()
             Huggle::Syslog::HuggleLogs->WarningLog("Failed to obtain diff for " + this->Page->PageName + " the error was: "
                                                  + this->qDifference->Result->Data);
         }
-        this->qDifference->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
-        this->qDifference = NULL;
+        this->qDifference = nullptr;
         // we are done processing the diff
         this->ProcessingDiff = false;
     }
 
-    if (this->qText != NULL && this->qText->IsProcessed())
+    if (this->qText != nullptr && this->qText->IsProcessed())
     {
         bool failed = false;
         QString result = Generic::EvaluateWikiPageContents(this->qText, &failed);
@@ -306,15 +299,14 @@ bool WikiEdit::FinalizePostProcessing()
             this->Page->Contents = result;
             this->Page->Contents.replace("//", "https://");
         }
-        GC_DECREF(this->qText);
+        this->qText = nullptr;
     }
 
     // check if everything was processed and clean up
-    if (this->ProcessingRevs || this->ProcessingDiff || this->qUser || this->qText)
+    if (this->ProcessingRevs || this->ProcessingDiff || this->qUser != nullptr || this->qText != nullptr)
         return false;
 
-    this->qTalkpage->UnregisterConsumer(HUGGLECONSUMER_WIKIEDIT);
-    this->qTalkpage = NULL;
+    this->qTalkpage = nullptr;
     this->ProcessingByWorkerThread = true;
     ProcessorThread::EditLock.lock();
     this->RegisterConsumer(HUGGLECONSUMER_PROCESSOR);
@@ -323,135 +315,192 @@ bool WikiEdit::FinalizePostProcessing()
     return false;
 }
 
+QString WikiEdit::GetPixmap()
+{
+    if (this->User == nullptr)
+        throw new Huggle::NullPointerException("local WikiUser User", BOOST_CURRENT_FUNCTION);
+
+    if (this->OwnEdit)
+        return ":/huggle/pictures/Resources/blob-me.png";
+
+    if (this->User->IsBlocked)
+        return ":/huggle/pictures/Resources/blob-blocked.png";
+
+    if (this->User->IsReported)
+        return ":/huggle/pictures/Resources/blob-reported.png";
+
+    if (this->IsRevert)
+        return ":/huggle/pictures/Resources/blob-revert.png";
+
+    if (this->Bot)
+        return ":/huggle/pictures/Resources/blob-bot.png";
+
+    switch (this->CurrentUserWarningLevel)
+    {
+        case WarningLevelNone:
+            break;
+        case WarningLevel1:
+            return ":/huggle/pictures/Resources/blob-warn-1.png";
+        case WarningLevel2:
+            return ":/huggle/pictures/Resources/blob-warn-2.png";
+        case WarningLevel3:
+            return ":/huggle/pictures/Resources/blob-warn-3.png";
+        case WarningLevel4:
+            return ":/huggle/pictures/Resources/blob-warn-4.png";
+    }
+
+    if (this->Score > 1000)
+        return ":/huggle/pictures/Resources/blob-warning.png";
+
+    if (this->NewPage)
+        return ":/huggle/pictures/Resources/blob-new.png";
+
+    if (this->User->IsWhitelisted())
+        return ":/huggle/pictures/Resources/blob-ignored.png";
+
+    if (this->User->IsIP())
+        return ":/huggle/pictures/Resources/blob-anon.png";
+
+    return ":/huggle/pictures/Resources/blob-none.png";
+}
+
 void WikiEdit::ProcessWords()
 {
     QString text = this->DiffText.toLower();
-    int xx = 0;
+    int wi = 0;
     if (this->Page->Contents.length() > 0)
     {
         text = this->Page->Contents.toLower();
     }
-    while (xx<Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.count())
+    // we cache the project config pointer
+    ProjectConfiguration *conf = this->GetSite()->GetProjectConfig();
+    while (wi < conf->ScoreParts.count())
     {
-        QString w = Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.at(xx).word;
+        QString w = conf->ScoreParts.at(wi).word;
         if (text.contains(w))
         {
-            this->Score += Configuration::HuggleConfiguration->ProjectConfig_ScoreParts.at(xx).score;
+            this->Score += conf->ScoreParts.at(wi).score;
             ScoreWords.append(w);
         }
-        xx++;
+        ++wi;
     }
-    xx = 0;
-    while (xx<Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.count())
+    wi = 0;
+    while (wi < conf->ScoreWords.count())
     {
-        QString w = Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.at(xx).word;
+        QString w = conf->ScoreWords.at(wi).word;
         // if there is no such a string in text we can skip it
         if (!text.contains(w))
         {
-            xx++;
+            ++wi;
             continue;
         }
         int SD = 0;
         bool found = false;
         if (text == w)
             found = true;
-        while (!found && SD < Configuration::HuggleConfiguration->SystemConfig_WordSeparators.count())
+        while (!found && SD < hcfg->SystemConfig_WordSeparators.count())
         {
-            if (text.startsWith(w + Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SD)))
+            if (text.startsWith(w + hcfg->SystemConfig_WordSeparators.at(SD)))
             {
                 found = true;
                 break;
             }
-            if (text.endsWith(Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SD) + w))
+            if (text.endsWith(hcfg->SystemConfig_WordSeparators.at(SD) + w))
             {
                 found = true;
                 break;
             }
             int SL = 0;
-            while (SL <Configuration::HuggleConfiguration->SystemConfig_WordSeparators.count())
+            while (SL < hcfg->SystemConfig_WordSeparators.count())
             {
-                if (text.contains(Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SD) +
-                             w + Configuration::HuggleConfiguration->SystemConfig_WordSeparators.at(SL)))
+                if (text.contains(hcfg->SystemConfig_WordSeparators.at(SD) + w + hcfg->SystemConfig_WordSeparators.at(SL)))
                 {
                     found = true;
                     break;
                 }
                 if (found)
                     break;
-                SL++;
+                ++SL;
             }
-            SD++;
+            ++SD;
         }
         if (found)
         {
-            this->Score += Configuration::HuggleConfiguration->ProjectConfig_ScoreWords.at(xx).score;
+            this->Score += conf->ScoreWords.at(wi).score;
             ScoreWords.append(w);
         }
-        xx++;
+        ++wi;
     }
 }
 
 void WikiEdit::RemoveFromHistoryChain()
 {
-    if (this->Previous != NULL && this->Next != NULL)
+    if (this->Previous != nullptr && this->Next != nullptr)
     {
         this->Previous->Next = this->Next;
         this->Next->Previous = this->Previous;
-        this->Previous = NULL;
-        this->Next = NULL;
+        this->Previous = nullptr;
+        this->Next = nullptr;
         return;
     }
 
-    if (this->Previous != NULL)
+    if (this->Previous != nullptr)
     {
-        this->Previous->Next = NULL;
-        this->Previous = NULL;
+        this->Previous->Next = nullptr;
+        this->Previous = nullptr;
     }
 
-    if (this->Next != NULL)
+    if (this->Next != nullptr)
     {
-        this->Next->Previous = NULL;
-        this->Next = NULL;
+        this->Next->Previous = nullptr;
+        this->Next = nullptr;
     }
 }
 
 void WikiEdit::PostProcess()
 {
     if (this->PostProcessing)
-    {
         return;
+
+    if (this->Page == nullptr)
+        throw new Huggle::NullPointerException("local WikiPage Page", BOOST_CURRENT_FUNCTION);
+    if (this->Status == Huggle::StatusNone)
+    {
+        Exception::ThrowSoftException("Processing edit to " + this->Page->PageName + "which was requested to be post processed,"\
+                                      " but wasn't processed yet", BOOST_CURRENT_FUNCTION);
+        QueryPool::HugglePool->PreProcessEdit(this);
     }
+    if (this->Status == Huggle::StatusPostProcessed)
+        throw new Huggle::Exception("Unable to post process an edit that is already processed", BOOST_CURRENT_FUNCTION);
+    if (this->Status != Huggle::StatusProcessed)
+        throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status", BOOST_CURRENT_FUNCTION);
     this->PostProcessing = true;
-    this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk());
-    this->qTalkpage->RegisterConsumer(HUGGLECONSUMER_WIKIEDIT);
+    this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk(), this->GetSite());
     QueryPool::HugglePool->AppendQuery(this->qTalkpage);
     this->qTalkpage->Target = "Retrieving tp " + this->User->GetTalk();
     this->qTalkpage->Process();
     if (!this->NewPage)
     {
-        this->qDifference = new ApiQuery(ActionQuery);
-        if (this->RevID != -1)
+        this->qDifference = new ApiQuery(ActionQuery, this->GetSite());
+        if (this->RevID != WIKI_UNKNOWN_REVID)
         {
             // &rvprop=content can't be used because of fuck up of mediawiki
             this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
-                                            "&rvlimit=1&rvtoken=rollback&rvstartid=" +
-                                            QString::number(this->RevID) + "&rvdiffto=prev&titles=" +
+                                            "&rvlimit=1&rvstartid=" + QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         } else
         {
             this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding( "ids|user|timestamp|comment" ) +
-                                            "&rvlimit=1&rvtoken=rollback&rvdiffto=prev&titles=" +
+                                            "&rvlimit=1&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         }
         this->qDifference->Target = Page->PageName;
         QueryPool::HugglePool->AppendQuery(this->qDifference);
-        this->qDifference->RegisterConsumer(HUGGLECONSUMER_WIKIEDIT);
         this->qDifference->Process();
         this->ProcessingDiff = true;
-    } else if (!this->Page->Contents.size())
+    } else if (this->Page->Contents.isEmpty())
     {
-        this->qText = Generic::RetrieveWikiPageContents(this->Page->PageName, true);
-        this->qText->IncRef();
+        this->qText = Generic::RetrieveWikiPageContents(this->Page, true);
         this->qText->Target = "Retrieving content of " + this->Page->PageName;
         QueryPool::HugglePool->AppendQuery(this->qText);
         this->qText->Process();
@@ -459,27 +508,85 @@ void WikiEdit::PostProcess()
     this->ProcessingRevs = true;
     if (this->User->IsIP())
         return;
-    this->qUser = new ApiQuery(ActionQuery);
+    this->qUser = new ApiQuery(ActionQuery, this->GetSite());
     this->qUser->Parameters = "list=users&usprop=blockinfo%7Cgroups%7Ceditcount%7Cregistration&ususers="
                                 + QUrl::toPercentEncoding(this->User->Username);
-    this->qUser->RegisterConsumer(HUGGLECONSUMER_WIKIEDIT);
     this->qUser->Process();
+}
+
+Collectable_SmartPtr<WikiEdit> WikiEdit::FromCacheByRevID(int revid, QString prev)
+{
+    Collectable_SmartPtr<WikiEdit> e;
+    if (revid == WIKI_UNKNOWN_REVID)
+    {
+        // there is no such an edit
+        return e;
+    }
+    WikiEdit::Lock_EditList->lock();
+    int x = 0;
+    while (x < WikiEdit::EditList.count())
+    {
+        WikiEdit *edit = WikiEdit::EditList.at(x);
+        ++x;
+        if (edit->RevID == revid && edit->DiffTo == prev)
+        {
+            e = edit;
+            // let's return it
+            break;
+        }
+    }
+    WikiEdit::Lock_EditList->unlock();
+    return e;
+}
+
+QString WikiEdit::GetPixmapFromEditType(EditType edit_type)
+{
+    switch (edit_type)
+    {
+        case EditType_Normal:
+            return ":/huggle/pictures/Resources/blob-none.png";
+        case EditType_1:
+            return ":/huggle/pictures/Resources/blob-warn-1.png";
+        case EditType_2:
+            return ":/huggle/pictures/Resources/blob-warn-2.png";
+        case EditType_3:
+            return ":/huggle/pictures/Resources/blob-warn-3.png";
+        case EditType_4:
+            return ":/huggle/pictures/Resources/blob-warn-4.png";
+        case EditType_Anon:
+            return ":/huggle/pictures/Resources/blob-anon.png";
+        case EditType_Bot:
+            return ":/huggle/pictures/Resources/blob-bot.png";
+        case EditType_Blocked:
+            return ":/huggle/pictures/Resources/blob-blocked.png";
+        case EditType_New:
+            return ":/huggle/pictures/Resources/blob-new.png";
+        case EditType_Reported:
+            return ":/huggle/pictures/Resources/blob-reported.png";
+        case EditType_Revert:
+            return ":/huggle/pictures/Resources/blob-revert.png";
+        case EditType_Self:
+            return ":/huggle/pictures/Resources/blob-me.png";
+        case EditType_W:
+            return ":/huggle/pictures/Resources/blob-ignored.png";
+    }
+    return ":/huggle/pictures/Resources/blob-none.png";
+}
+
+WikiSite *WikiEdit::GetSite()
+{
+    if (this->Page == nullptr)
+    {
+        // this must never happen
+        throw new Huggle::NullPointerException("local WikiSite site", BOOST_CURRENT_FUNCTION);
+    }
+    return this->Page->Site;
 }
 
 QString WikiEdit::GetFullUrl()
 {
-    return Configuration::GetProjectScriptURL() + "index.php?title=" + QUrl::toPercentEncoding(this->Page->PageName) +
+    return Configuration::GetProjectScriptURL(this->GetSite()) + "index.php?title=" + QUrl::toPercentEncoding(this->Page->PageName) +
             "&diff=" + QString::number(this->RevID);
-}
-
-QDateTime WikiEdit::GetUnknownEditTime()
-{
-    return QDateTime::fromMSecsSinceEpoch(0);
-}
-
-bool WikiEdit::IsPostProcessed()
-{
-    return (this->Status == StatusPostProcessed);
 }
 
 QMutex ProcessorThread::EditLock(QMutex::Recursive);
@@ -495,7 +602,7 @@ void ProcessorThread::run()
         {
             this->Process(PendingEdits.at(e));
             PendingEdits.at(e)->UnregisterConsumer(HUGGLECONSUMER_PROCESSOR);
-            e++;
+            ++e;
         }
         PendingEdits.clear();
         ProcessorThread::EditLock.unlock();
@@ -520,29 +627,31 @@ void ProcessorThread::Process(WikiEdit *edit)
     // score
     if (edit->User->IsIP())
     {
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_IPScore;
+        edit->Score += edit->GetSite()->GetProjectConfig()->IPScore;
     }
     if (edit->Bot)
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_BotScore;
+        edit->Score += edit->GetSite()->GetProjectConfig()->BotScore;
     if (edit->Page->IsUserpage() && !edit->Page->SanitizedName().contains(edit->User->Username))
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_ForeignUser;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ForeignUser;
     else if (edit->Page->IsUserpage())
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_ScoreUser;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreUser;
     if (edit->Page->IsTalk())
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_ScoreTalk;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreTalk;
     if (edit->Size > 1200 || edit->Size < -1200)
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_ScoreChange;
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreChange;
     if (edit->Page->IsUserpage())
         IgnoreWords = true;
     if (edit->User->IsWhitelisted())
-        edit->Score += Configuration::HuggleConfiguration->ProjectConfig_WhitelistScore;
+        edit->Score += edit->GetSite()->GetProjectConfig()->WhitelistScore;
     edit->Score += edit->User->GetBadnessScore();
     if (!IgnoreWords)
         edit->ProcessWords();
+    if (edit->SizeIsKnown && edit->Size < (-1*edit->GetSite()->GetProjectConfig()->LargeRemoval))
+        edit->Score += edit->GetSite()->GetProjectConfig()->ScoreRemoval;
     edit->User->ParseTP(QDate::currentDate());
     if (edit->Summary.size() == 0)
         edit->Score += 10;
-    switch(edit->User->WarningLevel)
+    switch(edit->User->GetWarningLevel())
     {
         case 1:
             edit->Score += 200;
