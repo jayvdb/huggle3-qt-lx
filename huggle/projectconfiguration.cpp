@@ -168,19 +168,43 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     this->UAAPath = HuggleParser::ConfigurationParse("uaa", config);
     this->TaggingSummary = HuggleParser::ConfigurationParse("tag-summary", config, "Tagging page");
     this->Tags = HuggleParser::ConfigurationParse_QL("tags", config, true);
-    QStringList t2 = HuggleParser::ConfigurationParse_QL("tags-detailed", config, true);
-    foreach (QString item, t2)
+    QStringList tags_copy(this->Tags);
+    this->TagsArgs.clear();
+    this->TagsDesc.clear();
+    foreach (QString item, tags_copy)
     {
-        // we need to copy the tags from this other list
-        // to keep h2 work with old ones
-        if (item.contains(";"))
+        if (item.contains("|"))
         {
-            // extract name
-            QString name = item.mid(0, item.indexOf(";"));
-            if (this->Tags.contains(name))
-                this->Tags.removeOne(name);
+            QString pm = item.mid(item.indexOf("|") + 1);
+            QString key = item.mid(0, item.indexOf("|"));
+            int index = this->Tags.indexOf(item);
+            this->Tags.removeAt(index);
+            this->Tags.insert(index, key);
+            if (!this->TagsArgs.contains(key))
+                this->TagsArgs.insert(key, pm);
         }
-        this->Tags.append(item);
+    }
+    QStringList TagsInfo = HuggleParser::ConfigurationParse_QL("tags-info", config);
+    foreach (QString tag, TagsInfo)
+    {
+        if (tag.endsWith(","))
+            tag = tag.mid(0, tag.size() - 1);
+        QStringList info = tag.split(QChar(';'));
+        if (info.count() < 2)
+        {
+            Syslog::HuggleLogs->DebugLog("Ignoring invalid tag info: " + tag);
+            continue;
+        }
+        if (this->TagsDesc.contains(info[0]))
+        {
+            Syslog::HuggleLogs->DebugLog("Multiple taginfo: " + tag);
+            continue;
+        }
+        if (!this->Tags.contains(info[0]))
+            this->Tags.append(info[0]);
+        if (!this->TagsArgs.contains(info[0]))
+            this->TagsArgs.insert(info[0],info[1]);
+        this->TagsDesc.insert(info[0],info[2]);
     }
     // Blocking
     this->WhitelistScore = HuggleParser::ConfigurationParse("score-wl", config, "-800").toInt();

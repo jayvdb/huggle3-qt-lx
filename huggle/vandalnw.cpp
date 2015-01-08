@@ -65,7 +65,7 @@ QString VandalNw::SafeHtml(QString text)
 VandalNw::VandalNw(QWidget *parent) : QDockWidget(parent), ui(new Ui::VandalNw)
 {
     this->Irc = new IRC::NetworkIrc(Configuration::HuggleConfiguration->VandalNw_Server,
-                                    Configuration::HuggleConfiguration->SystemConfig_Username);
+                                    Configuration::HuggleConfiguration->SystemConfig_Username, true);
     this->ui->setupUi(this);
     this->Prefix = QString(QChar(001)) + QString(QChar(001));
     this->tm = new QTimer(this);
@@ -94,12 +94,12 @@ void VandalNw::Connect()
 {
     if (this->Irc->IsConnected())
     {
-        Syslog::HuggleLogs->Log("Not connecting to HAN because it's already connected");
+        Syslog::HuggleLogs->Log(_l("han-already-connected"));
         return;
     }
     if (this->Irc->IsConnecting())
     {
-        Syslog::HuggleLogs->Log("Please wait, I am already connecting to HAN");
+        Syslog::HuggleLogs->Log(_l("han-already-connecting"));
         return;
     }
     if (Configuration::HuggleConfiguration->Restricted || !Configuration::HuggleConfiguration->VandalNw_Login)
@@ -119,8 +119,7 @@ void VandalNw::Disconnect()
 {
     this->Irc->Disconnect();
     this->JoinedMain = false;
-    /// \todo LOCALIZE ME
-    this->Insert("You are disconnected from HAN", HAN::MessageType_Info);
+    this->Insert(_l("han-disconnected"), HAN::MessageType_Info);
 }
 
 void VandalNw::Good(WikiEdit *Edit)

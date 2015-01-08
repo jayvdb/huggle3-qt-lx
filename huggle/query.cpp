@@ -98,6 +98,8 @@ QString Query::QueryStatusToString()
             return "Done";
         case StatusProcessing:
             return "Processing";
+        case StatusKilled:
+            return "Killed";
         case StatusInError:
             if (this->Result != nullptr && this->Result->IsFailed() && !this->Result->ErrorMessage.isEmpty())
                 return "In error: " + this->Result->ErrorMessage;
@@ -147,4 +149,13 @@ QString Query::GetFailureReason()
 QString Query::DebugURL()
 {
     return "null";
+}
+
+void Query::ThrowOnValidResult()
+{
+    if (!this->Result)
+        return;
+
+    this->Status = StatusInError;
+    throw new Huggle::Exception("Result was not NULL memory leaked", BOOST_CURRENT_FUNCTION);
 }

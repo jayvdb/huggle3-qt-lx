@@ -97,11 +97,11 @@ static QString TrimSlashes(QString path)
     while (path.contains("//"))
         path = path.replace("//", "/");
 
-    while (path.contains("\\\\"))
-        path = path.replace("\\\\", "\\");
-
 #ifdef HUGGLE_WIN
     path = path.replace("/", "\\");
+
+    while (path.contains("\\\\"))
+        path = path.replace("\\\\", "\\");
 #endif
 
     return path;
@@ -282,8 +282,7 @@ void UpdateForm::OnTick()
     } else
     {
         QString version = l.at(0).toElement().text();
-        /// \todo LOCALIZE ME
-        QString info = "A newer version of Huggle is available: version " + version;
+        QString info = _l("updater-update-available", version);
         l = r.elementsByTagName("info");
         if (l.count() > 0)
         {
@@ -361,7 +360,7 @@ void UpdateForm::httpDownloadFinished()
     delete this->file;
     this->file = nullptr;
     // there is a bug in Qt, we need to reopen the file for hash to be correct
-    QString hash = this->MD5(this->TempPath + "temp/" +this->inst->Destination);
+    QString hash = this->MD5(this->TempPath + "temp/" + this->inst->Destination);
     if (hash != this->inst->Hash_MD5)
     {
         LOG("Hash " + hash + " not matches " + this->inst->Hash_MD5);

@@ -29,6 +29,9 @@ Huggle::WebserverQuery::~WebserverQuery()
 {
     if (this->reply != nullptr)
     {
+        QObject::disconnect(this->reply, SIGNAL(finished()), this, SLOT(Finished()));
+        QObject::disconnect(this->reply, SIGNAL(readyRead()), this, SLOT(ReadData()));
+        this->disconnect(this->reply);
         this->reply->abort();
         this->reply->disconnect(this);
         this->reply->deleteLater();
@@ -38,14 +41,15 @@ Huggle::WebserverQuery::~WebserverQuery()
 
 void WebserverQuery::Process()
 {
-    if (this->URL == "")
+    this->StartTime = QDateTime::currentDateTime();
+    if (this->URL.isEmpty())
     {
         this->Result = new QueryResult(true);
         this->Result->SetError("You provided invalid url");
         this->Status = StatusInError;
         return;
     }
-    this->StartTime = QDateTime::currentDateTime();
+    this->ThrowOnValidResult();
     this->Status = StatusProcessing;
     this->Result = new QueryResult();
 

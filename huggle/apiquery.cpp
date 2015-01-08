@@ -208,6 +208,7 @@ void ApiQuery::Process()
         return;
     }
     this->StartTime = QDateTime::currentDateTime();
+    this->ThrowOnValidResult();
     if (!this->URL.size())
         this->ConstructUrl();
     this->Status = StatusProcessing;
@@ -246,6 +247,24 @@ void ApiQuery::Process()
         HUGGLE_DEBUG("Processing api request " + this->URL, 6);
     QObject::connect(this->reply, SIGNAL(finished()), this, SLOT(Finished()));
     QObject::connect(this->reply, SIGNAL(readyRead()), this, SLOT(ReadData()));
+}
+
+void ApiQuery::Kill()
+{
+    if (this->reply != nullptr)
+    {
+        QObject::disconnect(this->reply, SIGNAL(finished()), this, SLOT(Finished()));
+        QObject::disconnect(this->reply, SIGNAL(readyRead()), this, SLOT(ReadData()));
+        if (this->Status == StatusProcessing)
+        {
+            this->Status = StatusKilled;
+            this->disconnect(this->reply);
+            this->reply->abort();
+            this->reply->disconnect(this);
+            this->reply->deleteLater();
+            this->reply = nullptr;
+        }
+    }
 }
 
 void ApiQuery::ReadData()

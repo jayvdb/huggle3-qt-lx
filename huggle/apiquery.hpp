@@ -112,7 +112,7 @@ namespace Huggle
             void FinishRollback();
             QString ActionPart;
             //! Reply from qnet
-            QNetworkReply *reply;
+            QNetworkReply *reply = nullptr;
     };
 
     inline bool ApiQuery::FormatIsCurrentlySupported()
@@ -124,18 +124,6 @@ namespace Huggle
     inline void ApiQuery::SetAction(const QString action)
     {
         this->ActionPart = action;
-    }
-
-    inline void ApiQuery::Kill()
-    {
-        if (this->Status == StatusProcessing && this->reply != nullptr)
-        {
-            this->Status = StatusKilled;
-            this->reply->abort();
-            this->reply->disconnect(this);
-            this->reply->deleteLater();
-            this->reply = nullptr;
-        }
     }
 
     inline QString ApiQuery::QueryTargetToString()
