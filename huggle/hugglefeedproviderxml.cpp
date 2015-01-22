@@ -27,12 +27,15 @@ using namespace Huggle;
 
 HuggleFeedProviderXml::HuggleFeedProviderXml(WikiSite *site) : HuggleFeed(site)
 {
+    this->pinger = new QTimer();
+    connect(this->pinger, SIGNAL(timeout()), this, SLOT(OnPing()));
     this->NetworkSocket = nullptr;
 }
 
 HuggleFeedProviderXml::~HuggleFeedProviderXml()
 {
     this->Stop();
+    delete this->pinger;
     while (this->Buffer.count() > 0)
     {
         this->Buffer.at(0)->DecRef();
@@ -50,6 +53,9 @@ bool HuggleFeedProviderXml::Start()
         HUGGLE_DEBUG1("Refusing to start working Xml feed");
         return false;
     }
+    // we add some seconds here just to make sure it will not timeout before we finish
+    // connecting to it
+    this->LastPong = QDateTime::currentDateTime().addSecs(22);
     if (this->GetSite()->XmlRcsName.isEmpty())
     {
         Syslog::HuggleLogs->ErrorLog("There is no XmlRcs provider for " + this->GetSite()->Name);
@@ -83,6 +89,22 @@ void HuggleFeedProviderXml::Pause()
     this->is_paused = true;
 }
 
+void HuggleFeedProviderXml::OnPing()
+{
+    if (this->is_connected)
+    {
+        if (QDateTime::currentDateTime().addSecs(-20) > this->LastPong)
+        {
+            Syslog::HuggleLogs->ErrorLog("XmlRcs feed has timed out, reconnecting to it");
+            this->Restart();
+        }
+        else if (QDateTime::currentDateTime().addSecs(-8) > this->LastPong)
+        {
+            this->Write("ping");
+        }
+    }
+}
+
 bool HuggleFeedProviderXml::IsWorking()
 {
     return this->is_working;
@@ -94,6 +116,7 @@ void HuggleFeedProviderXml::Stop()
         this->NetworkSocket->disconnect();
     this->is_connected = false;
     this->is_connecting = false;
+    this->pinger->stop();
     this->is_working = false;
     this->is_paused = false;
 }
@@ -145,6 +168,8 @@ void HuggleFeedProviderXml::OnReceive()
         return;
     }
 
+    // every message will update last time
+    this->LastPong = QDateTime::currentDateTime();
     QDomDocument input;
     input.setContent(data);
     QDomElement element = input.firstChild().toElement();
@@ -234,6 +259,7 @@ void HuggleFeedProviderXml::OnReceive()
 void HuggleFeedProviderXml::OnConnect()
 {
     this->is_connected = true;
+    this->pinger->start(1000);
     this->is_connecting = false;
     // subscribe
     this->Write("S " + this->GetSite()->XmlRcsName);

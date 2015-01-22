@@ -15,7 +15,9 @@
 
 #include <QString>
 #include <QMutex>
+#include <QTimer>
 #include <QThread>
+#include <QDateTime>
 #include <QTcpSocket>
 #include "hugglefeed.hpp"
 
@@ -43,15 +45,19 @@ namespace Huggle
             void OnError(QAbstractSocket::SocketError er);
             void OnReceive();
             void OnConnect();
+            void OnPing();
         protected:
             void Write(QString text);
             void InsertEdit(WikiEdit *edit);
+            QDateTime LastPong;
             QString last_error = "No error";
             bool is_connected = false;
             bool is_connecting = false;
             bool is_working = false;
             QList<WikiEdit*> Buffer;
             QTcpSocket *NetworkSocket;
+        private:
+            QTimer *pinger;
             bool is_paused = false;
     };
 }
