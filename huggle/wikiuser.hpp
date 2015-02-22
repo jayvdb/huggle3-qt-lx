@@ -32,6 +32,7 @@ namespace Huggle
         public:
             //! Delete all users that have badness score 0 these users aren't necessary to be stored in a list
             static void TrimProblematicUsersList();
+            static bool CompareUsernames(QString a, QString b);
             //! Update a list of problematic users
             static void UpdateUser(WikiUser *us);
             static bool IsIPv4(QString user);
@@ -63,7 +64,7 @@ namespace Huggle
             WikiUser(QString user);
             ~WikiUser();
             /*!
-             * \brief GetContentsOfTalkPage returns a precached content of this users talk page
+             * \brief GetContentsOfTalkPage returns a precached content of this user's talk page
              * If there is a global instance of this user, the talk page is retrieved from it
              * so that in case there are multiple instances of this user, they all share same
              * cached talk page.
@@ -110,7 +111,7 @@ namespace Huggle
              * \return badness score
              */
             long GetBadnessScore(bool _resync = true);
-            void SetBadnessScore(long value);
+            void SetBadnessScore(long value, bool resync = true, bool update = true);
             //! Flags
 
             //! w - is warned
@@ -200,11 +201,13 @@ namespace Huggle
         return this->BadnessScore;
     }
 
-    inline void WikiUser::SetBadnessScore(long value)
+    inline void WikiUser::SetBadnessScore(long value, bool resync, bool update)
     {
-        this->Resync();
+        if (resync)
+            this->Resync();
         this->BadnessScore = value;
-        this->Update(true);
+        if (update)
+            this->Update(true);
     }
 }
 

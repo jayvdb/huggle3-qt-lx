@@ -136,6 +136,12 @@ namespace Huggle
             void DisplayNext(Query *q = nullptr);
             void DeletePage();
             void DisplayTalk();
+            /*!
+             * \brief DisplayRevid Try to display a revision as a diff in huggle main window
+             * \param RevID ID of revision
+             * \param site Mediawiki site
+             */
+            void DisplayRevid(revid_ht revid, WikiSite *site);
             void PauseQueue();
             void ResumeQueue();
             //! Request a page deletion csd or afd and so on
@@ -316,10 +322,12 @@ namespace Huggle
             void on_actionLog_out_triggered();
             void on_actionReload_tokens_triggered();
             void on_actionXmlRcs_triggered();
+            void OnStatusBarRefreshTimerTick();
         private:
             //! Check if huggle is shutting down or not, in case it is, message box is shown as well
             //! this function should be called before every action user can trigger
             bool CheckExit();
+            bool CheckRevertable();
             void DisplayWelcomeMessage();
             void FinishRestore();
             void CreateBrowserTab(QString name, int index);
@@ -355,6 +363,7 @@ namespace Huggle
             QList<QAction*> WarnItems;
             //! This timer periodically executes various jobs that needs to be executed in main thread loop
             QTimer *GeneralTimer;
+            QTimer *tStatusBarRefreshTimer;
             QHash<WikiSite*, EditQuery*> StorageQueries;
             QToolButton *warnToolButtonMenu = nullptr;
             QToolButton *rtToolButtonMenu = nullptr;

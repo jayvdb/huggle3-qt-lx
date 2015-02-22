@@ -48,6 +48,9 @@ Preferences::Preferences(QWidget *parent) : QDialog(parent), ui(new Ui::Preferen
     SetDefaults(this->ui->cbqTp);
     SetDefaults(this->ui->cbqUserspace);
     SetDefaults(this->ui->cbqWl);
+    this->ui->cbProviders->addItem("Wiki");
+    this->ui->cbProviders->addItem("IRC");
+    this->ui->cbProviders->addItem("XmlRcs");
     headers << _l("config-function") << _l("config-description") << _l("config-shortcut");
     this->ui->tableWidget_2->setHorizontalHeaderLabels(headers);
     this->ui->tableWidget_2->verticalHeader()->setVisible(false);
@@ -296,6 +299,7 @@ void Huggle::Preferences::on_pushButton_2_clicked()
     hcfg->UserConfig->TruncateEdits = this->ui->checkBox_19->isChecked();
     hcfg->SystemConfig_DynamicColsInList = this->ui->checkBox_22->isChecked();
     hcfg->UserConfig->DisplayTitle = this->ui->checkBox_23->isChecked();
+    hcfg->UserConfig->PreferredProvider = this->ui->cbProviders->currentIndex();
     hcfg->UserConfig->ManualWarning = this->ui->checkBox_24->isChecked();
     hcfg->UserConfig->RetrieveFounder = this->ui->checkBox_8->isChecked();
     hcfg->UserConfig->CheckTP = this->ui->checkBox_25->isChecked();
@@ -443,11 +447,9 @@ void Huggle::Preferences::on_pushButton_4_clicked()
         // don't touch a default filter
         return;
     }
-    if (Core::HuggleCore->Main->Queue1->CurrentFilter == filter)
+    if (this->Site->CurrentFilter == filter)
     {
-        QMessageBox mb;
-        mb.setText(_l("preferences-delete-using-filter"));
-        mb.exec();
+        Generic::MessageBox(_l("error"), _l("preferences-delete-using-filter"), MessageBoxStyleWarning);
         return;
     }
     HuggleQueueFilter::Filters[this->Site]->removeAll(filter);
@@ -491,6 +493,7 @@ void Preferences::Reload()
     this->ui->tableWidget_3->resizeRowsToContents();
     int c = 0;
     int d = 0;
+    this->isNowReloadingFilters = true;
     this->ui->cbDefault->clear();
     this->ui->listWidget->clear();
     while (c < HuggleQueueFilter::Filters[this->Site]->count())
@@ -504,6 +507,7 @@ void Preferences::Reload()
         c++;
     }
     this->ui->cbDefault->setCurrentIndex(d);
+    this->isNowReloadingFilters = false;
 }
 
 void Preferences::Reload2()
@@ -618,7 +622,12 @@ void Huggle::Preferences::on_cbSites_currentIndexChanged(int index)
 
 void Huggle::Preferences::on_cbDefault_currentIndexChanged(int index)
 {
+    if (this->isNowReloadingFilters)
+        return;
+    
+    // update the filter
     this->Site->UserConfig->QueueID = this->ui->cbDefault->itemText(index);
+    this->Site->CurrentFilter = HuggleQueueFilter::GetFilter(this->ui->cbDefault->itemText(index), this->Site);
     Core::HuggleCore->Main->Queue1->Filters();
 }
 
@@ -673,6 +682,10 @@ void Huggle::Preferences::on_tableWidget_customContextMenuRequested(const QPoint
 
 void Preferences::ResetItems()
 {
+    int provider = 1;
+    if (hcfg->UserConfig->PreferredProvider > -1 && hcfg->UserConfig->PreferredProvider < 3)
+        provider = hcfg->UserConfig->PreferredProvider;
+    this->ui->cbProviders->setCurrentIndex(provider);
     switch(hcfg->UserConfig->GoNext)
     {
         case Configuration_OnNext_Stay:

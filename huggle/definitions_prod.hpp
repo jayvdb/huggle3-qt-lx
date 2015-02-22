@@ -15,13 +15,14 @@
 #define DEFINITIONS_H
 
 typedef char byte_ht;
+typedef long long revid_ht;
 
-#define HUGGLE_VERSION                  "3.1.9"
+#define HUGGLE_VERSION                  "3.1.10"
 #define HUGGLE_BYTE_VERSION_MAJOR       0x3
 #define HUGGLE_BYTE_VERSION_MINOR       0x1
-#define HUGGLE_BYTE_VERSION_RELEASE     0x9
+#define HUGGLE_BYTE_VERSION_RELEASE     0xA
 // format is 0xMAJOR(2)MINOR(2)RELEASE(2) so for 3.1.15 it's 0x03010F
-#define HUGGLE_BYTE_VERSION             0x030109
+#define HUGGLE_BYTE_VERSION             0x03010A
 
 // Version of mediawiki that we do support
 #define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.25"
@@ -38,6 +39,9 @@ typedef char byte_ht;
 #if defined _WIN64 || defined _WIN32
     #define HUGGLE_WIN
 #endif
+
+// uncomment this out to disable updater
+// #define HUGGLE_NOUPDATER
 
 // comment this out to disable multithreaded garbage collector
 // this can be useful for debugging as multithreaded GC is not able to delete Qt objects, so if your code
@@ -91,6 +95,9 @@ namespace std { typedef decltype(nullptr) nullptr_t; }
 
 #define HUGGLE_SUCCESS                     1
 #define PRODUCTION_BUILD                   0
+#define HUGGLE_WL_UNKNOWN   0
+#define HUGGLE_WL_TRUE      1
+#define HUGGLE_WL_FALSE     2
 #define MEDIAWIKI_DEFAULT_NS_MAIN               ""
 #define MEDIAWIKI_DEFAULT_NS_TALK               "Talk:"
 #define MEDIAWIKI_DEFAULT_NS_USER               "User:"

@@ -14,10 +14,13 @@
 #include "configuration.hpp"
 #include "exception.hpp"
 #include "editquery.hpp"
+#include "mediawiki.hpp"
 #include "syslog.hpp"
 #include "querypool.hpp"
 #include "wikisite.hpp"
+#include "wikiedit.hpp"
 #include "wikiuser.hpp"
+#include <QUrl>
 
 using namespace Huggle;
 
@@ -38,14 +41,16 @@ bool WikiUtil::IsRevert(QString Summary)
     return false;
 }
 
-QString WikiUtil::MonthText(int n)
+QString WikiUtil::MonthText(int n, WikiSite *site)
 {
     if (n < 1 || n > 12)
     {
         throw new Huggle::Exception("Month must be between 1 and 12", BOOST_CURRENT_FUNCTION);
     }
+    if (!site)
+        site = hcfg->Project;
     n--;
-    return Configuration::HuggleConfiguration->ProjectConfig->Months.at(n);
+    return site->GetProjectConfig()->Months.at(n);
 }
 
 Collectable_SmartPtr<RevertQuery> WikiUtil::RevertEdit(WikiEdit *_e, QString summary, bool minor, bool rollback)
@@ -225,7 +230,6 @@ Collectable_SmartPtr<ApiQuery> WikiUtil::Watchlist(WikiPage *page)
     return wt;
 }
 
-
 Collectable_SmartPtr<EditQuery> WikiUtil::PrependTextToPage(QString page, QString text, QString summary, bool minor, WikiSite *site)
 {
     if (!site)
@@ -307,3 +311,98 @@ void WikiUtil::RetrieveTokens(WikiSite *wiki_site)
     qr->callback = (Callback)FinishTokens;
     qr->Process();
 }
+
+/////////////////////////////////////////////////////////////////
+///                     RetrieveEditByRevid                   ///
+/////////////////////////////////////////////////////////////////
+
+class RetrieveEditByRevid_SourceInfo
+{
+    public:
+        void *source;
+        WikiEdit *edit;
+        WikiUtil::RetrieveEditByRevid_Callback success;
+        WikiUtil::RetrieveEditByRevid_Callback error;
+};
+
+static void RetrieveEditByRevid_Page_OK(Query *query)
+{
+    ApiQuery *result = (ApiQuery*) query;
+    RetrieveEditByRevid_SourceInfo *x = (RetrieveEditByRevid_SourceInfo*)query->CallbackOwner;
+    ApiQueryResultNode *page = result->GetApiQueryResult()->GetNode("page");
+    ApiQueryResultNode *revision_data = result->GetApiQueryResult()->GetNode("rev");
+    ApiQueryResultNode *diff_text = result->GetApiQueryResult()->GetNode("diff");
+    if (diff_text == nullptr)
+    {
+        x->error(x->edit, x->source, "No diff was returned for query");
+    }
+    if (revision_data == nullptr)
+    {
+        x->error(x->edit, x->source, "No revision was returned by query");
+        goto exit;
+    }
+    if (page == nullptr)
+    {
+        // whoa, this is an error!
+        x->error(x->edit, x->source, "No page info was returned by query");
+        goto exit;
+    }
+    x->edit->Page = new WikiPage(page->GetAttribute("title"));
+    x->edit->Page->Site = result->GetSite();
+    x->edit->SetSize(revision_data->GetAttribute("size", "0").toLong());
+    x->edit->Summary = revision_data->GetAttribute("comment");
+    x->edit->Time = MediaWiki::FromMWTimestamp(revision_data->GetAttribute("timestamp"));
+    x->edit->User = new WikiUser(revision_data->GetAttribute("user"));
+    x->edit->User->Site = result->GetSite();
+    // pre process the edit
+    QueryPool::HugglePool->PreProcessEdit(x->edit);
+    // \bug now put the diff into the diff store, keep in mind that edit is still not postprocessed so many things are probably not going to be evaluated
+    // we need to wait for post processing to finish here, it's just that there isn't really any simple way to accomplish that
+    x->edit->DiffText = diff_text->Value;
+    // this is true hack as it's async call, but we don't really need to have the edit post processed for it
+    // to be rendered, let's just call it to be safe, as having unprocessed edits in buffer is a bad thing
+    QueryPool::HugglePool->PostProcessEdit(x->edit);
+    x->success(x->edit, x->source, "");
+exit:
+    delete x;
+    query->UnregisterConsumer(HUGGLECONSUMER_CALLBACK);
+}
+
+static void RetrieveEditByRevid_Page_ER(Query *query)
+{
+    // The query has failed, let's call the failure callback :(
+    RetrieveEditByRevid_SourceInfo *x = (RetrieveEditByRevid_SourceInfo*)query->CallbackOwner;
+    x->error(x->edit, x->source, query->GetFailureReason());
+    delete x;
+    query->UnregisterConsumer(HUGGLECONSUMER_CALLBACK);
+}
+
+void WikiUtil::RetrieveEditByRevid(revid_ht revid, WikiSite *site, void *source,
+                                   WikiUtil::RetrieveEditByRevid_Callback callback_success,
+                                   WikiUtil::RetrieveEditByRevid_Callback callback_er)
+{
+    if (callback_er == nullptr)
+        throw new Huggle::NullPointerException("callback_er", BOOST_CURRENT_FUNCTION);
+    if (callback_success == nullptr)
+        throw new Huggle::NullPointerException("callback_success", BOOST_CURRENT_FUNCTION);
+
+    // let's create a new edit
+    WikiEdit *edit = new WikiEdit();
+    edit->Diff = revid;
+    edit->RevID = revid;
+    // let's get the information about the page now, once that is finished, we get information about the user
+    ApiQuery *qPage = new ApiQuery(ActionQuery, site);
+    RetrieveEditByRevid_SourceInfo *i = new RetrieveEditByRevid_SourceInfo();
+    i->edit = edit;
+    i->source = source;
+    i->error = callback_er;
+    i->success = callback_success;
+    qPage->CallbackOwner = i;
+    qPage->callback = (Callback) RetrieveEditByRevid_Page_OK;
+    qPage->FailureCallback = (Callback) RetrieveEditByRevid_Page_ER;
+    qPage->Parameters = "prop=revisions&revids=" + QString::number(revid) + "&rvprop=" +
+                          QUrl::toPercentEncoding("ids|flags|timestamp|user|contentmodel|comment|size") + "&rvdiffto=prev";
+    qPage->Process();
+}
+
+/////////////////////////////////////////////////////////////////

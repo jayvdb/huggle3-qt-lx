@@ -9,7 +9,9 @@
 //GNU General Public License for more details.
 
 #include "huggleparser.hpp"
+#include "huggleprofiler.hpp"
 #include "configuration.hpp"
+#include "generic.hpp"
 #include "projectconfiguration.hpp"
 #include "syslog.hpp"
 #include "wikisite.hpp"
@@ -18,6 +20,7 @@ using namespace Huggle;
 
 QString HuggleParser::ConfigurationParse(QString key, QString content, QString missing)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     /// \todo this parses the config a lot different than HG2 (here only one line, mising replaces...)
     // if first line in config
     if (content.startsWith(key + ":"))
@@ -43,8 +46,14 @@ QString HuggleParser::ConfigurationParse(QString key, QString content, QString m
     return missing;
 }
 
+bool HuggleParser::ConfigurationParseBool(QString key, QString content, bool missing)
+{
+    return Generic::SafeBool(ConfigurationParse(key, content, Generic::Bool2String(missing)));
+}
+
 QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     foreach (QString line, project_conf->RevertSummaries)
         if (line.startsWith(key + ";"))
             return HuggleParser::GetValueFromKey(line);
@@ -54,6 +63,7 @@ QString HuggleParser::GetSummaryOfWarningTypeFromWarningKey(QString key, Project
 
 QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectConfiguration *project_conf)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     // get a key
     foreach (QString line, project_conf->WarningTypes)
         if (line.startsWith(key) + ";")
@@ -63,6 +73,7 @@ QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectCon
 
 QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id, ProjectConfiguration *project_conf)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     foreach (QString line, project_conf->WarningTypes)
     {
         if (line.endsWith(id) || line.endsWith(id + ","))
@@ -73,54 +84,15 @@ QString HuggleParser::GetKeyOfWarningTypeFromWarningName(QString id, ProjectConf
     return id;
 }
 
-void HuggleParser::ParsePats(QString text, WikiSite *site)
+static QList<ScoreWord> ParseScoreWords(QString text, QString wt)
 {
-    site->ProjectConfig->ScoreParts.clear();
-    while (text.contains("score-parts("))
+    QList<ScoreWord> contents;
+    while (text.contains(wt + "("))
     {
-        text = text.mid(text.indexOf("score-parts(") + 12);
-        if (!text.contains(")"))
-            return;
-
-        int score = text.mid(0, text.indexOf(")")).toInt();
-        if (score == 0)
-            continue;
-
-        QStringList word;
-        if (!text.contains(":"))
-            return;
-
-        text = text.mid(text.indexOf(":") + 1);
-        QStringList lines = text.split("\n");
-        int line = 1;
-        while (line < lines.count())
-        {
-            QString l = lines.at(line);
-            QStringList items = l.split(",");
-            foreach (QString wx, items)
-            {
-                wx = wx.trimmed();
-                if (!wx.isEmpty())
-                    word.append(wx);
-            }
-            if (!l.endsWith(",") || l.trimmed().length() <= 0)
-                break;
-            line++;
-        }
-        foreach (QString wx, word)
-            site->ProjectConfig->ScoreParts.append(ScoreWord(wx, score));
-    }
-}
-
-void HuggleParser::ParseWords(QString text, WikiSite *site)
-{
-    site->ProjectConfig->ScoreWords.clear();
-    while (text.contains("score-words("))
-    {
-        text = text.mid(text.indexOf("score-words(") + 12);
+        text = text.mid(text.indexOf(wt + "(") + wt.length() + 1);
         if (!text.contains(")"))
         {
-            return;
+            return contents;
         }
         int score = text.mid(0, text.indexOf(")")).toInt();
         if (score == 0)
@@ -129,7 +101,7 @@ void HuggleParser::ParseWords(QString text, WikiSite *site)
         }
         if (!text.contains(":"))
         {
-            return;
+            return contents;
         }
         text = text.mid(text.indexOf(":") + 1);
         QStringList lines = text.split("\n");
@@ -139,7 +111,7 @@ void HuggleParser::ParseWords(QString text, WikiSite *site)
         {
             QString l = lines.at(line);
             QStringList items = l.split(",");
-            foreach (QString w, items)
+            foreach(QString w, items)
             {
                 w = w.trimmed();
                 if (w.isEmpty())
@@ -150,13 +122,39 @@ void HuggleParser::ParseWords(QString text, WikiSite *site)
                 break;
             line++;
         }
-        foreach (QString w, word)
-            site->ProjectConfig->ScoreWords.append(ScoreWord(w, score));
+        foreach(QString w, word)
+            contents.append(ScoreWord(w, score));
     }
+    return contents;
+}
+
+void HuggleParser::ParseNoTalkWords(QString text, WikiSite *site)
+{
+    site->ProjectConfig->NoTalkScoreWords.clear();
+    site->ProjectConfig->NoTalkScoreWords = ParseScoreWords(text, "score-words-no-talk");
+}
+
+void HuggleParser::ParseNoTalkPats(QString text, WikiSite *site)
+{
+    site->ProjectConfig->NoTalkScoreParts.clear();
+    site->ProjectConfig->NoTalkScoreParts = ParseScoreWords(text, "score-parts-no-talk");
+}
+
+void HuggleParser::ParsePats(QString text, WikiSite *site)
+{
+    site->ProjectConfig->ScoreParts.clear();
+    site->ProjectConfig->ScoreParts = ParseScoreWords(text, "score-parts");
+}
+
+void HuggleParser::ParseWords(QString text, WikiSite *site)
+{
+    site->ProjectConfig->ScoreWords.clear();
+    site->ProjectConfig->ScoreWords = ParseScoreWords(text, "score-words");
 }
 
 QString HuggleParser::GetValueFromKey(QString item)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     if (item.contains(";"))
     {
         QString type = item.mid(item.indexOf(";") + 1);
@@ -171,6 +169,7 @@ QString HuggleParser::GetValueFromKey(QString item)
 
 QString HuggleParser::GetKeyFromValue(QString item)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     if (item.contains(";"))
     {
         QString type = item.mid(0, item.indexOf(";"));
@@ -181,6 +180,7 @@ QString HuggleParser::GetKeyFromValue(QString item)
 
 static int DateMark(QString page, WikiSite *site)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     int m = 0;
     int position = 0;
     QString mark = "";
@@ -203,6 +203,7 @@ static int DateMark(QString page, WikiSite *site)
 
 byte_ht HuggleParser::GetLevel(QString page, QDate bt, WikiSite *site)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     if (!site)
     {
         // for compatibilty purposes
@@ -328,6 +329,7 @@ byte_ht HuggleParser::GetLevel(QString page, QDate bt, WikiSite *site)
 
 QStringList HuggleParser::ConfigurationParse_QL(QString key, QString content, bool CS)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     QStringList list;
     if (content.startsWith(key + ":"))
     {

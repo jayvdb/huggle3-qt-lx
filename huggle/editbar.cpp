@@ -20,7 +20,9 @@
 #include "wikipage.hpp"
 #include "wikiuser.hpp"
 #include "wikiedit.hpp"
+#include "huggleprofiler.hpp"
 #include "ui_editbar.h"
+#include <QModelIndex>
 #include <QScrollBar>
 
 using namespace Huggle;
@@ -53,6 +55,7 @@ void EditBar::Refresh()
 
 void EditBar::InsertEdit(WikiPageHistoryItem *page, int RowId)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     EditBarItem *item = new EditBarItem(this);
     this->Items.append(item);
     item->IsUser = false;
@@ -71,6 +74,7 @@ void EditBar::InsertEdit(WikiPageHistoryItem *page, int RowId)
 
 void EditBar::InsertUser(UserInfoFormHistoryItem *user)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     EditBarItem *item = new EditBarItem(this);
     this->Items.append(item);
     this->ui->horizontalLayout_user->insertWidget(1, item);
@@ -92,6 +96,7 @@ void EditBar::InsertUser(UserInfoFormHistoryItem *user)
 
 void EditBar::RemoveAll()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     this->ClearUser();
     this->ClearPage();
     while (this->Items.count())
@@ -103,6 +108,11 @@ void EditBar::RemoveAll()
 
 void EditBar::RefreshPage()
 {
+    if (!this->isVisible())
+    {
+        this->needsRefresh = true;
+        return;
+    }
     this->ClearPage();
     // we need to fetch all data from history form
     HistoryForm *history = MainWindow::HuggleMain->wHistory;
@@ -120,6 +130,11 @@ void EditBar::RefreshPage()
 
 void EditBar::RefreshUser()
 {
+    if (!this->isVisible())
+    {
+        this->needsRefresh = true;
+        return;
+    }
     this->ClearUser();
     UserinfoForm *userinfo = MainWindow::HuggleMain->wUserInfo;
     // now we need to insert the items upside down
@@ -136,6 +151,7 @@ void EditBar::MovePage(int size)
 
 void EditBar::ClearUser()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     while (this->ui->horizontalLayout_user->count() > 1)
     {
         QLayoutItem *i = this->ui->horizontalLayout_user->itemAt(1);
@@ -145,6 +161,7 @@ void EditBar::ClearUser()
 
 void EditBar::ClearPage()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     while (this->ui->horizontalLayout_page->count() > 1)
     {
         QLayoutItem *i = this->ui->horizontalLayout_page->itemAt(1);
@@ -187,4 +204,17 @@ void EditBar::OnReload()
     this->UserSX = 0;
     this->PageSX = 0;
     this->timer.stop();
+}
+
+void Huggle::EditBar::on_EditBar_visibilityChanged(bool visible)
+{
+    if (!this->needsRefresh)
+        return;
+
+    if (!visible)
+        return;
+
+    this->needsRefresh = false;
+    this->RefreshPage();
+    this->RefreshUser();
 }

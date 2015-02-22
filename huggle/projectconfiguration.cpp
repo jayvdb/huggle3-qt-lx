@@ -243,6 +243,7 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     this->SharedIPTemplate = HuggleParser::ConfigurationParse("shared-ip-template", config, "");
     this->ProtectReason =  HuggleParser::ConfigurationParse("protection-reason", config, "Excessive [[Wikipedia:Vandalism|vandalism]]");
     this->RevertPatterns = HuggleParser::ConfigurationParse_QL("revert-patterns", config, true);
+    this->RevertingEnabled = HuggleParser::ConfigurationParseBool("reverting-enabled", config, true);
     this->RFPP_PlaceTop = SafeBool(HuggleParser::ConfigurationParse("protection-request-top", config));
     this->RFPP_Regex = HuggleParser::ConfigurationParse("rfpp-verify", config);
     this->RFPP_Section = (unsigned int)HuggleParser::ConfigurationParse("rfpp-section", config, "0").toInt();
@@ -317,6 +318,8 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
         delete this->AIVP;
     this->AIVP = new WikiPage(this->ReportAIV);
     HuggleParser::ParsePats(config, site);
+    HuggleParser::ParseNoTalkPats(config, site);
+    HuggleParser::ParseNoTalkWords(config, site);
     HuggleParser::ParseWords(config, site);
     if (this->UAAP != nullptr)
         delete this->UAAP;

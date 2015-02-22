@@ -22,6 +22,7 @@
 #include "wikipage.hpp"
 #include "wikisite.hpp"
 #include "wikiuser.hpp"
+#include <QUrl>
 
 using namespace Huggle;
 
@@ -60,6 +61,11 @@ QString VandalNw::SafeHtml(QString text)
     }
 
     return result;
+}
+
+QString VandalNw::GenerateWikiDiffLink(QString text, QString revid, WikiSite *site)
+{
+    return "<a href=\"huggle:///diff/" + site->Name + "/revid/" + revid + "\">" + text + "</a>";
 }
 
 VandalNw::VandalNw(QWidget *parent) : QDockWidget(parent), ui(new Ui::VandalNw)
@@ -254,9 +260,10 @@ void VandalNw::Rescore(WikiEdit *edit)
     }
     if (score != nullptr)
     {
+        QString sid = QString::number(score->RevID);
         bool bot_ = score->User.toLower().contains("bot");
         QString message = "<font color=green>" + score->User + " rescored edit <b>" + edit->Page->PageName + "</b> by <b>" +
-                          edit->User->Username + "</b> (" + QString::number(score->RevID) + ") by " +
+                          edit->User->Username + "</b> (" + GenerateWikiDiffLink(sid, sid, edit->GetSite()) + ") by " +
                           QString::number(score->Score) + "</font>";
         if (bot_)
         {
@@ -287,15 +294,17 @@ void VandalNw::Message()
 void VandalNw::ProcessGood(WikiEdit *edit, QString user)
 {
     edit->User->SetBadnessScore(edit->User->GetBadnessScore() - 200);
+    QString sid = QString::number(edit->RevID);
     this->Insert("<font color=blue>" + user + " saw a good edit on " + edit->GetSite()->Name + " to " + edit->Page->PageName + " by " + edit->User->Username
-                     + " (" + QString::number(edit->RevID) + ")" + "</font>", HAN::MessageType_User);
+                     + " (" + GenerateWikiDiffLink(sid, sid, edit->GetSite()) + ")" + "</font>", HAN::MessageType_User);
     Core::HuggleCore->Main->Queue1->DeleteByRevID(edit->RevID, edit->GetSite());
 }
 
 void VandalNw::ProcessRollback(WikiEdit *edit, QString user)
 {
+    QString sid = QString::number(edit->RevID);
     this->Insert("<font color=orange>" + user + " did a rollback on " + edit->GetSite()->Name + " of " + edit->Page->PageName + " by " + edit->User->Username
-                 + " (" + QString::number(edit->RevID) + ")" + "</font>", HAN::MessageType_User);
+                 + " (" + GenerateWikiDiffLink(sid, sid, edit->GetSite()) + ")" + "</font>", HAN::MessageType_User);
     edit->User->SetBadnessScore(edit->User->GetBadnessScore() + 200);
     if (Huggle::Configuration::HuggleConfiguration->UserConfig->DeleteEditsAfterRevert)
     {
@@ -309,8 +318,9 @@ void VandalNw::ProcessRollback(WikiEdit *edit, QString user)
 
 void VandalNw::ProcessSusp(WikiEdit *edit, QString user)
 {
+    QString sid = QString::number(edit->RevID);
     this->Insert("<font color=red>" + user + " thinks that edit on " + edit->GetSite()->Name + " to " + edit->Page->PageName + " by "
-                 + edit->User->Username + " (" + QString::number(edit->RevID) +
+                 + edit->User->Username + " (" + GenerateWikiDiffLink(sid, sid, edit->GetSite()) +
                  ") is likely a vandalism, but they didn't revert it </font>", HAN::MessageType_User);
     edit->Score += 600;
     Core::HuggleCore->Main->Queue1->SortItemByEdit(edit);
@@ -379,8 +389,11 @@ void VandalNw::onTick()
         this->JoinedMain = true;
         /// \todo LOCALIZE ME
         this->Insert("You are now connected to huggle antivandalism network", HAN::MessageType_Info);
-        foreach (QString channel, this->Site2Channel.values())
-            this->Irc->Join(channel);
+        foreach(QString channel, this->Site2Channel.values())
+        {
+            if (channel.startsWith("#"))
+                this->Irc->Join(channel);
+        }
     }
     Huggle::IRC::Message *m = this->Irc->GetMessage();
     if (m != nullptr)
@@ -462,16 +475,15 @@ void VandalNw::onTick()
                 }
                 if (Command == "SCORED")
                 {
-                    int RevID = revid.toInt();
-                    int Score = parameter.toInt();
+                    revid_ht RevID = revid.toLongLong();
+                    long Score = parameter.toLong();
                     if (Score != 0)
                     {
                         WikiEdit *edit = Core::HuggleCore->Main->Queue1->GetWikiEditByRevID(RevID, site);
                         if (edit != nullptr)
                         {
-                            this->Insert("<font color=green>" + m->user.Nick + " rescored edit <b>" +
-                                         edit->Page->PageName + "</b> by <b>" + edit->User->Username +
-                                         "</b> (" + revid + ") by " + QString::number(Score) + "</font>", mt);
+                            this->Insert("<font color=green>" + m->user.Nick + " rescored edit <b>" + edit->Page->PageName + "</b> by <b>" + edit->User->Username +
+                                         "</b> (" + GenerateWikiDiffLink(revid, revid, edit->GetSite()) + ") by " + QString::number(Score) + "</font>", mt);
                             edit->Score += Score;
                             Core::HuggleCore->Main->Queue1->SortItemByEdit(edit);
                         } else
@@ -516,7 +528,7 @@ void VandalNw::Insert(QString text, HAN::MessageType type)
     {
         this->Text.prepend(text + "<br>");
     }
-    this->ui->textEdit->setHtml(this->Text);
+    this->ui->textBrowser->setHtml(this->Text);
 }
 
 void Huggle::VandalNw::on_pushButton_clicked()
@@ -570,4 +582,47 @@ HAN::GenericItem::GenericItem(HAN::GenericItem *i)
 void Huggle::VandalNw::on_lineEdit_returnPressed()
 {
     this->Message();
+}
+
+void Huggle::VandalNw::on_textBrowser_anchorClicked(const QUrl &arg1)
+{
+    QString path = arg1.path();
+    if (arg1.scheme() == "huggle")
+    {
+        // ok this is internal huggle link let's get a site
+        path = path.mid(1);
+        if (!path.contains("/"))
+            goto restore;
+        QStringList elements = path.split("/");
+        if (elements.size() < 4)
+            goto restore;
+        if (elements[0] == "diff")
+        {
+            QString wiki = elements[1];
+            QString type = elements[2];
+            if (type == "revid")
+            {
+                // we need to display a revid on given wiki, let's first get the wiki
+                WikiSite *site = nullptr;
+                foreach(WikiSite *sp, hcfg->Projects)
+                {
+                    if (wiki == sp->Name)
+                    {
+                        site = sp;
+                        break;
+                    }
+                }
+                if (site == nullptr)
+                {
+                    HUGGLE_DEBUG1("There is no such a wiki: " + wiki);
+                    goto restore;
+                }
+                revid_ht id = elements[3].toLongLong();
+                MainWindow::HuggleMain->DisplayRevid(id, site);
+            }
+        }
+    }
+    restore:
+        // for some reason this event clears the text box, so we need to refill it
+        this->ui->textBrowser->setHtml(this->Text);
 }

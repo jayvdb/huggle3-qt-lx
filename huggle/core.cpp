@@ -67,7 +67,7 @@ void Core::Init()
     this->Processor = new ProcessorThread();
     this->Processor->start();
     this->LoadLocalizations();
-    Huggle::Syslog::HuggleLogs->Log("Home: " + Configuration::GetConfigurationPath());
+    Huggle::Syslog::HuggleLogs->Log("Home: " + hcfg->HomePath);
     if (QFile().exists(Configuration::GetConfigurationPath() + HUGGLE_CONF))
     {
         Configuration::LoadSystemConfig(Configuration::GetConfigurationPath() + HUGGLE_CONF);
@@ -209,20 +209,27 @@ void Core::SaveDefs()
         Huggle::Syslog::HuggleLogs->ErrorLog("Can't open " + Configuration::GetConfigurationPath() + "users.xml");
         return;
     }
-    QString xx = "<definitions>\n";
     WikiUser::TrimProblematicUsersList();
     int x = 0;
+    QXmlStreamWriter *writer = new QXmlStreamWriter();
+    writer->setDevice(&file);
+    writer->setAutoFormatting(true);
+    writer->writeStartDocument();
+    writer->writeStartElement("definitions");
     WikiUser::ProblematicUserListLock.lock();
     while (x<WikiUser::ProblematicUsers.count())
     {
-        xx += "<user name=\"" + WikiUser::ProblematicUsers.at(x)->Username + "\" badness=\"" +
-                QString::number(WikiUser::ProblematicUsers.at(x)->GetBadnessScore()) +"\"></user>\n";
+        writer->writeStartElement("user");
+        writer->writeAttribute("name", WikiUser::ProblematicUsers.at(x)->Username);
+        writer->writeAttribute("badness", QString::number(WikiUser::ProblematicUsers.at(x)->GetBadnessScore(false)));
+        writer->writeEndElement();
         x++;
     }
     WikiUser::ProblematicUserListLock.unlock();
-    xx += "</definitions>";
-    file.write(xx.toUtf8());
+    writer->writeEndElement();
+    writer->writeEndDocument();
     file.close();
+    delete writer;
     QFile().remove(Configuration::GetConfigurationPath() + "users.xml~");
 }
 
@@ -266,7 +273,8 @@ void Core::LoadDefs()
             user->Username = e.attribute("name");
             if (e.attributes().contains("badness"))
             {
-                user->SetBadnessScore(e.attribute("badness").toInt());
+                // do not resync this user while we init the db, this is first time it's written to it so there is no point in that
+                user->SetBadnessScore(e.attribute("badness").toInt(), false, false);
             }
             WikiUser::ProblematicUsers.append(user);
             i++;
@@ -456,18 +464,24 @@ void Core::Shutdown()
     // last garbage removal
     GC::gc->DeleteOld();
 #ifdef HUGGLE_PROFILING
-    Syslog::HuggleLogs->Log("Profiler info: locks " + QString::number(Collectable::LockCt));
+    Syslog::HuggleLogs->Log("Profiler data:");
+    Syslog::HuggleLogs->Log("==========================");
+    Syslog::HuggleLogs->Log("Locks " + QString::number(Collectable::LockCt));
     foreach (Collectable *q, GC::gc->list)
     {
         // retrieve GC info
         Syslog::HuggleLogs->Log(q->DebugHgc());
     }
+    Syslog::HuggleLogs->Log("Function calls:");
+    QStringList functions = Profiler::GetRegisteredCounterFunctions();
+    foreach (QString fx, functions)
+    {
+        Syslog::HuggleLogs->Log(QString::number(Profiler::GetCallsForFunction(fx)) + ": " + fx);
+    }
 #endif
     Syslog::HuggleLogs->DebugLog("GC: " + QString::number(GC::gc->list.count()) + " objects");
     delete GC::gc;
     HuggleQueueFilter::Delete();
-    // why not
-    delete HuggleQueueFilter::DefaultFilter;
     GC::gc = nullptr;
     this->gc = nullptr;
     delete Query::NetworkManager;
@@ -527,6 +541,7 @@ void Core::LoadLocalizations()
     Localizations::HuggleLocalizations->LocalInit("cz"); // Czech
     Localizations::HuggleLocalizations->LocalInit("de"); // Deutsch
     Localizations::HuggleLocalizations->LocalInit("en"); // English
+    Localizations::HuggleLocalizations->LocalInit("en-gb");
     Localizations::HuggleLocalizations->LocalInit("es"); // Spanish
     Localizations::HuggleLocalizations->LocalInit("fa"); // Persian
     Localizations::HuggleLocalizations->LocalInit("fr"); // French
@@ -546,18 +561,20 @@ void Core::LoadLocalizations()
     Localizations::HuggleLocalizations->LocalInit("no"); // Norwegian
     Localizations::HuggleLocalizations->LocalInit("oc"); // Occitan
     Localizations::HuggleLocalizations->LocalInit("or"); // Oriya
+    Localizations::HuggleLocalizations->LocalInit("pl");
     Localizations::HuggleLocalizations->LocalInit("pt"); // Portuguese
     Localizations::HuggleLocalizations->LocalInit("pt-BR"); // Portuguese (in Brazil)
     Localizations::HuggleLocalizations->LocalInit("ru"); // Russian
     Localizations::HuggleLocalizations->LocalInit("sv"); // Swedish
+    Localizations::HuggleLocalizations->LocalInit("ta");
     Localizations::HuggleLocalizations->LocalInit("tr"); // Turkish
     Localizations::HuggleLocalizations->LocalInit("zh"); // Chinese
     this->TestLanguages();
 }
 
-double Core::GetUptimeInSeconds()
+qint64 Core::GetUptimeInSeconds()
 {
-    return (double)this->StartupTime.secsTo(QDateTime::currentDateTime());
+    return this->StartupTime.secsTo(QDateTime::currentDateTime());
 }
 
 bool HgApplication::notify(QObject *receiver, QEvent *event)

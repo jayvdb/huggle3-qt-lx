@@ -11,6 +11,7 @@
 #include "login.hpp"
 #include <QCheckBox>
 #include <QUrl>
+#include <QSslSocket>
 #include <QDesktopServices>
 #include "apiqueryresult.hpp"
 #include "core.hpp"
@@ -347,6 +348,17 @@ void Login::PressOK()
         }
     }
     hcfg->Multiple = hcfg->Projects.count() > 1;
+    if (hcfg->SystemConfig_UsingSSL)
+    {
+        foreach(WikiSite *wiki, hcfg->Projects)
+        {
+            if (!wiki->SupportHttps)
+            {
+                this->DisplayError("You requested to use SSL but wiki " + wiki->Name + " doesn't support it.");
+                return;
+            }
+        }
+    }
     hcfg->SystemConfig_Username = WikiUtil::SanitizeUser(ui->lineEdit_username->text());
     hcfg->TemporaryConfig_Password = ui->lineEdit_password->text();
     if (this->loadingForm != nullptr)
@@ -490,7 +502,7 @@ bool Login::RetrieveGlobalConfig()
     this->Update(_l("[[login-progress-global]]"));
     this->qConfig = new ApiQuery(ActionQuery);
     this->qConfig->OverrideWiki = hcfg->GlobalConfigurationWikiAddress;
-    this->qConfig->Parameters = "prop=revisions&rvprop=content&rvlimit=1&titles=Huggle/Config";
+    this->qConfig->Parameters = "prop=revisions&rvprop=content&rvlimit=1&titles=" + hcfg->SystemConfig_GlobalConfig;
     this->qConfig->Process();
     return false;
 }
@@ -531,6 +543,18 @@ void Login::FinishLogin(WikiSite *site)
 
 void Login::RetrieveWhitelist(WikiSite *site)
 {
+    // if whitelist is not defined in config we don't need to do this
+    if (!hcfg->SystemConfig_WhitelistDisabled && Configuration::HuggleConfiguration->GlobalConfig_Whitelist.isEmpty())
+    {
+        Syslog::HuggleLogs->WarningLog("There is no whitelist defined in global config, disabling whitelist globally");
+        hcfg->SystemConfig_WhitelistDisabled = true;
+    }
+    if (hcfg->SystemConfig_WhitelistDisabled)
+    {
+        this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_WHITELIST), LoadingForm_Icon_Failed);
+        this->processedWL[site] = true;
+        return;
+    }
     if (this->WhitelistQueries.contains(site))
     {
         WLQuery *query = this->WhitelistQueries[site];

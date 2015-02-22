@@ -8,6 +8,7 @@
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
+#include "hugglequeuefilter.hpp"
 #include "wikisite.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
@@ -22,6 +23,7 @@ WikiPageNS::WikiPageNS(int id, QString name, QString canonical_name)
     QString lw = name.toLower();
     this->Talk = (lc.startsWith("talk") || lc.contains(" talk") || lw.startsWith("talk") || lw.contains(" talk"));
     this->ID = id;
+    canonical_name = canonical_name.replace("_", " ");
     this->CanonicalName = canonical_name;
     this->Name = name;
 }
@@ -93,6 +95,7 @@ WikiSite::WikiSite(WikiSite *w)
 
 WikiSite::WikiSite(QString name, QString url)
 {
+    this->CurrentFilter = HuggleQueueFilter::DefaultFilter;
     this->LongPath = "wiki/";
     this->Name = name;
     this->URL = url;
@@ -106,6 +109,7 @@ WikiSite::WikiSite(QString name, QString url)
 
 WikiSite::WikiSite(QString name, QString url, QString path, QString script, bool https, bool oauth, QString channel, QString wl, QString han, bool isrtl)
 {
+    this->CurrentFilter = HuggleQueueFilter::DefaultFilter;
     this->IRCChannel = channel;
     this->LongPath = path;
     this->Name = name;
@@ -153,6 +157,8 @@ WikiPageNS *WikiSite::RetrieveNSFromTitle(QString title)
 
 WikiPageNS *WikiSite::RetrieveNSByCanonicalName(QString CanonicalName)
 {
+    // canonical names never contain this
+    CanonicalName = CanonicalName.replace("_", " ");
     WikiPageNS *dns_ = nullptr;
     // let's try canonical names
     foreach(WikiPageNS *ns_, this->NamespaceList)

@@ -16,6 +16,7 @@
 #include "localization.hpp"
 #include "mainwindow.hpp"
 #include "hugglequeue.hpp"
+#include "huggleprofiler.hpp"
 #include "syslog.hpp"
 #include "wikisite.hpp"
 using namespace Huggle;
@@ -42,6 +43,7 @@ WikiUser *WikiUser::RetrieveUser(WikiUser *user)
 
 WikiUser *WikiUser::RetrieveUser(QString user, WikiSite *site)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
     int User = 0;
     while (User < WikiUser::ProblematicUsers.count())
@@ -60,6 +62,7 @@ WikiUser *WikiUser::RetrieveUser(QString user, WikiSite *site)
 
 void WikiUser::TrimProblematicUsersList()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
     int i = 0;
     while (i < WikiUser::ProblematicUsers.count())
@@ -67,7 +70,7 @@ void WikiUser::TrimProblematicUsersList()
         WikiUser *user = WikiUser::ProblematicUsers.at(i);
         if (!user)
             throw new Huggle::NullPointerException("WikiUser user", BOOST_CURRENT_FUNCTION);
-        if (user->GetBadnessScore() == 0 && user->WarningLevel == 0)
+        if (user->GetBadnessScore(false) == 0 && user->WarningLevel == 0)
         {
             // there is no point to hold information for them
             WikiUser::ProblematicUsers.removeAt(i);
@@ -81,6 +84,7 @@ void WikiUser::TrimProblematicUsersList()
 
 void WikiUser::UpdateUser(WikiUser *us)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
     WikiUser::UpdateWl(us, us->GetBadnessScore(false));
     int c=0;
@@ -123,6 +127,14 @@ void WikiUser::UpdateUser(WikiUser *us)
     }
 }
 
+bool WikiUser::CompareUsernames(QString a, QString b)
+{
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
+    a = a.replace("_", " ").toLower();
+    b = b.replace("_", " ").toLower();
+    return (a == b);
+}
+
 bool WikiUser::IsIPv4(QString user)
 {
     return WikiUser::IPv4Regex.exactMatch(user);
@@ -135,13 +147,12 @@ bool WikiUser::IsIPv6(QString user)
 
 void WikiUser::UpdateWl(WikiUser *us, long score)
 {
-    if (!us->IsIP() &&
-        score <= Configuration::HuggleConfiguration->ProjectConfig->WhitelistScore &&
-        !us->IsWhitelisted())
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
+    if (!us->IsIP() && score <= us->GetSite()->GetProjectConfig()->WhitelistScore && !us->IsWhitelisted())
     {
         if (us->GetSite()->GetProjectConfig()->WhiteList.contains(us->Username))
         {
-            us->WhitelistInfo = 1;
+            us->WhitelistInfo = HUGGLE_WL_TRUE;
             us->Update();
             return;
         }
@@ -149,7 +160,7 @@ void WikiUser::UpdateWl(WikiUser *us, long score)
         Syslog::HuggleLogs->Log(_l("whitelisted", pm));
         us->GetSite()->GetProjectConfig()->NewWhitelist.append(us->Username);
         us->GetSite()->GetProjectConfig()->WhiteList.append(us->Username);
-        us->WhitelistInfo = 1;
+        us->WhitelistInfo = HUGGLE_WL_TRUE;
         us->Update();
     }
 }
@@ -166,7 +177,7 @@ WikiUser::WikiUser()
     this->DateOfTalkPage = InvalidTime;
     this->IsReported = false;
     this->_talkPageWasRetrieved = false;
-    this->WhitelistInfo = 0;
+    this->WhitelistInfo = HUGGLE_WL_UNKNOWN;
     this->EditCount = -1;
     this->Site = Configuration::HuggleConfiguration->Project;
     this->RegistrationDate = "";
@@ -185,7 +196,7 @@ WikiUser::WikiUser(WikiUser *u) : MediaWikiObject(u)
     this->ContentsOfTalkPage = u->ContentsOfTalkPage;
     this->IsReported = u->IsReported;
     this->_talkPageWasRetrieved = u->_talkPageWasRetrieved;
-    this->WhitelistInfo = 0;
+    this->WhitelistInfo = HUGGLE_WL_UNKNOWN;
     this->Bot = u->Bot;
     this->EditCount = u->EditCount;
     this->RegistrationDate = u->RegistrationDate;
@@ -203,7 +214,7 @@ WikiUser::WikiUser(const WikiUser &u) : MediaWikiObject(u)
     this->DateOfTalkPage = u.DateOfTalkPage;
     this->ContentsOfTalkPage = u.ContentsOfTalkPage;
     this->_talkPageWasRetrieved = u._talkPageWasRetrieved;
-    this->WhitelistInfo = 0;
+    this->WhitelistInfo = HUGGLE_WL_UNKNOWN;
     this->Bot = u.Bot;
     this->EditCount = u.EditCount;
     this->RegistrationDate = u.RegistrationDate;
@@ -234,7 +245,7 @@ WikiUser::WikiUser(QString user)
     this->EditCount = -1;
     this->Bot = false;
     this->RegistrationDate = "";
-    this->WhitelistInfo = 0;
+    this->WhitelistInfo = HUGGLE_WL_UNKNOWN;
     WikiUser::ProblematicUserListLock.lock();
     while (c<ProblematicUsers.count())
     {
@@ -261,9 +272,10 @@ WikiUser::~WikiUser()
 
 void WikiUser::Resync()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
     WikiUser *user = WikiUser::RetrieveUser(this);
-    if (user)
+    if (user && user != this)
     {
         this->BadnessScore = user->BadnessScore;
         this->ContentsOfTalkPage = user->TalkPage_GetContents();
@@ -280,6 +292,7 @@ void WikiUser::Resync()
 
 QString WikiUser::TalkPage_GetContents()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     // first we need to lock this object because it might be accessed from another thread in same moment
     this->UserLock->lock();
     // check if there isn't some global talk page
@@ -301,6 +314,7 @@ QString WikiUser::TalkPage_GetContents()
 
 void WikiUser::TalkPage_SetContents(QString text)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     this->UserLock->lock();
     this->_talkPageWasRetrieved = true;
     this->ContentsOfTalkPage = text;
@@ -311,6 +325,7 @@ void WikiUser::TalkPage_SetContents(QString text)
 
 void WikiUser::Update(bool MatchingOnly)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
     if (MatchingOnly)
     {
@@ -357,9 +372,9 @@ bool WikiUser::TalkPage_ContainsSharedIPTemplate()
 
 bool WikiUser::IsWhitelisted()
 {
-    if (this->WhitelistInfo == 1)
+    if (this->WhitelistInfo == HUGGLE_WL_TRUE)
         return true;
-    if (this->WhitelistInfo == 2)
+    if (this->WhitelistInfo == HUGGLE_WL_FALSE)
         return false;
     QString spaced = this->Username;
     spaced.replace("_", " ");
@@ -368,11 +383,11 @@ bool WikiUser::IsWhitelisted()
             this->GetSite()->GetProjectConfig()->WhiteList.contains(this->Username) ||
             this->GetSite()->GetProjectConfig()->WhiteList.contains(spaced))
     {
-        this->WhitelistInfo = 1;
+        this->WhitelistInfo = HUGGLE_WL_TRUE;
         return true;
     } else
     {
-        this->WhitelistInfo = 2;
+        this->WhitelistInfo = HUGGLE_WL_FALSE;
         return false;
     }
 }

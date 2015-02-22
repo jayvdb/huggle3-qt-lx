@@ -16,6 +16,7 @@
 #include <QDockWidget>
 #include <QHash>
 #include <QTimer>
+#include <QUrl>
 
 namespace Ui
 {
@@ -97,6 +98,8 @@ namespace Huggle
             /// \todo Hook to VERSION
         public:
             static QString SafeHtml(QString text);
+            static QString GenerateWikiDiffLink(QString text, QString revid, WikiSite *site);
+
             explicit VandalNw(QWidget *parent = 0);
             ~VandalNw();
             /*!
@@ -145,6 +148,7 @@ namespace Huggle
             void onTick();
             void on_pushButton_clicked();
             void on_lineEdit_returnPressed();
+            void on_textBrowser_anchorClicked(const QUrl &arg1);
     };
 }
 

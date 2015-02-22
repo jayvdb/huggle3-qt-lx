@@ -186,7 +186,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             menu->addAction(provider_irc);
             menu->addAction(provider_wiki);
         }
-        this->ChangeProvider(site, new HuggleFeedProviderXml(site));
+        switch (hcfg->UserConfig->PreferredProvider)
+        {
+            case 0:
+                this->ChangeProvider(site, new HuggleFeedProviderWiki(site));
+                break;
+            case 2:
+                this->ChangeProvider(site, new HuggleFeedProviderXml(site));
+                break;
+            default:
+                this->ChangeProvider(site, new HuggleFeedProviderIRC(site));
+                break;
+        }
     }
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@providers");
     this->ReloadInterface();
@@ -249,6 +260,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
         this->ui->menuGo_to->addActions(list);
     }
+    HuggleQueueFilter::SetFilters();
     this->Localize();
     this->VandalDock->Connect();
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@irc");
@@ -256,7 +268,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     Hooks::MainWindowIsLoaded(this);
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@hooks");
     connect(this->tCheck, SIGNAL(timeout()), this, SLOT(TimerCheckTPOnTick()));
+    this->tStatusBarRefreshTimer = new QTimer(this);
+    connect(this->tStatusBarRefreshTimer, SIGNAL(timeout()), this, SLOT(OnStatusBarRefreshTimerTick()));
     this->tCheck->start(20000);
+    this->tStatusBarRefreshTimer->start(500);
 }
 
 MainWindow::~MainWindow()
@@ -281,6 +296,7 @@ MainWindow::~MainWindow()
         delete this->Browsers.at(0);
         this->Browsers.removeAt(0);
     }
+    this->tStatusBarRefreshTimer->stop();
     delete this->fWikiPageTags;
     delete this->OnNext_EvPage;
     delete this->fSpeedyDelete;
@@ -296,6 +312,7 @@ MainWindow::~MainWindow()
     delete this->WarnMenu;
     delete this->fProtectForm;
     delete this->wEditBar;
+    delete this->tStatusBarRefreshTimer;
     delete this->RevertSummaries;
     delete this->Queries;
     delete this->preferencesForm;
@@ -490,7 +507,7 @@ void MainWindow::RequestPD(WikiEdit *edit)
 
 void MainWindow::RevertAgf(bool only)
 {
-    if (this->CurrentEdit == nullptr || !this->CheckExit() || !this->CheckEditableBrowserPage())
+    if (this->CurrentEdit == nullptr || !this->CheckExit() || !this->CheckEditableBrowserPage() || !this->CheckRevertable())
         return;
     if (Configuration::HuggleConfiguration->Restricted)
     {
@@ -885,6 +902,8 @@ Collectable_SmartPtr<RevertQuery> MainWindow::Revert(QString summary, bool next,
         Syslog::HuggleLogs->ErrorLog(_l("main-revert-null"));
         return ptr_;
     }
+    if (!this->CheckRevertable())
+        return ptr_;
     if (this->CurrentEdit->NewPage)
     {
         Generic::pMessageBox(this, _l("main-revert-newpage-title"), _l("main-revert-newpage"), MessageBoxStyleNormal,
@@ -1223,7 +1242,6 @@ void MainWindow::OnMainTimerTick()
             }
         }
     }
-    this->UpdateStatusBarData();
     // let's refresh the edits that are being post processed
     if (QueryPool::HugglePool->ProcessingEdits.count() > 0)
     {
@@ -1303,6 +1321,13 @@ void MainWindow::OnTimerTick0()
         this->Queue1->Clear();
         if (this->Shutdown == ShutdownOpRetrievingWhitelist)
         {
+            if (hcfg->SystemConfig_WhitelistDisabled)
+            {
+                // we finished writing the wl
+                this->fWaiting->Status(90, _l("saveuserconfig-progress"));
+                this->Shutdown = ShutdownOpUpdatingConf;
+                return;
+            }
             this->Shutdown = ShutdownOpUpdatingWhitelist;
             this->fWaiting->Status(60, _l("updating-wl"));
             foreach (WikiSite*site, Configuration::HuggleConfiguration->Projects)
@@ -1411,7 +1436,7 @@ void MainWindow::on_actionWarn_triggered()
 
 void MainWindow::on_actionRevert_currently_displayed_edit_triggered()
 {
-    if (this->EditingChecks())
+    if (this->EditingChecks() && this->CheckRevertable())
         this->Revert();
 }
 
@@ -1422,7 +1447,7 @@ void MainWindow::on_actionWarn_the_user_triggered()
 
 void MainWindow::on_actionRevert_currently_displayed_edit_and_warn_the_user_triggered()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
     Collectable_SmartPtr<RevertQuery> result = this->Revert("", false);
     if (result != nullptr)
@@ -1437,7 +1462,7 @@ void MainWindow::on_actionRevert_currently_displayed_edit_and_warn_the_user_trig
 
 void MainWindow::on_actionRevert_and_warn_triggered()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
     Collectable_SmartPtr<RevertQuery> result = this->Revert("", false);
     if (result != nullptr)
@@ -1452,7 +1477,7 @@ void MainWindow::on_actionRevert_and_warn_triggered()
 
 void MainWindow::on_actionRevert_triggered()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
 
     this->Revert();
@@ -1482,7 +1507,7 @@ void MainWindow::on_actionBack_triggered()
 
 void MainWindow::CustomRevert()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
     QAction *revert = (QAction*) QObject::sender();
     ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
@@ -1494,7 +1519,7 @@ void MainWindow::CustomRevert()
 
 void MainWindow::CustomRevertWarn()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
     QAction *revert = (QAction*) QObject::sender();
     ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
@@ -1524,6 +1549,7 @@ void MainWindow::CustomWarn()
 
 QString MainWindow::GetSummaryText(QString text)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     int id=0;
     ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
     while (id <conf->RevertSummaries.count())
@@ -1845,6 +1871,40 @@ void MainWindow::DisplayTalk()
     delete page;
 }
 
+static void DisplayRevid_Finish(WikiEdit *edit, void *source, QString er)
+{
+    Q_UNUSED(source);
+    Q_UNUSED(er);
+    MainWindow *window = MainWindow::HuggleMain;
+    window->ProcessEdit(edit);
+}
+
+static void DisplayRevid_Error(WikiEdit *edit, void *source, QString error)
+{
+    Q_UNUSED(source);
+    Syslog::HuggleLogs->ErrorLog("Unable to retrieve edit for revision " + QString::number(edit->RevID) +
+                                 " reason: " + error);
+    edit->SafeDelete();
+}
+
+void MainWindow::DisplayRevid(revid_ht revid, WikiSite *site)
+{
+    // kill currently displayed edit
+    this->LockPage();
+    Collectable_SmartPtr<WikiEdit> edit = WikiEdit::FromCacheByRevID(revid);
+    if (edit != nullptr)
+    {
+        this->ProcessEdit(edit);
+        this->wEditBar->RefreshPage();
+        return;
+    }
+    // there is no such edit, let's get it
+    WikiUtil::RetrieveEditByRevid(revid, site, this,
+                                  (WikiUtil::RetrieveEditByRevid_Callback)DisplayRevid_Finish,
+                                  (WikiUtil::RetrieveEditByRevid_Callback)DisplayRevid_Error);
+    //this->Browser->RenderHtml(html);
+}
+
 void MainWindow::PauseQueue()
 {
     if (this->QueueIsNowPaused)
@@ -1941,6 +2001,16 @@ bool MainWindow::CheckExit()
     {
         Generic::pMessageBox(this, _l("error"), _l("main-shutting-down"),
                                MessageBoxStyleNormal, true);
+        return false;
+    }
+    return true;
+}
+
+bool MainWindow::CheckRevertable()
+{
+    if (!this->GetCurrentWikiSite()->GetProjectConfig()->RevertingEnabled)
+    {
+        Generic::pMessageBox(this, _l("error"), "This site doesn't support reverting through huggle, you can only use it to browse edits");
         return false;
     }
     return true;
@@ -2070,6 +2140,7 @@ void MainWindow::ChangeProvider(WikiSite *site, HuggleFeed *provider)
 
 void MainWindow::ReloadInterface()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
     this->WarnItems.clear();
     this->RevertAndWarnItems.clear();
@@ -2265,7 +2336,7 @@ void MainWindow::on_actionList_all_QGC_items_triggered()
 
 void MainWindow::on_actionRevert_currently_displayed_edit_warn_user_and_stay_on_page_triggered()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
     Collectable_SmartPtr<RevertQuery> result = this->Revert("", false);
     if (result != nullptr)
@@ -2274,7 +2345,7 @@ void MainWindow::on_actionRevert_currently_displayed_edit_warn_user_and_stay_on_
 
 void MainWindow::on_actionRevert_currently_displayed_edit_and_stay_on_page_triggered()
 {
-    if (!this->EditingChecks())
+    if (!this->EditingChecks() || !this->CheckRevertable())
         return;
     this->Revert("", false);
 }
@@ -2922,4 +2993,9 @@ void Huggle::MainWindow::on_actionXmlRcs_triggered()
 {
     WikiSite *site = this->GetCurrentWikiSite();
     this->ChangeProvider(site, new HuggleFeedProviderXml(site));
+}
+
+void MainWindow::OnStatusBarRefreshTimerTick()
+{
+    this->UpdateStatusBarData();
 }

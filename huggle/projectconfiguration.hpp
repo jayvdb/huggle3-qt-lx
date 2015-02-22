@@ -138,6 +138,7 @@ namespace Huggle
             int             IPScore = 20;
             // Reverting
             QString         MultipleRevertSummary = "Reverted,edit by,edits by,and,other users,to last revision by,to an older version by";
+            bool            RevertingEnabled = true;
             QStringList     RevertSummaries;
             QStringList     Goto;
             QString         SoftwareRevertDefaultSummary;
@@ -193,6 +194,8 @@ namespace Huggle
             // Definitions
             QList<ScoreWord>        ScoreParts;
             QList<ScoreWord>        ScoreWords;
+            QList<ScoreWord>        NoTalkScoreWords;
+            QList<ScoreWord>        NoTalkScoreParts;
             int                     ScoreFlag = -60;
             int                     ForeignUser = 800;
             int                     ScoreTalk = -200;

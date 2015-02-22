@@ -11,6 +11,7 @@
 #include "webserverquery.hpp"
 #include "exception.hpp"
 #include <QtNetwork>
+#include <QNetworkReply>
 #include <QUrl>
 #include <QtXml>
 #include "syslog.hpp"
@@ -25,7 +26,7 @@ WebserverQuery::WebserverQuery()
     this->UsingPOST = false;
 }
 
-Huggle::WebserverQuery::~WebserverQuery()
+WebserverQuery::~WebserverQuery()
 {
     if (this->reply != nullptr)
     {
