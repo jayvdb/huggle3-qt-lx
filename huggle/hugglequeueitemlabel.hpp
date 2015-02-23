@@ -42,13 +42,15 @@ namespace Huggle
             void Process(QLayoutItem *qi = nullptr);
             void Remove(QLayoutItem *qi = nullptr);
             void UpdatePixmap();
+            void SetLabelToolTip(QString text);
             HuggleQueue *ParentQueue;
-            Collectable_SmartPtr<WikiEdit> Page;
+            Collectable_SmartPtr<WikiEdit> Edit;
 
         protected:
             void mousePressEvent(QMouseEvent *event);
 
         private:
+            void RefreshInfo();
             QString getColor(int id);
             Ui::HuggleQueueItemLabel *ui;
             QHash<int, QString> buffer;
