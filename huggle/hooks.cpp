@@ -10,6 +10,7 @@
 
 #include "hooks.hpp"
 #include "core.hpp"
+#include "configuration.hpp"
 #include "mainwindow.hpp"
 #include "vandalnw.hpp"
 #include "iextension.hpp"
@@ -72,6 +73,11 @@ void Huggle::Hooks::EditPostProcess(Huggle::WikiEdit *Edit)
 void Huggle::Hooks::OnGood(Huggle::WikiEdit *Edit)
 {
     Core::HuggleCore->Main->VandalDock->Good(Edit);
+    foreach(Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
+    {
+        if (e->IsWorking())
+            e->Hook_GoodEdit((void*)Edit);
+    }
 }
 
 void Huggle::Hooks::OnRevert(Huggle::WikiEdit *Edit)
@@ -118,7 +124,7 @@ void Huggle::Hooks::Speedy_Finished(Huggle::WikiEdit *edit, QString tags, bool s
 #endif
 }
 
-void Huggle::Hooks::MainWindowIsLoaded(Huggle::MainWindow *window)
+void Huggle::Hooks::MainWindow_OnLoad(Huggle::MainWindow *window)
 {
     foreach (Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
     {
@@ -157,3 +163,20 @@ bool Huggle::Hooks::Speedy_BeforeOK(Huggle::WikiEdit *edit, Huggle::SpeedyForm *
     }
     return result;
 }
+
+bool Huggle::Hooks::MainWindow_ReloadShortcut(Huggle::Shortcut *shortcut)
+{
+    bool result = true;
+    foreach(Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
+    {
+        if (e->IsWorking())
+        {
+            if (!e->Hook_MainWindowReloadShortcut((void*)shortcut))
+            {
+                result = false;
+            }
+        }
+    }
+    return result;
+}
+

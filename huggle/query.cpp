@@ -12,6 +12,7 @@
 #include <QNetworkAccessManager>
 #include "exception.hpp"
 #include "syslog.hpp"
+#include <inttypes.h>
 #include "gc.hpp"
 
 using namespace Huggle;
@@ -44,6 +45,8 @@ bool Query::IsProcessed()
     {
         return true;
     }
+    if (this->Status == StatusNull)
+        return false;
     if (QDateTime::currentDateTime() > this->StartTime.addSecs(this->Timeout))
     {
         if (!this->Repeated && this->RetryOnTimeoutFailure)
@@ -157,5 +160,5 @@ void Query::ThrowOnValidResult()
         return;
 
     this->Status = StatusInError;
-    throw new Huggle::Exception("Result was not NULL memory would leak: 0x" + QString().sprintf("%08p", this->Result), BOOST_CURRENT_FUNCTION);
+    throw new Huggle::Exception("Result was not NULL memory would leak: 0x" + QString::number((uintptr_t)this->Result, 16), BOOST_CURRENT_FUNCTION);
 }
