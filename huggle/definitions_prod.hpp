@@ -9,7 +9,6 @@
 //GNU General Public License for more details.
 
 //! This file exist only for compiler options that can be changed before you build huggle
-//! Please do not commit any changes in this file
 
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
@@ -17,12 +16,12 @@
 typedef char byte_ht;
 typedef long long revid_ht;
 
-#define HUGGLE_VERSION                  "3.1.10"
+#define HUGGLE_VERSION                  "3.1.11"
 #define HUGGLE_BYTE_VERSION_MAJOR       0x3
 #define HUGGLE_BYTE_VERSION_MINOR       0x1
-#define HUGGLE_BYTE_VERSION_RELEASE     0xA
+#define HUGGLE_BYTE_VERSION_RELEASE     0xB
 // format is 0xMAJOR(2)MINOR(2)RELEASE(2) so for 3.1.15 it's 0x03010F
-#define HUGGLE_BYTE_VERSION             0x03010A
+#define HUGGLE_BYTE_VERSION             0x03010B
 
 // Version of mediawiki that we do support
 #define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.25"
@@ -46,6 +45,7 @@ typedef long long revid_ht;
 // comment this out to disable multithreaded garbage collector
 // this can be useful for debugging as multithreaded GC is not able to delete Qt objects, so if your code
 // is crashing with it only, it means your code suck and need a fix in destructor :))
+// #define HUGGLE_NO_MT_GC
 #ifdef __APPLE__
     #include <cstddef>
     #include "TargetConditionals.h"

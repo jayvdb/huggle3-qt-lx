@@ -13,11 +13,10 @@
 
 #include "definitions.hpp"
 
+#include "pythonengine.hpp"
 #include <QApplication>
 #include <QList>
 #include <QDateTime>
-#include <QFile>
-#include "pythonengine.hpp"
 
 namespace Huggle
 {
@@ -95,8 +94,6 @@ namespace Huggle
             QueryPool *HGQP;
             // Global variables
             QDateTime StartupTime;
-            //! Pointer to main
-            MainWindow *Main;
             //! Login form
             Login *fLogin;
             Syslog *HuggleSyslog;

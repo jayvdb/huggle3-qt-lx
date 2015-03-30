@@ -45,16 +45,13 @@ WikiUser *WikiUser::RetrieveUser(QString user, WikiSite *site)
 {
     HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
-    int User = 0;
-    while (User < WikiUser::ProblematicUsers.count())
+    foreach (WikiUser *user_, WikiUser::ProblematicUsers)
     {
-        if (site == WikiUser::ProblematicUsers.at(User)->Site && user == WikiUser::ProblematicUsers.at(User)->Username)
+        if (site == user_->Site && user == user_->Username)
         {
-            WikiUser *u = WikiUser::ProblematicUsers.at(User);
             WikiUser::ProblematicUserListLock.unlock();
-            return u;
+            return user_;
         }
-        ++User;
     }
     WikiUser::ProblematicUserListLock.unlock();
     return nullptr;
@@ -87,36 +84,34 @@ void WikiUser::UpdateUser(WikiUser *us)
     HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     WikiUser::ProblematicUserListLock.lock();
     WikiUser::UpdateWl(us, us->GetBadnessScore(false));
-    int c=0;
-    while (c<ProblematicUsers.count())
+    foreach (WikiUser *user, WikiUser::ProblematicUsers)
     {
-        if (ProblematicUsers.at(c)->Username == us->Username)
+        if (user->Username == us->Username)
         {
-            ProblematicUsers.at(c)->BadnessScore = us->BadnessScore;
-            if (ProblematicUsers.at(c)->WarningLevel != us->WarningLevel)
+            user->BadnessScore = us->BadnessScore;
+            if (user->WarningLevel != us->WarningLevel)
             {
                 // houston, we have this user with a different warning level, what should we do now?? pls tell us
                 // You need to update the interface of huggle so that it display all latest information about it
-                ProblematicUsers.at(c)->WarningLevel = us->WarningLevel;
+                user->WarningLevel = us->WarningLevel;
                 // let's update the queue first
                 MainWindow::HuggleMain->Queue1->UpdateUser(us);
             }
-            ProblematicUsers.at(c)->WhitelistInfo = us->WhitelistInfo;
+            user->WhitelistInfo = us->WhitelistInfo;
             if (us->IsReported)
             {
-                ProblematicUsers.at(c)->IsReported = true;
+                user->IsReported = true;
             }
-            ProblematicUsers.at(c)->_talkPageWasRetrieved = us->_talkPageWasRetrieved;
-            ProblematicUsers.at(c)->DateOfTalkPage = us->DateOfTalkPage;
-            ProblematicUsers.at(c)->ContentsOfTalkPage = us->ContentsOfTalkPage;
-            if (!us->IsIP() && ProblematicUsers.at(c)->EditCount < 0)
+            user->_talkPageWasRetrieved = us->_talkPageWasRetrieved;
+            user->DateOfTalkPage = us->DateOfTalkPage;
+            user->ContentsOfTalkPage = us->ContentsOfTalkPage;
+            if (!us->IsIP() && user->EditCount < 0)
             {
-                ProblematicUsers.at(c)->EditCount = us->EditCount;
+                user->EditCount = us->EditCount;
             }
             WikiUser::ProblematicUserListLock.unlock();
             return;
         }
-        ++c;
     }
     ProblematicUsers.append(new WikiUser(us));
     WikiUser::ProblematicUserListLock.unlock();
@@ -137,11 +132,13 @@ bool WikiUser::CompareUsernames(QString a, QString b)
 
 bool WikiUser::IsIPv4(QString user)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     return WikiUser::IPv4Regex.exactMatch(user);
 }
 
 bool WikiUser::IsIPv6(QString user)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     return WikiUser::IPv6Regex.exactMatch(user);
 }
 
@@ -239,30 +236,18 @@ WikiUser::WikiUser(QString user)
     this->IsBlocked = false;
     this->_talkPageWasRetrieved = false;
     this->DateOfTalkPage = InvalidTime;
-    int c=0;
     this->ContentsOfTalkPage = "";
     this->Site = Configuration::HuggleConfiguration->Project;
     this->EditCount = -1;
     this->Bot = false;
     this->RegistrationDate = "";
     this->WhitelistInfo = HUGGLE_WL_UNKNOWN;
-    WikiUser::ProblematicUserListLock.lock();
-    while (c<ProblematicUsers.count())
+    if (!this->Resync())
     {
-        if (ProblematicUsers.at(c)->Username == this->Username)
-        {
-            this->BadnessScore = ProblematicUsers.at(c)->BadnessScore;
-            this->WarningLevel = ProblematicUsers.at(c)->WarningLevel;
-            this->IsReported = ProblematicUsers.at(c)->IsReported;
-            WikiUser::ProblematicUserListLock.unlock();
-            return;
-        }
-        ++c;
+        this->BadnessScore = 0;
+        this->WarningLevel = 0;
+        this->IsReported = false;
     }
-    WikiUser::ProblematicUserListLock.unlock();
-    this->BadnessScore = 0;
-    this->WarningLevel = 0;
-    this->IsReported = false;
 }
 
 WikiUser::~WikiUser()
@@ -270,10 +255,9 @@ WikiUser::~WikiUser()
     delete this->UserLock;
 }
 
-void WikiUser::Resync()
+bool WikiUser::Resync()
 {
     HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
-    WikiUser::ProblematicUserListLock.lock();
     WikiUser *user = WikiUser::RetrieveUser(this);
     if (user && user != this)
     {
@@ -285,9 +269,11 @@ void WikiUser::Resync()
             this->WarningLevel = user->WarningLevel;
         if (this->EditCount < 0)
             this->EditCount = user->EditCount;
+        this->IsReported = user->IsReported;
+        this->IsBlocked = user->IsBlocked;
+        return true;
     }
-    // we can finally unlock it
-    WikiUser::ProblematicUserListLock.unlock();
+    return false;
 }
 
 QString WikiUser::TalkPage_GetContents()
@@ -378,6 +364,7 @@ bool WikiUser::TalkPage_ContainsSharedIPTemplate()
 
 bool WikiUser::IsWhitelisted()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     if (this->WhitelistInfo == HUGGLE_WL_TRUE)
         return true;
     if (this->WhitelistInfo == HUGGLE_WL_FALSE)
@@ -400,6 +387,7 @@ bool WikiUser::IsWhitelisted()
 
 QString WikiUser::Flags()
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     QString pflags = "";
     QString nflags = "";
     if (this->TalkPage_GetContents().length() == 0 && this->TalkPage_WasRetrieved())

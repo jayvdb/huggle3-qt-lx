@@ -13,7 +13,7 @@
 
 #include "definitions.hpp"
 
-#include <QDialog>
+#include "hw.hpp"
 
 namespace Ui
 {
@@ -24,7 +24,7 @@ namespace Huggle
 {
     //! \todo make it
     //! Proxy
-    class Proxy : public QDialog
+    class Proxy : public HW
     {
             Q_OBJECT
         public:

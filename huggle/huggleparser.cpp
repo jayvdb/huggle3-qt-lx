@@ -66,7 +66,7 @@ QString HuggleParser::GetNameOfWarningTypeFromWarningKey(QString key, ProjectCon
     HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     // get a key
     foreach (QString line, project_conf->WarningTypes)
-        if (line.startsWith(key) + ";")
+        if (line.startsWith(key + ";"))
             return HuggleParser::GetValueFromKey(line);
     return key;
 }
@@ -604,6 +604,7 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
 
 byte_ht HuggleParser::GetIDOfMonth(QString month, WikiSite *site)
 {
+    HUGGLE_PROFILER_INCRCALL(BOOST_CURRENT_FUNCTION);
     int i = 0;
     month = month.toLower();
     while (i < site->ProjectConfig->Months.count())

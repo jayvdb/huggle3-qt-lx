@@ -20,6 +20,23 @@
 #include "exception.hpp"
 #include "wikipage.hpp"
 
+bool Huggle::Hooks::EditBeforeScore(Huggle::WikiEdit *Edit)
+{
+    if (Edit == nullptr)
+        throw new Huggle::NullPointerException("Huggle::WikiEdit *Edit", BOOST_CURRENT_FUNCTION);
+
+    bool result = true;
+    foreach (Huggle::iExtension *extension, Huggle::Core::HuggleCore->Extensions)
+    {
+        if (extension->IsWorking())
+        {
+            if (!extension->Hook_EditBeforeScore((void*)Edit))
+                result = false;
+        }
+    }
+    return result;
+}
+
 void Huggle::Hooks::EditPreProcess(Huggle::WikiEdit *Edit)
 {
     if (Edit == nullptr)
@@ -78,7 +95,7 @@ void Huggle::Hooks::EditPostProcess(Huggle::WikiEdit *Edit)
 
 void Huggle::Hooks::OnGood(Huggle::WikiEdit *Edit)
 {
-    Core::HuggleCore->Main->VandalDock->Good(Edit);
+    MainWindow::HuggleMain->VandalDock->Good(Edit);
     foreach(Huggle::iExtension *e, Huggle::Core::HuggleCore->Extensions)
     {
         if (e->IsWorking())
@@ -91,17 +108,17 @@ void Huggle::Hooks::OnGood(Huggle::WikiEdit *Edit)
 
 void Huggle::Hooks::OnRevert(Huggle::WikiEdit *Edit)
 {
-    Core::HuggleCore->Main->VandalDock->Rollback(Edit);
+    MainWindow::HuggleMain->VandalDock->Rollback(Edit);
 }
 
 void Huggle::Hooks::OnWarning(Huggle::WikiUser *User)
 {
-    Core::HuggleCore->Main->VandalDock->WarningSent(User, User->GetWarningLevel());
+    MainWindow::HuggleMain->VandalDock->WarningSent(User, User->GetWarningLevel());
 }
 
 void Huggle::Hooks::Suspicious(Huggle::WikiEdit *Edit)
 {
-    Core::HuggleCore->Main->VandalDock->SuspiciousWikiEdit(Edit);
+    MainWindow::HuggleMain->VandalDock->SuspiciousWikiEdit(Edit);
 }
 
 void Huggle::Hooks::BadnessScore(Huggle::WikiUser *User, int Score)
