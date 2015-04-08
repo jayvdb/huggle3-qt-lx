@@ -217,3 +217,13 @@ void WikiSite::ClearNS()
         this->RemoveNS(id);
     }
 }
+
+WikiSite_Ext::WikiSite_Ext(QString name, QString type, QString description, QString author, QString url, QString version)
+{
+    this->Description = description;
+    this->Name = name;
+    this->Type = type;
+    this->Author = author;
+    this->URL = url;
+    this->MediaWikiExtVersion = Huggle::Version(version);
+}

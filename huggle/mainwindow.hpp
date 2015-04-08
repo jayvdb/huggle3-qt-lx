@@ -98,6 +98,10 @@ namespace Huggle
             ~MainWindow();
             //! Returns true if current page can be edited
             bool BrowserPageIsEditable();
+            //! Check if huggle is shutting down or not, in case it is, message box is shown as well
+            //! this function should be called before every action user can trigger
+            bool CheckExit();
+            bool CheckRevertable();
             void DisplayReportUserWindow(WikiUser *User = nullptr);
             WikiEdit *GetCurrentWikiEdit();
             /*!
@@ -121,6 +125,7 @@ namespace Huggle
             bool Warn(QString WarningType, RevertQuery *dependency);
             QString GetSummaryKey(QString item);
             QString GetSummaryText(QString text);
+            void EnableDev();
             //! Send a template to user no matter if they can be messaged or not
             void ForceWarn(int level);
             void Exit();
@@ -324,12 +329,7 @@ namespace Huggle
             void on_actionXmlRcs_triggered();
             void OnStatusBarRefreshTimerTick();
             void on_actionQueue_legend_triggered();
-
         private:
-            //! Check if huggle is shutting down or not, in case it is, message box is shown as well
-            //! this function should be called before every action user can trigger
-            bool CheckExit();
-            bool CheckRevertable();
             void DisplayWelcomeMessage();
             void FinishRestore();
             void CreateBrowserTab(QString name, int index);

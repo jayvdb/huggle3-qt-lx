@@ -22,6 +22,8 @@
 #include "ui_preferences.h"
 #include <QMessageBox>
 #include <QSpinBox>
+#include <QFile>
+#include <QDir>
 #include <QMenu>
 
 using namespace Huggle;
@@ -99,12 +101,12 @@ Preferences::Preferences(QWidget *parent) : HW("preferences", this, parent), ui(
             status = _l("extension-ok");
         else
             status = _l("extension-kl");
-        this->ui->tableWidget->insertRow(0);
-        this->ui->tableWidget->setItem(0, 0, new QTableWidgetItem(extension->GetExtensionName()));
-        this->ui->tableWidget->setItem(0, 1, new QTableWidgetItem(extension->GetExtensionAuthor()));
-        this->ui->tableWidget->setItem(0, 2, new QTableWidgetItem(extension->GetExtensionDescription()));
-        this->ui->tableWidget->setItem(0, 3, new QTableWidgetItem(status));
-        this->ui->tableWidget->setItem(0, 4, new QTableWidgetItem(extension->GetExtensionVersion()));
+        this->ui->tableWidget->insertRow(c);
+        this->ui->tableWidget->setItem(c, 0, new QTableWidgetItem(extension->GetExtensionName()));
+        this->ui->tableWidget->setItem(c, 1, new QTableWidgetItem(extension->GetExtensionAuthor()));
+        this->ui->tableWidget->setItem(c, 2, new QTableWidgetItem(extension->GetExtensionDescription()));
+        this->ui->tableWidget->setItem(c, 3, new QTableWidgetItem(status));
+        this->ui->tableWidget->setItem(c, 4, new QTableWidgetItem(extension->GetExtensionVersion()));
         c++;
     }
 #ifdef HUGGLE_PYTHON
@@ -642,14 +644,18 @@ void Huggle::Preferences::on_tableWidget_customContextMenuRequested(const QPoint
     menu.addAction(disable);
     menu.addAction(enable);
     QAction *selection = menu.exec(g_);
+    int lastrow = -1;
     if (selection == disable)
     {
         foreach (QTableWidgetItem *extension, this->ui->tableWidget->selectedItems())
         {
+            if (extension->row() == lastrow)
+                continue;
             if (extension->row() >= Core::HuggleCore->Extensions.count())
-                throw new Huggle::Exception("ERROR: Invalid exception id", BOOST_CURRENT_FUNCTION);
+                throw new Huggle::Exception("ERROR: Invalid ext", BOOST_CURRENT_FUNCTION);
 
             iExtension *ex = Core::HuggleCore->Extensions.at(extension->row());
+            lastrow = extension->row();
             if (hcfg->IgnoredExtensions.contains(ex->GetExtensionFullPath()))
             {
                 Generic::MessageBox(_l("error"), _l("preferences-extension-disabled"));
@@ -665,6 +671,9 @@ void Huggle::Preferences::on_tableWidget_customContextMenuRequested(const QPoint
     {
         foreach (QTableWidgetItem *extension, this->ui->tableWidget->selectedItems())
         {
+            if (extension->row() == lastrow)
+                continue;
+            lastrow = extension->row();
             if (extension->row() >= Core::HuggleCore->Extensions.count())
                 throw new Huggle::Exception("ERROR: Invalid exception id", BOOST_CURRENT_FUNCTION);
 
@@ -742,4 +751,22 @@ void Preferences::ResetItems()
     this->ui->checkBox_8->setChecked(hcfg->UserConfig->RetrieveFounder);
     this->ui->checkBox_notifyUpdate->setChecked(hcfg->SystemConfig_UpdatesEnabled);
     this->ui->checkBox_notifyBeta->setChecked(hcfg->SystemConfig_NotifyBeta);
+}
+
+void Huggle::Preferences::on_pushButton_rs_clicked()
+{
+    if (Generic::pMessageBox(this, "Reset GUI", "This will restore factory layout of huggle as it had when you installed it. "\
+                             "Huggle will shut down. Continue?", MessageBoxStyleQuestion) == QMessageBox::No)
+        return;
+    Configuration::HuggleConfiguration->SystemConfig_SaveLayout = false;
+    // remove all layout files
+    QDir config(Configuration::HuggleConfiguration->GetConfigurationPath());
+    config.setNameFilters(QStringList() << "*_state" << "*_geometry");
+    config.setFilter(QDir::Files);
+    foreach(QString file, config.entryList())
+    {
+        if (!config.remove(file))
+            throw new Huggle::Exception("Unable to delete " + file, BOOST_CURRENT_FUNCTION);
+    }
+    MainWindow::HuggleMain->Exit();
 }

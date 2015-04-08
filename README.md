@@ -1,4 +1,4 @@
 huggle3-qt-lx
 =============
 
-This is a repository that is used to build debian packages
+This is a repository that is used to build nightly builds
