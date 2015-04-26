@@ -40,7 +40,8 @@ param
     [bool]$mingw = $false,
     [string]$mingw_path = "C:\Qt\Tools\mingw491_32",
     [bool]$python = $true,
-    [string]$vcredist = "vcredist_x86.exe"
+    [string]$vcredist = "vcredist_x86.exe",
+    [string]$cmake_param = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -152,6 +153,10 @@ if ($git_enabled -and (Test-Path("..\.git")))
 {
     echo "build: non-git build (windows)" > version.txt
 }
+if (!(Test-Path("definitions.hpp")))
+{
+    cp "definitions_prod.hpp" "definitions.hpp"
+}
 
 #let's try to invoke cmake now
 cd $root_path
@@ -160,23 +165,26 @@ mkdir build | Out-Null
 cd build
 if ($python)
 {
-    cmake ..\..\huggle\ -G "$cmake_generator" -DPYTHON_BUILD=true -DCMAKE_PREFIX_PATH:STRING=$qt5_path -Wno-dev=true -DHUGGLE_EXT=true -DQT5_BUILD=true
+    cmake ..\..\huggle\ -G "$cmake_generator" -DPYTHON_BUILD=true -DCMAKE_PREFIX_PATH:STRING=$qt5_path -Wno-dev=true -DHUGGLE_EXT=true -DQT5_BUILD=true $cmake_param
 } else
 {
-    cmake ..\..\huggle\ -G "$cmake_generator" -DPYTHON_BUILD=false -DCMAKE_PREFIX_PATH:STRING=$qt5_path -Wno-dev=true -DHUGGLE_EXT=true -DQT5_BUILD=true
+    cmake ..\..\huggle\ -G "$cmake_generator" -DPYTHON_BUILD=false -DCMAKE_PREFIX_PATH:STRING=$qt5_path -Wno-dev=true -DHUGGLE_EXT=true -DQT5_BUILD=true $cmake_param
 }
-& $msbuild_path "huggle.sln" "/p:Configuration=Release" "/v:minimal"
+if ($mingw)
+{
+    & mingw32-make.exe
+} else
+{
+    & $msbuild_path "huggle.sln" "/p:Configuration=Release" "/v:minimal"
+}
 cd $root_path
 echo "Preparing the package structure"
 mkdir release | Out-Null
 mkdir release\deps | Out-Null
 mkdir release\platforms | Out-Null
-cp .\build\extension_list\enwiki\Release\huggle_en.dll release
-cp .\build\extension_list\extension-thanks\Release\huggle_thanks.dll release
-cp .\build\extension_list\extension-splitter-helper\Release\huggle_sh.dll release
-cp .\build\extension_list\mass-delivery\Release\huggle_md.dll release
-cp .\build\Release\core.dll release
-cp .\build\Release\core.lib release
+cp .\build\Release\*.dll release
+cp .\build\Release\extensions\*.dll release
+cp .\build\Release\*.lib release
 cp .\build\Release\huggle.exe release
 if ($python)
 {

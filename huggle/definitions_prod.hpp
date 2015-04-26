@@ -16,12 +16,12 @@
 typedef char byte_ht;
 typedef long long revid_ht;
 
-#define HUGGLE_VERSION                  "3.1.11"
+#define HUGGLE_VERSION                  "3.1.12"
 #define HUGGLE_BYTE_VERSION_MAJOR       0x3
 #define HUGGLE_BYTE_VERSION_MINOR       0x1
-#define HUGGLE_BYTE_VERSION_RELEASE     0xB
+#define HUGGLE_BYTE_VERSION_RELEASE     0xC
 // format is 0xMAJOR(2)MINOR(2)RELEASE(2) so for 3.1.15 it's 0x03010F
-#define HUGGLE_BYTE_VERSION             0x03010B
+#define HUGGLE_BYTE_VERSION             0x03010C
 
 // Version of mediawiki that we do support
 #define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.25"
@@ -150,8 +150,24 @@ namespace std { typedef decltype(nullptr) nullptr_t; }
 #endif
 
 //! Change this to DEBIAN / UBUNTU / WINDOWS to get automatic updates for selected channels
-#define HUGGLE_UPDATER_PLATFORM_TYPE            "huggle-devs"
-#define HUGGLE_GLOBAL_EXTENSION_PATH            "/usr/share/huggle/extensions"
+#ifdef __linux__
+    #define HUGGLE_UPDATER_PLATFORM_TYPE            "linux"
+    #define HUGGLE_GLOBAL_EXTENSION_PATH            "/usr/share/huggle/extensions"
+#elif defined HUGGLE_WIN
+    #ifdef _WIN64
+        #define HUGGLE_UPDATER_PLATFORM_TYPE            "windows/msvc/64"
+    #elif defined __GNUC__
+        #define HUGGLE_UPDATER_PLATFORM_TYPE            "windows/gnu/32"
+    #else
+        #define HUGGLE_UPDATER_PLATFORM_TYPE            "windows/msvc/32"
+    #endif
+    #define HUGGLE_GLOBAL_EXTENSION_PATH            QCoreApplication::applicationDirPath() + "\\extensions"
+#elif defined HUGGLE_MACX
+    #define HUGGLE_GLOBAL_EXTENSION_PATH            QCoreApplication::applicationDirPath() + "/../PlugIns"
+    #define HUGGLE_UPDATER_PLATFORM_TYPE            "mac"
+#else
+    #define HUGGLE_UPDATER_PLATFORM_TYPE            "unknown"
+#endif
 
 // stolen from boost/current_function.hpp
 // enhanced by Petr Bena, keep the enhancement in case you wanted to update this

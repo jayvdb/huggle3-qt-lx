@@ -63,17 +63,16 @@ Login::Login(QWidget *parent) : HW("login", this, parent), ui(new Ui::Login)
     connect(this->timer, SIGNAL(timeout()), this, SLOT(OnTimerTick()));
     this->Reset();
     this->ui->checkBox->setChecked(hcfg->SystemConfig_UsingSSL);
-    // set the language to dummy english
-    int l=0;
-    int p=0;
-    while (l<Localizations::HuggleLocalizations->LocalizationData.count())
+    this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    int localization_ix=0, preferred=0;
+    while (localization_ix<Localizations::HuggleLocalizations->LocalizationData.count())
     {
-        this->ui->Language->addItem(Localizations::HuggleLocalizations->LocalizationData.at(l)->LanguageID);
-        if (Localizations::HuggleLocalizations->LocalizationData.at(l)->LanguageName == Localizations::HuggleLocalizations->PreferredLanguage)
+        this->ui->Language->addItem(Localizations::HuggleLocalizations->LocalizationData.at(localization_ix)->LanguageID);
+        if (Localizations::HuggleLocalizations->LocalizationData.at(localization_ix)->LanguageName == Localizations::HuggleLocalizations->PreferredLanguage)
         {
-            p = l;
+            preferred = localization_ix;
         }
-        l++;
+        localization_ix++;
     }
     QString title = "Huggle 3 QT-LX";
     if (hcfg->Verbosity > 0)
@@ -81,12 +80,12 @@ Login::Login(QWidget *parent) : HW("login", this, parent), ui(new Ui::Login)
         // add debug lang "qqx" last
         this->ui->Language->addItem(Localizations::LANG_QQX);
         if(Localizations::HuggleLocalizations->PreferredLanguage == Localizations::LANG_QQX)
-            p = l;
+            preferred = localization_ix;
         title += " [" + hcfg->HuggleVersion + "]";
-        l++;
+        localization_ix++;
     }
     this->setWindowTitle(title);
-    this->ui->Language->setCurrentIndex(p);
+    this->ui->Language->setCurrentIndex(preferred);
     this->Reload();
     if (!QSslSocket::supportsSsl())
     {
@@ -113,6 +112,10 @@ Login::Login(QWidget *parent) : HW("login", this, parent), ui(new Ui::Login)
         // user wanted to login using a terminal
         this->Processing = true;
         this->PressOK();
+    } else if (hcfg->SystemConfig_StorePassword)
+    {
+        this->ui->lineEdit_password->setText(hcfg->SystemConfig_RememberedPassword);
+        this->ui->checkBox_2->setChecked(true);
     }
     this->RestoreWindow();
 }
@@ -141,6 +144,7 @@ void Login::Localize()
     this->ui->labelProject->setText(_l("login-project"));
     this->ui->labelLanguage->setText(_l("login-language"));
     this->ui->labelPassword->setText(_l("login-password"));
+    this->ui->checkBox_2->setText(_l("login-remember-password"));
     this->ui->labelIntro->setText(_l("login-intro"));
     this->ui->labelTranslate->setText(QString("<html><head/><body><p><a href=\"http://meta.wikimedia.org/wiki/Huggle/Localization\"><span style=\""\
                                               " text-decoration: underline; color:#0000ff;\">%1</span></a></p></body></html>")
@@ -219,36 +223,29 @@ int Login::GetRowIDForSite(WikiSite *site, int row)
     return this->LoadingFormRows[site][row];
 }
 
-void Login::Enable()
+void Login::Enable(bool value)
 {
-    this->ui->lineEdit_oauth_username->setEnabled(true);
-    this->ui->Language->setEnabled(true);
-    this->ui->label->setEnabled(true);
-    this->ui->Project->setEnabled(true);
-    this->ui->checkBox->setEnabled(QSslSocket::supportsSsl());
-    this->ui->lineEdit_username->setEnabled(true);
-    this->ui->ButtonExit->setEnabled(true);
-    this->ui->pushButton_2->setEnabled(true);
-    this->ui->tableWidget->setEnabled(true);
-    this->ui->lineEdit_password->setEnabled(true);
-    this->ui->pushButton->setEnabled(true);
-    this->ui->ButtonOK->setEnabled(true);
+    this->ui->checkBox_2->setEnabled(value);
+    this->ui->lineEdit_oauth_username->setEnabled(value);
+    this->ui->Language->setEnabled(value);
+    this->ui->label->setEnabled(value);
+    this->ui->Project->setEnabled(value);
+    if (value)
+        this->ui->checkBox->setEnabled(QSslSocket::supportsSsl());
+    else
+        this->ui->checkBox->setEnabled(false);
+    this->ui->lineEdit_username->setEnabled(value);
+    this->ui->ButtonExit->setEnabled(value);
+    this->ui->pushButton_2->setEnabled(value);
+    this->ui->tableWidget->setEnabled(value);
+    this->ui->lineEdit_password->setEnabled(value);
+    this->ui->pushButton->setEnabled(value);
+    this->ui->ButtonOK->setEnabled(value);
 }
 
 void Login::Disable()
 {
-    this->ui->lineEdit_oauth_username->setDisabled(true);
-    this->ui->Language->setDisabled(true);
-    this->ui->label->setDisabled(true);
-    this->ui->Project->setDisabled(true);
-    this->ui->checkBox->setDisabled(true);
-    this->ui->ButtonOK->setEnabled(false);
-    this->ui->ButtonExit->setDisabled(true);
-    this->ui->pushButton_2->setDisabled(true);
-    this->ui->tableWidget->setDisabled(true);
-    this->ui->lineEdit_username->setDisabled(true);
-    this->ui->lineEdit_password->setDisabled(true);
-    this->ui->pushButton->setDisabled(true);
+    this->Enable(false);
 }
 
 void Login::Reload()
@@ -330,6 +327,9 @@ void Login::PressOK()
         Generic::pMessageBox(this, _l("error"), "There are no projects defined in a list you need to set up some on global wiki");
         return;
     }
+    hcfg->SystemConfig_StorePassword = this->ui->checkBox_2->isChecked();
+    if (hcfg->SystemConfig_StorePassword)
+        hcfg->SystemConfig_RememberedPassword = this->ui->lineEdit_password->text();
     hcfg->IndexOfLastWiki = this->ui->Project->currentIndex();
     hcfg->Project = hcfg->ProjectList.at(this->ui->Project->currentIndex());
     // we need to clear a list of projects we are logged to and insert at least this one
