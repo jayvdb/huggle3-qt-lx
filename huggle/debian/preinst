@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ -d /usr/share/huggle/extensions ];then
+  rm -r /usr/share/huggle/extensions || exit 1
+fi
+
+exit 0

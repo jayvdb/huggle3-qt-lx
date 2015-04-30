@@ -1,0 +1,383 @@
+huggle (3.1.11.0-ppa1) precise; urgency=medium
+
+  * 3.1.11 production version
+
+ -- Petr Bena <benapetr@gmail.com>  Fri, 10 Apr 2015 19:35:08 +0200
+
+huggle (3.1.10.0-ppa1) precise; urgency=medium
+
+  * 3.1.10 production version
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 18 Mar 2015 19:16:36 +0100
+
+huggle (3.1.9.0-ppa1) precise; urgency=medium
+
+  * 3.1.9 production version
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 28 Jan 2015 19:07:19 +0100
+
+huggle (3.1.7.0-ppa1) precise; urgency=medium
+
+  * 3.1.7 production
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 24 Dec 2014 06:32:34 +0100
+
+huggle (3.1.6.0-ppa1) precise; urgency=medium
+
+  * 3.1.6 production
+
+ -- Petr Bena <benapetr@gmail.com>  Mon, 15 Dec 2014 18:47:29 +0100
+
+huggle (3.1.5.0-ppa1) precise; urgency=medium
+
+  * 3.1.5 released
+
+ -- Petr Bena <benapetr@gmail.com>  Mon, 17 Nov 2014 01:17:17 +0100
+
+huggle (3.1.4.0-ppa1) precise; urgency=medium
+
+  * rl
+
+ -- Petr Bena <benapetr@gmail.com>  Sat, 27 Sep 2014 17:38:28 +0200
+
+huggle (3.1.3.0-ppa1) precise; urgency=medium
+
+  * 3.1.3 released
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 16 Sep 2014 20:21:29 +0200
+
+huggle (3.1.2.0-ppa1) precise; urgency=medium
+
+  * 3.1.2 production
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 10 Sep 2014 18:48:05 +0200
+
+huggle (3.1.1.0-ppa1) precise; urgency=medium
+
+  * 3.1.1 rl
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 24 Aug 2014 23:47:07 +0200
+
+huggle (3.1.0.0-ppa1) precise; urgency=medium
+
+  * 3.1.0 rl
+
+ -- Petr Bena <benapetr@gmail.com>  Fri, 01 Aug 2014 22:57:45 +0200
+
+huggle (3.0.6.0-ppa1) precise; urgency=medium
+
+  * new 3.0.6 production
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 20 Jul 2014 14:57:43 +0200
+
+huggle (3.0.5.0-ppa1) precise; urgency=medium
+
+  * new 3.0.5 released
+
+ -- Petr Bena <benapetr@gmail.com>  Fri, 18 Jul 2014 23:48:49 +0200
+
+huggle (3.0.3.0-ppa1) precise; urgency=medium
+
+  * new 3.0.3 released
+
+ -- Petr Bena <benapetr@gmail.com>  Sat, 21 Jun 2014 22:23:05 +0200
+
+huggle (3.0.2.0-ppa1) precise; urgency=medium
+
+  *  new 3.0.2 stable
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 12 Jun 2014 20:09:58 +0200
+
+huggle (3.0.1.0-ppa1) precise; urgency=medium
+
+  * new 3.0.1 stable
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 05 Jun 2014 15:31:42 +0200
+
+huggle (3.0.0.0-ppa57) precise; urgency=medium
+
+  * patching
+
+ -- Petr Bena <benapetr@gmail.com>  Sat, 31 May 2014 13:57:48 +0200
+
+huggle (3.0.0.0-ppa56) precise; urgency=medium
+
+  * new 3.0.0 stable
+
+ -- Petr Bena <benapetr@gmail.com>  Sat, 31 May 2014 13:21:30 +0200
+
+huggle (3.0.0.0-ppa55) precise; urgency=medium
+
+  * t4
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 27 May 2014 21:30:05 +0200
+
+huggle (3.0.0.0-ppa53) precise; urgency=medium
+
+  * t2
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 27 May 2014 21:19:00 +0200
+
+huggle (3.0.0.0-ppa52) precise; urgency=medium
+
+  * testing
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 27 May 2014 21:14:48 +0200
+
+huggle (3.0.0.0-ppa51) precise; urgency=medium
+
+  * testing
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 27 May 2014 08:26:57 +0200
+
+huggle (3.0.0.0-ppa48) precise; urgency=medium
+
+  * fixed
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 18 May 2014 21:46:59 +0200
+
+huggle (3.0.0.0-ppa47) precise; urgency=medium
+
+  * rc4
+
+ -- Petr Bena <benapetr@gmail.com>  Fri, 16 May 2014 19:06:03 +0200
+
+huggle (3.0.0.0-ppa46) precise; urgency=medium
+
+  * Rel2.000000221
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 11 May 2014 14:48:04 +0200
+
+huggle (3.0.0.0-ppa45) precise; urgency=medium
+
+  * Rel2.00000000001
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 11 May 2014 14:34:24 +0200
+
+huggle (3.0.0.0-ppa44) precise; urgency=medium
+
+  * Rel2
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 11 May 2014 14:23:52 +0200
+
+huggle (3.0.0.0-ppa43) precise; urgency=medium
+
+  * Update
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 11 May 2014 13:46:57 +0200
+
+huggle (3.0.0.0-ppa41) precise; urgency=medium
+
+  * Release of next version
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 08 May 2014 23:54:20 +0200
+
+huggle (3.0.0.0-ppa40) precise; urgency=medium
+
+  * Updated
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 08 May 2014 20:33:11 +0200
+
+huggle (3.0.0.0-ppa39) precise; urgency=medium
+
+  * Updated
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 08 May 2014 19:45:30 +0200
+
+huggle (3.0.0.0-ppa36) precise; urgency=medium
+
+  * Orig hack
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 01 May 2014 09:16:31 +0200
+
+huggle (3.0.0.0-ppa35) precise; urgency=medium
+
+  * Fix
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 30 Apr 2014 22:44:36 +0200
+
+huggle (3.0.0.0-ppa34) precise; urgency=medium
+
+  * Fix
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 27 Apr 2014 23:04:07 +0200
+
+huggle (3.0.0.0-ppa33) precise; urgency=medium
+
+  * Check http://git.io/F0I3gA
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 27 Apr 2014 22:45:24 +0200
+
+huggle (3.0.0.0-ppa32) precise; urgency=medium
+
+  * Fix
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 24 Apr 2014 13:00:26 +0200
+
+huggle (3.0.0.0-ppa31) precise; urgency=medium
+
+  * lot of https://github.com/huggle/huggle3-qt-lx/compare/c31d70b6f62c...22ac7c5dd3c5 
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 22 Apr 2014 22:57:47 +0200
+
+huggle (3.0.0.0-ppa30) precise; urgency=medium
+
+  * fix
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 22 Apr 2014 19:42:38 +0200
+
+huggle (3.0.0.0-ppa28) precise; urgency=medium
+
+  * lot of fixes
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 13 Apr 2014 23:22:50 +0200
+
+huggle (3.0.0.0-ppa27) precise; urgency=medium
+
+  * lucid
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 10 Apr 2014 21:28:21 +0200
+
+huggle (3.0.0.0-ppa26) precise; urgency=medium
+
+  * saucy fix 
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 10 Apr 2014 21:12:29 +0200
+
+huggle (3.0.0.0-ppa25) precise; urgency=medium
+
+  * lucid fix
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 10 Apr 2014 20:47:47 +0200
+
+huggle (3.0.0.0-ppa24) precise; urgency=medium
+
+  * fixing
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 10 Apr 2014 20:22:51 +0200
+
+huggle (3.0.0.0-ppa23) precise; urgency=medium
+
+  * fixed a bug of lucid build
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 10 Apr 2014 20:03:53 +0200
+
+huggle (3.0.0.0-ppa22) precise; urgency=medium
+
+  * https://github.com/huggle/huggle3-qt-lx/compare/b4f3da7310e8...30cab767c25e
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 10 Apr 2014 19:26:08 +0200
+
+huggle (3.0.0.0-ppa21) precise; urgency=medium
+
+  * https://github.com/huggle/huggle3-qt-lx/compare/7df34feea988...ea3028874815
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 09 Apr 2014 21:03:09 +0200
+
+huggle (3.0.0.0-ppa20) precise; urgency=medium
+
+  * https://github.com/huggle/huggle3-qt-lx/compare/0b9d0454cbd1...6a184d24e28a
+
+ -- Petr Bena <benapetr@gmail.com>  Mon, 07 Apr 2014 21:19:49 +0200
+
+huggle (3.0.0.0-ppa19) precise; urgency=medium
+
+  * http://github.com/huggle/huggle3-qt-lx/compare/cec87b0ab16a...1b924c1c50dc
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 02 Apr 2014 18:44:48 +0200
+
+huggle (3.0.0.0-ppa18) precise; urgency=medium
+
+  * https://github.com/huggle/huggle3-qt-lx/compare/591e93414008...2035159d8079
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 27 Mar 2014 08:01:57 +0100
+
+huggle (3.0.0.0-ppa17) precise; urgency=medium
+
+  * https://github.com/huggle/huggle3-qt-lx/compare/2e8c578ecd84...0de6b1b0671b
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 20 Mar 2014 16:38:52 +0100
+
+huggle (3.0.0.0-ppa16) precise; urgency=medium
+
+  * http://github.com/huggle/huggle3-qt-lx/compare/7a95b646d60c...aa8593b37a67
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 16 Mar 2014 23:11:06 +0100
+
+huggle (3.0.0.0-ppa15) precise; urgency=medium
+
+  * Several fixes
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 25 Feb 2014 16:58:50 +0100
+
+huggle (3.0.0.0-ppa14.2) precise; urgency=medium
+
+  * Build for official release repo (this build is still beta)
+
+ -- Petr Bena <benapetr@gmail.com>  Tue, 25 Feb 2014 09:28:22 +0100
+
+huggle (3.0.0.0-ppa14) precise; urgency=medium
+
+  * Beta
+
+ -- Petr Bena <benapetr@gmail.com>  Mon, 24 Feb 2014 16:17:22 +0100
+
+huggle (3.0.0.0-ppa13) precise; urgency=medium
+
+  * Beta
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 30 Jan 2014 16:49:04 +0000
+
+huggle (3.0.0.0-ppa12) precise; urgency=low
+
+  * Beta
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 08 Jan 2014 20:35:50 +0100
+
+huggle (3.0.0.0-ppa11) precise; urgency=medium
+
+  * Updated
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 22 Dec 2013 16:55:08 +0100
+
+huggle (3.0.0.0-ppa10) precise; urgency=medium
+
+  * Fatal bugs and fixes :o
+
+ -- Petr Bena <benapetr@gmail.com>  Fri, 13 Dec 2013 18:47:29 +0100
+
+huggle (3.0.0.0-ppa9) precise; urgency=medium
+
+  * updated
+
+ -- Petr Bena <benapetr@gmail.com>  Thu, 12 Dec 2013 12:57:51 +0000
+
+huggle (3.0.0.0-ppa7) precise; urgency=medium
+
+  * merging several critical fixes
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 08 Dec 2013 10:44:54 +0100
+
+huggle (3.0.0.0-ppa6) precise; urgency=low
+
+  * urgent fix
+
+ -- Peter Bena <benapetr@gmail.com>  Tue, 03 Dec 2013 18:50:40 +0100
+
+huggle (3.0.0.0-ppa5) precise; urgency=low
+
+  * nightly fix (undefined variable critical bug)
+
+ -- Petr Bena <benapetr@gmail.com>  Sun, 01 Dec 2013 21:53:26 +0100
+
+huggle (3.0.0.0-ppa4) precise; urgency=low
+
+  * N 76c48b27aca1e61b9462ec08ccbbfc70f60a217b
+
+ -- Petr Bena <benapetr@gmail.com>  Fri, 29 Nov 2013 17:11:10 +0000
+
+huggle (3.0.0.0) precise; urgency=low
+
+  * Initial release
+
+ -- Petr Bena <benapetr@gmail.com>  Wed, 27 Nov 2013 14:25:23 +0100
