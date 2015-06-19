@@ -356,7 +356,18 @@ void Login::PressOK()
         {
             if (!wiki->SupportHttps)
             {
-                this->DisplayError("You requested to use SSL but wiki " + wiki->Name + " doesn't support it.");
+                this->DisplayError(_l("ssl-is-not-supported", wiki->Name));
+                return;
+            }
+        }
+    }
+    else
+    {
+        foreach(WikiSite *wiki, hcfg->Projects)
+        {
+            if (wiki->ForceSSL)
+            {
+                this->DisplayError(_l("ssl-required", wiki->Name));
                 return;
             }
         }
@@ -921,6 +932,14 @@ void Login::ProcessSiteInfo(WikiSite *site)
                 } else
                 {
                     HUGGLE_DEBUG1("No watch for " + site->Name + " result: " + this->qTokenInfo[site]->Result->Data);
+                }
+                if (tokens->Attributes.contains("patroltoken"))
+                {
+                    site->GetProjectConfig()->Token_Patrol = tokens->GetAttribute("patroltoken");
+                    HUGGLE_DEBUG("Token for " + site->Name + " patrol " + site->GetProjectConfig()->Token_Patrol, 2);
+                } else
+                {
+                    HUGGLE_DEBUG1("No patrol for " + site->Name + " result: " + this->qTokenInfo[site]->Result->Data);
                 }
             }
         } else

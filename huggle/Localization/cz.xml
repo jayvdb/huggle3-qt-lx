@@ -51,11 +51,6 @@
   <string name="disable">Vypnuto</string>
   <string name="no-token">Chybí token</string>
   <string name="flags">Flagy</string>
-  <string name="score-score">Skóre</string>
-  <string name="score-word">Slovo</string>
-  <string name="score-range">Rozsah</string>
-  <string name="score-only-whole-word">Odpovídá pouze celým slovům</string>
-  <string name="score-take-any-word">Odpovídá jakémukoliv slovu, které obsahuje tento řetězec</string>
   <string name="browser-none">Žádná stránka nyní není zobrazena</string>
   <string name="browser-load">Stahuji diff pomocí \"web rendering\", počkejte prosím...</string>
   <string name="browser-miss-summ">žádné shrnutí</string>
@@ -455,6 +450,11 @@
   <string name="report-retrieving">Stahuji současnou stránku pro nahlášení...</string>
   <string name="report-done">Nahlášeno</string>
   <string name="report-user">Nahlásit</string>
+  <string name="score-score">Skóre</string>
+  <string name="score-word">Slovo</string>
+  <string name="score-range">Rozsah</string>
+  <string name="score-only-whole-word">Odpovídá pouze celým slovům</string>
+  <string name="score-take-any-word">Odpovídá jakémukoliv slovu, které obsahuje tento řetězec</string>
   <string name="uaa-not-supported">UAA není k dispozici.</string>
   <string name="uaa-not-supported-text">Funkce \"nahlásit uživatelské jméno\" není k dispozici na této wiki.</string>
   <string name="uaa-reporting">Reportuji $1 na UAA</string>
@@ -508,7 +508,7 @@
   <string name="shortcut-next">Jít na další úpravy</string>
   <string name="shortcut-suspicious">Označit edit jako podezřelou editaci</string>
   <string name="shortcut-back">Jít na dříve zobrazený edit.</string>
-  <string name="shortcut-forward">Jít na edit který jste v minulosti otevřel, ale vrátil se z něj na předchozí</string>
+  <string name="shortcut-forward" fuzzy="true">Jít na edit který jste v minulosti otevřel, ale vrátil se z něj na předchozí</string>
   <string name="shortcut-warn">Poslat varování pro uživatele, bez revertu editace</string>
   <string name="shortcut-revert">Revertovat editaci</string>
   <string name="shortcut-x-raw">Spusť N-tou položku menu vrátit a varovat</string>
@@ -569,7 +569,7 @@
   <string name="history-not-found">Nic nebylo nalezeno</string>
   <string name="history-already-done">Již bylo vráceno zpět</string>
   <string name="history-message-revert-body">Toto je pouze zpráva která byla poslána na základě rollbacku, jste si jisti že chcete vrátit pouze odeslání zprávy a ne i revertaci která v ní je zmíněna? (Pokud chcete vrátit obojí klikněte na vrátit na revertaci).</string>
-  <string name="history-revert-fail">Nelze vrátit zpět editace $1 chyba při revertaci: $2</string>
+  <string name="history-revert-fail" fuzzy="true">Nelze vrátit zpět editace $1 chyba při revertaci: $2</string>
   <string name="history-welcome-msg-title">Poslat namísto toho uvítací zprávu?</string>
   <string name="history-welcome-msg">Vytvořili jste tuto diskuzní stránku, takže tuto editaci nemůžete odstranit. Chcete ji však přepsat uvítací šablonou?</string>
   <string name="notify-fail">Nepodařilo se notifikovat autora $1</string>

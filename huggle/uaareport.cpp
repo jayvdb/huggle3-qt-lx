@@ -130,10 +130,10 @@ void UAAReport::whatToReport()
     if (this->ui->checkBox_2->isChecked())
         reasons.append("offensive");
     if (this->ui->checkBox_3->isChecked())
-        reasons.append("promotional username");
+        reasons.append("promotional");
     if (this->ui->checkBox_4->isChecked())
-        reasons.append("misleading username");
-    this->UAAReportReason = "Username is a policy violation because it is ";
+        reasons.append("misleading");
+    this->UAAReportReason = "Violation of the username policy as a ";
     if (reasons.count() > 1)
     {
         int index = 0;
@@ -143,10 +143,10 @@ void UAAReport::whatToReport()
             index++;
         }
         this->UAAReportReason = this->UAAReportReason.mid(0, this->UAAReportReason.length() - 2);
-        this->UAAReportReason += " and " + reasons.at(index);
+        this->UAAReportReason += " and " + reasons.at(index) + " username.";
     } else if (reasons.count() == 1)
     {
-        this->UAAReportReason += reasons.at(0) + ".";
+        this->UAAReportReason += reasons.at(0) + " username.";
     }
 }
 

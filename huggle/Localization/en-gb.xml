@@ -51,11 +51,6 @@
   <string name="disable">Disable</string>
   <string name="no-token">No token</string>
   <string name="flags">Flags</string>
-  <string name="score-score">Score</string>
-  <string name="score-word">Word</string>
-  <string name="score-range">Range</string>
-  <string name="score-only-whole-word">Matches only whole words</string>
-  <string name="score-take-any-word">Matches any word that contains this string</string>
   <string name="browser-none">No page is displayed now</string>
   <string name="browser-load">Downloading diff using a web rendering fall-back, please wait...</string>
   <string name="browser-miss-summ">No summary was provided</string>
@@ -257,6 +252,7 @@ This block will override the effect of the rangeblock. Continue?</string>
   <string name="login-progress-user">Checking user configuration for $1</string>
   <string name="login-progress-user-info">Checking user info for $1</string>
   <string name="login-progress-whitelist">Retrieving user whitelist...</string>
+  <string name="login-remember-password">Remember password</string>
   <string name="login-ssl">Use HTTPS (requires OpenSSL)</string>
   <string name="login-fail">Login failed on $1</string>
   <string name="login-error-admin">Use of Huggle on this project requires an administrator account.</string>
@@ -486,6 +482,13 @@ This block will override the effect of the rangeblock. Continue?</string>
   <string name="report-retrieving">Retrieving current report page...</string>
   <string name="report-done">Reported</string>
   <string name="report-user">Report</string>
+  <string name="score-score">Score</string>
+  <string name="score-word">Word</string>
+  <string name="score-range">Range</string>
+  <string name="score-take-any-no-talk-word">Matches any word on non-talk pages</string>
+  <string name="score-take-whole-no-talk-word">Matches only whole words on non-talk pages</string>
+  <string name="score-only-whole-word">Matches only whole words</string>
+  <string name="score-take-any-word">Matches any word that contains this string</string>
   <string name="uaa-not-supported">UAA not available</string>
   <string name="uaa-not-supported-text">The \"Usernames for administrator attention\" noticeboard is not available on your wiki.</string>
   <string name="uaa-reporting">Reporting $1 to UAA</string>
@@ -539,7 +542,7 @@ This block will override the effect of the rangeblock. Continue?</string>
   <string name="shortcut-next">Go to the next edit</string>
   <string name="shortcut-suspicious">Mark edit as suspicious</string>
   <string name="shortcut-back">Go to the previously displayed edit</string>
-  <string name="shortcut-forward">Go to an edit that you loaded in the past but moved back from</string>
+  <string name="shortcut-forward">Go to an edit that you loaded in past but moved back from</string>
   <string name="shortcut-warn">Send a warning to the user, without reverting the edit</string>
   <string name="shortcut-revert">Revert edit</string>
   <string name="shortcut-x-raw">Trigger N th item in revert and warn menu</string>
