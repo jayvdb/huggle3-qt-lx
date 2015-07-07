@@ -440,6 +440,7 @@ void MainWindow::Render(bool KeepHistory, bool KeepUser)
         if (this->CurrentEdit->Page == nullptr)
             throw new Huggle::NullPointerException("local CurrentEdit->Page", BOOST_CURRENT_FUNCTION);
 
+        this->ui->actionFinal->setVisible(this->GetCurrentWikiSite()->GetProjectConfig()->InstantWarnings);
         this->wEditBar->RemoveAll();
         if (!KeepUser)
         {
@@ -453,7 +454,6 @@ void MainWindow::Render(bool KeepHistory, bool KeepUser)
             if (Configuration::HuggleConfiguration->UserConfig->HistoryLoad)
                 this->wHistory->Read();
         }
-
         this->Title(this->CurrentEdit->Page->PageName);
         if (this->PreviousSite != this->GetCurrentWikiSite())
         {
@@ -1648,12 +1648,13 @@ void MainWindow::PatrolEdit(WikiEdit *e)
     {
         query->SetAction(ActionReview);
         query->Target = "Patrolling (FlaggedRevs) " + e->Page->PageName;
+        query->Parameters = "revid=" + QString::number(e->RevID) + "&token=" + QUrl::toPercentEncoding(e->GetSite()->GetProjectConfig()->Token_Csrf);
     } else
     {
         query->SetAction(ActionPatrol);
         query->Target = "Patrolling " + e->Page->PageName;
+        query->Parameters = "revid=" + QString::number(e->RevID) + "&token=" + QUrl::toPercentEncoding(e->GetSite()->GetProjectConfig()->Token_Patrol);
     }
-    query->Parameters = "revid=" + QString::number(e->RevID) + "&token=" + QUrl::toPercentEncoding(e->GetSite()->GetProjectConfig()->Token_Patrol);
     if (flaggedrevs)
         query->Parameters += "&flag_accuracy=1";
 
@@ -2953,4 +2954,9 @@ void Huggle::MainWindow::on_actionPatrol_triggered()
     }
 
     this->PatrolEdit();
+}
+
+void Huggle::MainWindow::on_actionFinal_triggered()
+{
+    this->ForceWarn(0);
 }
