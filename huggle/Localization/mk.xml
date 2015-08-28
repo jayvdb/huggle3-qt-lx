@@ -22,6 +22,7 @@
   <string name="result">Резултат</string>
   <string name="save">Зачувај</string>
   <string name="show">Прикажи</string>
+  <string name="no-instant">Моментните предупредувања не се овозможени на проектот $1. Нема да ја испратам пораката на $2. Одберете друг степен на предупредување.</string>
   <string name="undo">Врати</string>
   <string name="yes">Да</string>
   <string name="editing-page">Уредување на страница</string>
@@ -349,6 +350,7 @@
   <string name="main-page-protect">Заштити</string>
   <string name="main-page-delete">Избриши</string>
   <string name="main-page-load">Вчитај</string>
+  <string name="main-patrol-not-enabled">Патролирањето не е овозможено на $1</string>
   <string name="main-page-restore">Отповикај ја преработкава</string>
   <string name="main-user-info">Прикажи кориснички информации</string>
   <string name="main-user-ignore">Занемари</string>

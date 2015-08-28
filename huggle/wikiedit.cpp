@@ -507,6 +507,8 @@ void WikiEdit::PostProcess()
     if (this->Status != Huggle::StatusProcessed)
         throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status", BOOST_CURRENT_FUNCTION);
     this->PostProcessing = true;
+    // Send info to other functions
+    Hooks::EditBeforePostProcess(this);
     this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk(), this->GetSite());
     QueryPool::HugglePool->AppendQuery(this->qTalkpage);
     this->qTalkpage->Target = "Retrieving tp " + this->User->GetTalk();
@@ -628,6 +630,11 @@ QString WikiEdit::GetFullUrl()
 {
     return Configuration::GetProjectScriptURL(this->GetSite()) + "index.php?title=" + QUrl::toPercentEncoding(this->Page->PageName) +
             "&diff=" + QString::number(this->RevID);
+}
+
+bool WikiEdit::IsReady()
+{
+    return Hooks::EditCheckIfReady(this);
 }
 
 QMutex ProcessorThread::EditLock(QMutex::Recursive);

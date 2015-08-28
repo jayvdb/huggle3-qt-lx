@@ -16,12 +16,12 @@
 typedef char byte_ht;
 typedef long long revid_ht;
 
-#define HUGGLE_VERSION                  "3.1.14"
+#define HUGGLE_VERSION                  "3.1.15"
 #define HUGGLE_BYTE_VERSION_MAJOR       0x3
 #define HUGGLE_BYTE_VERSION_MINOR       0x1
-#define HUGGLE_BYTE_VERSION_RELEASE     0xE
+#define HUGGLE_BYTE_VERSION_RELEASE     0xF
 // format is 0xMAJOR(2)MINOR(2)RELEASE(2) so for 3.1.15 it's 0x03010F
-#define HUGGLE_BYTE_VERSION             0x03010E
+#define HUGGLE_BYTE_VERSION             0x03010F
 
 // Version of mediawiki that we do support
 #define HUGGLE_SUPPORTED_MEDIAWIKI_VERSION "1.25"
@@ -168,6 +168,9 @@ namespace std { typedef decltype(nullptr) nullptr_t; }
 #else
     #define HUGGLE_UPDATER_PLATFORM_TYPE            "unknown"
 #endif
+
+// This help us clear any qlist that contains pointers
+#define HUGGLE_CLEAR_PQ_LIST(list) while(list.count())   { delete list.at(0); list.removeAt(0); }
 
 // stolen from boost/current_function.hpp
 // enhanced by Petr Bena, keep the enhancement in case you wanted to update this

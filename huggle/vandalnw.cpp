@@ -273,6 +273,8 @@ void VandalNw::Rescore(WikiEdit *edit)
             this->Insert(message, HAN::MessageType_User);
         }
         edit->Score += score->Score;
+        if (!edit->MetaLabels.contains("Bot score"))
+            edit->MetaLabels.insert("Bot score", QString::number(score->Score));
         delete score;
     }
 }
@@ -485,6 +487,8 @@ void VandalNw::onTick()
                             this->Insert("<font color=green>" + m->user.Nick + " rescored edit <b>" + edit->Page->PageName + "</b> by <b>" + edit->User->Username +
                                          "</b> (" + GenerateWikiDiffLink(revid, revid, edit->GetSite()) + ") by " + QString::number(Score) + "</font>", mt);
                             edit->Score += Score;
+                            if (!edit->MetaLabels.contains("Bot score"))
+                                edit->MetaLabels.insert("Bot score", QString::number(Score));
                             MainWindow::HuggleMain->Queue1->SortItemByEdit(edit);
                         } else
                         {

@@ -84,7 +84,8 @@ namespace Huggle
         //! Huggle is updating the whitelist
         ShutdownOpUpdatingWhitelist,
         //! Huggle is updating a config of user
-        ShutdownOpUpdatingConf
+        ShutdownOpUpdatingConf,
+        ShutdownOpGracetimeQueries
     };
 
     //! Primary huggle window
@@ -123,8 +124,6 @@ namespace Huggle
             Collectable_SmartPtr<RevertQuery> Revert(QString summary = "", bool next = true, bool single_rv = false);
             //! Warn a current user
             bool Warn(QString WarningType, RevertQuery *dependency);
-            QString GetSummaryKey(QString item);
-            QString GetSummaryText(QString text);
             void EnableDev();
             //! Send a template to user no matter if they can be messaged or not
             void ForceWarn(int level);
@@ -139,6 +138,7 @@ namespace Huggle
             void Localize();
             void _BlockUser();
             void DisplayNext(Query *q = nullptr);
+            void ShowCat();
             void DeletePage();
             void DisplayTalk();
             /*!
@@ -330,7 +330,6 @@ namespace Huggle
             void on_actionQueue_legend_triggered();
             void on_actionPatrol_triggered();
             void on_actionFinal_triggered();
-
         private:
             void DisplayWelcomeMessage();
             void FinishRestore();
@@ -377,6 +376,7 @@ namespace Huggle
             QTimer *wlt = nullptr;
             //! Status bar
             QLabel *Status;
+            QDateTime Gracetime;
             bool EditablePage;
             WarningList *fWarningList = nullptr;
             WikiPageTagsForm *fWikiPageTags = nullptr;

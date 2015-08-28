@@ -32,6 +32,14 @@ namespace Huggle
         Configuration_OnNext_Revert
     };
 
+    enum WatchlistOption
+    {
+        WatchlistOption_Watch = 0,
+        WatchlistOption_Unwatch = 1,
+        WatchlistOption_Preferences = 2,
+        WatchlistOption_NoChange = 3
+    };
+
     class HuggleOption;
     class ProjectConfiguration;
     class Version;
@@ -40,6 +48,9 @@ namespace Huggle
     class HUGGLE_EX UserConfiguration
     {
         public:
+            static WatchlistOption WatchlistOptionFromString(QString string);
+            static QString WatchListOptionToString(WatchlistOption option);
+
             UserConfiguration();
             ~UserConfiguration();
             bool ParseUserConfig(QString config, ProjectConfiguration *ProjectConfig, bool IsHome);
@@ -73,7 +84,7 @@ namespace Huggle
             //! mediawiki reject token with no reason
             bool            EnforceManualSRT = false;
             //! Size of fonts in diff
-            int             FontSize = 16;
+            int             FontSize = 12;
             int             PreferredProvider = 2;
             //! Font that we use to render diffs and similar pages
             QString         Font = "Helvetica, Arial, sans-serif";
@@ -114,6 +125,7 @@ namespace Huggle
             //! Welcome new users on a good edit
             bool                    WelcomeGood = true;
             Version*                Previous_Version;
+            WatchlistOption         Watchlist;
     };
 }
 

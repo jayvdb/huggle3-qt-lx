@@ -42,8 +42,34 @@ EditQuery::~EditQuery()
     this->HI.Delete();
 }
 
+void EditQuery::Kill()
+{
+    if (this->qEdit != nullptr)
+        this->qEdit->Kill();
+    if (this->qRetrieve != nullptr)
+        this->qRetrieve->Kill();
+
+    this->qEdit.Delete();
+    this->qRetrieve.Delete();
+    this->HasPreviousPageText = false;
+    this->OriginalText = "";
+    this->Status = StatusKilled;
+}
+
 void EditQuery::Process()
 {
+    if (this->Status == StatusIsSuspended)
+    {
+        HUGGLE_DEBUG1("Ignoring request to process suspended query " + QString::number(this->QueryID()) + " fix me");
+        return;
+    }
+
+    if (this->Status == StatusProcessing)
+    {
+        HUGGLE_DEBUG1("Ignoring request to process query that is already running " + QString::number(this->QueryID()) + " fix me");
+        return;
+    }
+
     if (this->Page == nullptr)
     {
         throw new Huggle::NullPointerException("local Page", BOOST_CURRENT_FUNCTION);
@@ -61,6 +87,9 @@ void EditQuery::Process()
 
 bool EditQuery::IsProcessed()
 {
+    if (this->Status == StatusIsSuspended)
+        return false;
+
     if (this->Result != nullptr)
         return true;
 
@@ -109,20 +138,26 @@ bool EditQuery::IsProcessed()
                     // this is some fine hacking here :)
                     // we use this later in main form
                     HUGGLE_DEBUG1("Session expired requesting a new login");
+                    this->Suspend();
                     Configuration::Logout(this->Page->GetSite());
-                }
-                if (ec == "badtoken")
+                } else if (ec == "badtoken")
                 {
                     reason = "Bad token";
                     hec = HUGGLE_ETOKEN;
                     // we log off the site
+                    this->Suspend();
                     Configuration::Logout(this->Page->GetSite());
                     Syslog::HuggleLogs->ErrorLog(_l("editquery-invalid-token", this->Page->PageName));
+                    this->qEdit.Delete();
+                    return false;
+                } else
+                {
+                    // We don't want to process failure in case the query was suspended
+                    this->Result = new QueryResult(true);
+                    this->Result->SetError(hec, reason);
+                    this->ProcessFailure();
                 }
-                this->Result = new QueryResult(true);
-                this->Result->SetError(hec, reason);
                 this->qEdit = nullptr;
-                this->ProcessFailure();
                 return true;
             }
         }
@@ -150,13 +185,17 @@ bool EditQuery::IsProcessed()
         this->Result = new QueryResult();
         if (failed)
         {
-            this->Result->Failed = true;
-            this->Result->ErrorMessage = this->qEdit->Result->Data;
+            this->Result->SetError(this->qEdit->Result->Data);
             this->ProcessFailure();
         }
         this->qEdit = nullptr;
     }
     return false;
+}
+
+void EditQuery::Restart()
+{
+    Query::Restart();
 }
 
 void EditQuery::EditPage()
@@ -192,9 +231,9 @@ void EditQuery::EditPage()
     QString base = "";
     QString start_ = "";
     QString section = "";
-    QString wl = "&watchlist=nochange";
+    QString wl = "&watchlist=" + UserConfiguration::WatchListOptionToString(hcfg->UserConfig->Watchlist);
     if (this->InsertTargetToWatchlist)
-        wl = "";
+        wl = "&watchlist=" + UserConfiguration::WatchListOptionToString(WatchlistOption_Watch);
     if (this->Section > 0)
     {
         section = "&section=" + QString::number(this->Section);

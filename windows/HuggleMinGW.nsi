@@ -9,7 +9,7 @@
 !define APP_NAME "Huggle"
 !define COMP_NAME "Wikimedia Project"
 !define WEB_SITE "http://en.wikipedia.org/wiki/Wikipedia:Huggle"
-!define VERSION "3.1.13.0"
+!define VERSION "3.1.15.0"
 !define COPYRIGHT "GPL"
 !define DESCRIPTION "Application"
 !define LICENSE_TXT "gpl.txt"
@@ -81,6 +81,39 @@ InstallDir "$PROGRAMFILES\Huggle"
 
 !insertmacro MUI_LANGUAGE "English"
 
+####################### UNINSTALL BEFORE UPGRADE #####################
+
+Section "" SecUninstallPrevious
+
+    Call UninstallPrevious
+
+SectionEnd
+
+Function UninstallPrevious
+
+    ; Check for uninstaller.
+    DetailPrint "Checking for previous huggle versions"    
+    ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" \
+  "UninstallString"
+
+    ${If} $R0 == ""        
+         ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" \
+        "UninstallString"
+        ${If} $R0 == ""        
+            DetailPrint "No previous installation found"    
+            Goto Done
+        ${EndIf}
+    ${EndIf}
+
+    DetailPrint "Removing previous installation."    
+    ; Run the uninstaller silently.
+    ExecWait '"$R0" /S _?=$INSTDIR' $0
+    DetailPrint "Uninstaller returned $0"
+
+    Done:
+
+FunctionEnd
+
 ######################################################################
 
 Section -MainProgram
@@ -129,7 +162,9 @@ SetOutPath "$INSTDIR\extensions"
 File "release\libhuggle_thanks.dll"
 File "release\libhuggle_md.dll"
 File "release\libhuggle_sh.dll"
+File "release\libhuggle_scoring.dll"
 File "release\libhuggle_en.dll"
+File "release\libhuggle_nuke.dll"
 SectionEnd
 
 ######################################################################
@@ -218,11 +253,15 @@ Delete "$INSTDIR\libwinpthread-1.dll"
 Delete "$INSTDIR\py_hug.exe"
 Delete "$INSTDIR\huggle.ico"
 Delete "$INSTDIR\libgcc_s_dw2-1.dll"
+Delete "$INSTDIR\platforms\qminimal.dll"
+Delete "$INSTDIR\platforms\qoffscreen.dll"
+Delete "$INSTDIR\platforms\qwindows.dll"
 Delete "$INSTDIR\uninstall.exe"
 !ifdef WEB_SITE
 Delete "$INSTDIR\${APP_NAME} website.url"
 !endif
 RmDir /r "$INSTDIR\extensions"
+RmDir /r "$INSTDIR\platforms"
 RmDir "$INSTDIR"
 
 !ifdef REG_START_MENU

@@ -66,7 +66,57 @@ namespace Huggle
             //! Whether this extension need access to core
             virtual bool RequestCore() { return false; }
             virtual bool RequestNetwork() { return false; }
+            /*!
+             * \brief GetConfig Gets a value stored by extension from huggle configuration file
+             * \param key Key
+             * \param dv Default value
+             * \return Value
+             */
+            virtual QString GetConfig(QString key, QString dv = "");
+            virtual void SetConfig(QString key, QString value);
+            /*!
+             * \brief Hook_BadnessScore When the score of user is changed
+             * \param user pointer to user whom score is changed
+             * \param score New score of user
+             */
             virtual void Hook_BadnessScore(void *user, int score) {}
+            /*!
+             * \brief Hook_EditScore is called after edit score is calculated
+             * \param edit
+             */
+            virtual void Hook_EditScore(void *edit) {}
+            /*!
+             * \brief Hook_EditPostProcess Event that is called after edit is post processed by internal edit processor
+             * \param edit Edit that was just post processed by huggle internal edit processor
+             */
+            virtual void Hook_EditPostProcess(void *edit) {}
+            /*!
+             * \brief Hook_EditBeforeScore This is called before internal edit scoring happens
+             * \param edit Pointer to edit
+             * \return If false is returned the internal scoring is skipped
+             */
+            virtual bool Hook_EditBeforeScore(void *edit) { return true;  }
+            /*!
+             * \brief Hook_EditBeforeScore This is called before internal edit scoring happens
+             * \param text Text of edit
+             * \param page Name of page
+             * \param editscore Pointer to integer that contains current score of edit
+             * \param userscore Score of user
+             * \return If false is returned the internal scoring is skipped
+             */
+            virtual bool Hook_EditBeforeScore(QString text, QString page, int* editscore, int userscore) { return true; }
+            virtual void Hook_EditBeforePostProcessing(void *edit) {}
+            /*!
+             * \brief Hook_EditIsReady Event that checks if edit can be considered processed
+             *
+             * In case there are some extensions that add extra stuff to edit processing (such as extra queries) and need to wait
+             * for them to finish, they can return false here in case they are still waiting for some query to finish
+             * so that this edit is hold in a queue instead of being distributed to interface. This is useful in case you make
+             * extension that needs to execute asynchronous jobs during the processing of each edit.
+             * \param edit Pointer to WikiEdit
+             * \return
+             */
+            virtual bool Hook_EditIsReady(void *edit) { return true; }
             /*!
              * \brief Hook_EditPreProcess is called when edit is being pre processed
              * \param edit is a pointer to edit in question
@@ -87,14 +137,6 @@ namespace Huggle
              */
             virtual bool Hook_SpeedyBeforeOK(void *edit, void *form) { return true; }
             virtual void Hook_Shutdown() {}
-            /*!
-             * \brief Hook_EditScore is called after edit score is calculated
-             * \param edit
-             */
-            virtual void Hook_EditScore(void *edit) {}
-            virtual void Hook_EditPostProcess(void *edit) {}
-            virtual bool Hook_EditBeforeScore(void *edit) { return true;  }
-            virtual bool Hook_EditBeforeScore(QString text, QString page, int* editscore, int userscore) { return true; }
             virtual void Hook_MainWindowOnLoad(void *window) {}
             virtual bool Hook_MainWindowReloadShortcut(void *shortcut) { return true; }
             virtual void Hook_MainWindowOnRender() {}

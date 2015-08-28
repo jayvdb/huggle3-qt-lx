@@ -16,6 +16,7 @@
 
 using namespace Huggle;
 
+QList<Collectable_SmartPtr<Query>> Query::PendingRestart;
 unsigned int Query::LastID = 0;
 QNetworkAccessManager *Query::NetworkManager = nullptr;
 
@@ -40,6 +41,8 @@ Query::~Query()
 
 bool Query::IsProcessed()
 {
+    if (this->Status == StatusIsSuspended)
+        return false;
     if (this->Status == StatusDone || this->Status == StatusInError)
     {
         return true;
@@ -77,6 +80,8 @@ QString Query::QueryTypeToString()
     {
         case QueryNull:
             return "null";
+        case QueryWebServer:
+            return "HTTP Query";
         case QueryWl:
             return "Wl Query";
         case QueryApi:
@@ -104,6 +109,8 @@ QString Query::QueryStatusToString()
             return "Processing";
         case StatusKilled:
             return "Killed";
+        case StatusIsSuspended:
+            return "Suspended";
         case StatusInError:
             if (this->Result != nullptr && this->Result->IsFailed() && !this->Result->ErrorMessage.isEmpty())
                 return "In error: " + this->Result->ErrorMessage;
@@ -147,6 +154,9 @@ QString Query::GetFailureReason()
     if (this->Result != nullptr)
         return this->Result->ErrorMessage;
 
+    if (this->FailureReason.isEmpty())
+        return "Unknown";
+
     return this->FailureReason;
 }
 
@@ -162,4 +172,25 @@ void Query::ThrowOnValidResult()
 
     this->Status = StatusInError;
     throw new Huggle::Exception("Result was not NULL memory would leak: 0x" + QString::number((uintptr_t)this->Result, 16), BOOST_CURRENT_FUNCTION);
+}
+
+void Query::Restart()
+{
+    if (this->Status == StatusProcessing)
+        this->Kill();
+
+    delete this->Result;
+    this->Result = nullptr;
+    this->Status = StatusNull;
+    this->Repeated = false;
+    this->FailureReason = "";
+    this->Process();
+}
+
+void Query::Suspend(bool enqueue)
+{
+    this->Status = StatusIsSuspended;
+    Collectable_SmartPtr<Query> query = this;
+    if (enqueue)
+        Query::PendingRestart.append(query);
 }
