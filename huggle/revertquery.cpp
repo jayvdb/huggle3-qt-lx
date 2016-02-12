@@ -15,10 +15,12 @@
 #include "exception.hpp"
 #include "generic.hpp"
 #include "querypool.hpp"
-#include "history.hpp"
-#include "historyitem.hpp"
 #include "localization.hpp"
-#include "mainwindow.hpp"
+#ifndef HUGGLE_SDK
+    #include "history.hpp"
+    #include "historyitem.hpp"
+    #include "mainwindow.hpp"
+#endif
 #include "syslog.hpp"
 #include "wikisite.hpp"
 #include "wikiuser.hpp"
@@ -467,6 +469,7 @@ bool RevertQuery::CheckRevert()
         this->ProcessFailure();
     } else
     {
+#ifndef HUGGLE_SDK
         HistoryItem *item = new HistoryItem();
         this->HI = item;
         this->HI->Site = this->GetSite();
@@ -477,6 +480,7 @@ bool RevertQuery::CheckRevert()
         item->Result = _l("successful");
         if (MainWindow::HuggleMain != nullptr)
             MainWindow::HuggleMain->_History->Prepend(item);
+#endif
     }
     this->qRevert->UnregisterConsumer(HUGGLECONSUMER_REVERTQUERY);
     this->qRevert.Delete();
@@ -726,9 +730,7 @@ void RevertQuery::Rollback()
     this->qRevert->Target = edit->Page->PageName;
     this->qRevert->UsingPOST = true;
     if (Configuration::HuggleConfiguration->Verbosity > 0)
-    {
-        QueryPool::HugglePool->AppendQuery(this->qRevert);
-    }
+        HUGGLE_QP_APPEND(this->qRevert);
     this->CustomStatus = _l("rollback", edit->Page->PageName);
     Huggle::Syslog::HuggleLogs->DebugLog("Rolling back " + edit->Page->PageName);
     this->qRevert->Process();

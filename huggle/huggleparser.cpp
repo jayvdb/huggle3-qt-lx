@@ -186,7 +186,7 @@ static int DateMark(QString page, WikiSite *site)
     QString mark = "";
     while (m < site->GetProjectConfig()->Parser_Date_Suffix.count())
     {
-		QString m_ = site->GetProjectConfig()->Parser_Date_Suffix.at(m);
+        QString m_ = site->GetProjectConfig()->Parser_Date_Suffix.at(m);
         if (page.contains(m_))
         {
             int mp = page.lastIndexOf(m_);
@@ -590,6 +590,16 @@ QList<HuggleQueueFilter*> HuggleParser::ConfigurationParseQueueList(QString cont
                 if (key == "nsfilter-user")
                 {
                     filter->setIgnore_UserSpace(F2B(val));
+                    continue;
+                }
+                if (key == "required-tags")
+                {
+                    filter->SetRequiredTags_CommaSeparated(val);
+                    continue;
+                }
+                if (key == "ignored-tags")
+                {
+                    filter->SetIgnoredTags_CommaSeparated(val);
                     continue;
                 }
             }

@@ -16,6 +16,7 @@
 #include "editquery.hpp"
 #include "mediawiki.hpp"
 #include "syslog.hpp"
+#include "reportuser.hpp"
 #include "querypool.hpp"
 #include "wikisite.hpp"
 #include "wikiedit.hpp"
@@ -66,7 +67,7 @@ Collectable_SmartPtr<RevertQuery> WikiUtil::RevertEdit(WikiEdit *_e, QString sum
     if (summary.length())
         query->Summary = summary;
     query->MinorEdit = minor;
-    QueryPool::HugglePool->AppendQuery(query);
+    HUGGLE_QP_APPEND(query);
     if (hcfg->UserConfig->EnforceSoftwareRollback())
         query->SetUsingSR(true);
     else
@@ -75,8 +76,8 @@ Collectable_SmartPtr<RevertQuery> WikiUtil::RevertEdit(WikiEdit *_e, QString sum
 }
 
 Message *WikiUtil::MessageUser(WikiUser *User, QString Text, QString Title, QString Summary, bool InsertSection,
-                              Query *Dependency, bool NoSuffix, bool SectionKeep, bool autoremove,
-                              QString BaseTimestamp, bool CreateOnly_, bool FreshOnly_)
+                              Query *Dependency, bool NoSuffix, bool SectionKeep, bool Autoremove,
+                              QString BaseTimestamp, bool CreateOnly, bool FreshOnly)
 {
     if (User == nullptr)
     {
@@ -96,12 +97,12 @@ Message *WikiUtil::MessageUser(WikiUser *User, QString Text, QString Title, QStr
     m->CreateInNewSection = InsertSection;
     m->BaseTimestamp = BaseTimestamp;
     m->SectionKeep = SectionKeep;
-    m->RequireFresh = FreshOnly_;
-    m->CreateOnly = CreateOnly_;
+    m->RequireFresh = FreshOnly;
+    m->CreateOnly = CreateOnly;
     m->Suffix = !NoSuffix;
     QueryPool::HugglePool->Messages.append(m);
     m->RegisterConsumer(HUGGLECONSUMER_CORE);
-    if (!autoremove)
+    if (!Autoremove)
     {
         m->RegisterConsumer(HUGGLECONSUMER_CORE_MESSAGE);
     }
@@ -413,3 +414,15 @@ void WikiUtil::RetrieveEditByRevid(revid_ht revid, WikiSite *site, void *source,
 }
 
 /////////////////////////////////////////////////////////////////
+
+
+void WikiUtil::DisplayContributionBrowser(WikiUser *User, QWidget *parent)
+{
+    // We are using ReportUser as a contribution browser because we already have all the code for contribs
+    // in there, the second parameter in constructors switches between standard report form and just
+    // the contribution browser.
+    ReportUser *report = new ReportUser(parent, true);
+    report->setAttribute(Qt::WidgetAttribute::WA_DeleteOnClose);
+    report->SetUser(User);
+    report->show();
+}

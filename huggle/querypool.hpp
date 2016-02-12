@@ -15,6 +15,9 @@
 
 #include <QList>
 
+#define HUGGLE_QP_APPEND(id) if (Huggle::QueryPool::HugglePool)\
+           { Huggle::QueryPool::HugglePool->AppendQuery(id); }
+
 namespace Huggle
 {
     class ApiQuery;
@@ -50,7 +53,10 @@ namespace Huggle
             void PostProcessEdit(WikiEdit *edit);
             int RunningQueriesGetCount();
             int GetRunningEditingQueries();
-            ProcessList *Processes;
+#ifndef HUGGLE_SDK
+            //! Pointer to UI that contains all processes
+            ProcessList *Processes = nullptr;
+#endif
             //! List of all messages that are being sent
             QList<Message*> Messages;
             //! Pending changes

@@ -63,7 +63,7 @@
   <string name="block-autoblock">Autoattesche Scpärre zohlohße</string>
   <string name="block-email">De &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"„de eläktrohnesche Poß“\"&gt;e-mail&lt;/i&gt; schpärre</string>
   <string name="block-usertalk">Klaaf</string>
-  <string name="block-usercontribs">Beidrähch</string>
+  <string name="block-usercontribs">Beijdrähsch</string>
   <string name="block-blockloglabel">Logbohch met Metmaacher-Schpärre:</string>
   <string name="block-warnloglabel">Warnonge:</string>
   <string name="block-sharedipwarning">Opjepaß: $ es als en vun ville jenözde udder dünahmesche &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"Internet Protocol\"&gt;IP&lt;/i&gt;-Adräß amkkehrt.</string>
@@ -72,6 +72,7 @@
   <string name="block-type">Schärre / Freijävve</string>
   <string name="block-admin">Dä Wikki_Köhbeß, dä jeschpächt hät</string>
   <string name="block-none">Mer han keine Metmaacher zum Schpärre.</string>
+  <string name="contribution-browser-user-info">Mer zeije de neujere Beijdrähsch vum Metmaacher $1 aan</string>
   <string name="config-function">Funxjuhn</string>
   <string name="config-description">Beschrevve!!FUZZYY!!</string>
   <string name="config-shortcut">Affköözong</string>
@@ -103,13 +104,13 @@
   <string name="config-undosummary">Zosammefaßong beim Retuhr_Nämme vun de eije Änderonge</string>
   <string name="config-confirm-talk">Bruch en Beschtähtejong för et Retuhrnämme vun ene Änderong obb ene Klaafsigg</string>
   <string name="config-revert">Retuhr_Nämme</string>
-  <string name="config-change-all">Donn alle Enschtällong esu änndere, dat se mieh zoh de Projramm_Väsjohn 2 paße</string>
+  <string name="config-change-all">Donn alle Enschtällonge esu änndere, dat se mih zoh dä Projramm_Väsjohn 2 paße</string>
   <string name="config-merge-messages">Donn Ding Nohreeschte met andere en de vörhande Afschnedde zersamme schmiiße</string>
   <string name="config-months-name">Nämm Mohnde als Övverchreffte un nit de Övverschrefte vun de Sigge</string>
   <string name="config-enable-irc">Donn der &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"Internet Relay Chat\"&gt;IRC&lt;/i&gt; aanschallde</string>
   <string name="config-remove-reverted">Donn di Änderonge fott lohße, di ene ander ald zerök jenumme hät</string>
   <string name="config-remove-old">Donn de älldere Änderonge fott lohße, wann en neuere Änderong för desällve Sigg beärbeidt weed</string>
-  <string name="config-auto-load-history">Donn de Verjangeheid un de Dahte övver dä Metmaacher automttesch lahde — Scheck öhndlesch Dahte övver et Näzwärk.</string>
+  <string name="config-auto-load-history">Donn de Verjangeheid un de Dahte övver dä Metmaacher automttesch lahde — dat scheck ävver öhndlesch Dahte övver et Näzwärk.</string>
   <string name="config-last-revision">Zeijsch de läzde Väsjohn vun dä Sigg wann de jelahde Änderong nit de läzde Väsjohn es — se weed spähder eronger jelahde, aam &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"„Zwescheschpeijscher “\"&gt;cache&lt;/i&gt; vörbei.</string>
   <string name="config-display-text" fuzzy="true">Zeisch de Näxte aan</string>
   <string name="config-retrieve-edit">De eije Änderong holle</string>
@@ -145,7 +146,7 @@
   <string name="config-notify-beta">Noh Pröhv_Väsjohne lohre, wann müjjelesch</string>
   <string name="delete-title">Schmiiß $1 fott</string>
   <string name="delete-reason">Jrond:</string>
-  <string name="delete-deletionlog">Et Logbohch met de fottjeschmesse Sigge:</string>
+  <string name="delete-deletionlog">Et Logbohch met de fottjeschmeße Sigge:</string>
   <string name="delete-rem-talk">schmiiß der Klaaf dohzoh fott</string>
   <string name="delete-notify">Donn dä Aanlähjer benohreeschtejje</string>
   <string name="delete-e1">Di Sigg kam_mer nit fott schmiiße: $1</string>
@@ -200,8 +201,8 @@
   <string name="login-error-unknown">Mer künne op $1 nit enlogge.</string>
   <string name="main-page">Sigg</string>
   <string name="main-user">Metmaacher</string>
-  <string name="main-contribs">Beidrähch</string>
-  <string name="main-history">Versione</string>
+  <string name="main-contribs">Beijdrähsch</string>
+  <string name="main-history">Väsjohne</string>
   <string name="main-system">Süßtehm</string>
   <string name="main-status-bar">Mer sin &lt;b&gt;$1&lt;/b&gt; Änderonge un &lt;b&gt;$2&lt;/b&gt; Frohre aam Beärbeide. Zohjelohße Metmaacher: &lt;b&gt;$3&lt;/b&gt; Endrääsch en de Waadeschlang: &lt;b&gt;$4&lt;/b&gt; Schtateßteke för $6: $5</string>
   <string name="main-system-messages">Zeijsch neu Täxte udder Nohreeschte aan</string>
@@ -368,8 +369,11 @@
   <string name="user-history-fail">kann de verjangeheid vum Metmaacher $1 nit affrohfe</string>
   <string name="userinfo-generic">Aanjahbe zom Metmaacher</string>
   <string name="userinfo-retrieve">Aanjahbe holle</string>
+  <string name="shortcut-report-username">Donn enem Metmaacher singe Nahme mällde</string>
+  <string name="shortcut-report-user">Donn ene Metmaacher mällde</string>
   <string name="shortcut-my-talk">Ming Klaafsigg</string>
   <string name="shortcut-raw">Donn di Änderong zerök nämme un dä Metmaacher warrne</string>
+  <string name="shortcut-contrib">Zeijsch dä Beijdraach vum Metmaacher, dä di jrahd aanjezeijschte Änderong jemaht hät.</string>
   <string name="shortcut-exit" fuzzy="true">Donn Huggle om nommahle Wääsch be\'ände.</string>
   <string name="shortcut-next">Jangk op de nähxte Änderong</string>
   <string name="shortcut-revert">Donn de Änderong zeröknämme</string>
@@ -387,12 +391,19 @@
   <string name="whitelist-download">Ben en neu „wiiße Leß“ eronger aam Lahde</string>
   <string name="wait">Ene Momang …</string>
   <string name="updating-wl">Ben de „wiiße Leß“ op der neue Schtand aam bränge …</string>
+  <string name="preferences-extension-disabled-restart" fuzzy="true">Dat Zohsazprojramm es esu enschtallt, dadd_et beim nähkst Molh, woh Huggle opjerohfe weed, affjeschalld es.</string>
+  <string name="preferences-watchlist-watch">En de Oppaßleß don</string>
+  <string name="preferences-watchlist-unwatch">Us de Oppaßleß nämme</string>
+  <string name="preferences-watchlist-nochange">Donn nix</string>
   <string name="page-unknown">Onbikannte Sigg</string>
+  <string name="summary-edit-range">De Ongerscheide zwesche de Väsjohne $1 bes $2</string>
   <string name="namespace">Appachtemang</string>
   <string name="report-unable">Mer künne dä Metmaacher nit mällde.</string>
   <string name="about-python-with"> met &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"en freije hühtere Projrammehr_Schprohch\"&gt;Python&lt;/i&gt; -Ongerschtözong</string>
-  <string name="about-python-without"> der ohne &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"en freije hühtere Projrammehr_Schprohch\"&gt;Python&lt;/i&gt; -Ongerschtözong</string>
+  <string name="about-python-without">der ohne Ongerschtözong för &lt;i lang=\"en\" xml:lang=\"en\" dir=\"ltr\" title=\"en freije hühtere Projrammehr_Schprohch\"&gt;Python&lt;/i&gt;</string>
   <string name="about-qt">, övversaz met QT $1 un leuf op QT $1</string>
   <string name="error-unknown-code">Ene onbikannte Fähler es opjetrodde: $1</string>
   <string name="relogin-fail">Mer künne em Wikki nit enlogge, weil: $1</string>
+  <string name="projects">Projäkte</string>
+  <string name="title-on">op $1</string>
 </resources>

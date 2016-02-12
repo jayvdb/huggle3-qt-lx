@@ -28,6 +28,8 @@
 
 using namespace Huggle;
 
+QString previous_edit;
+
 HistoryForm::HistoryForm(QWidget *parent) : QDockWidget(parent), ui(new Ui::HistoryForm)
 {
     this->RetrievingEdit = false;
@@ -43,8 +45,8 @@ HistoryForm::HistoryForm(QWidget *parent) : QDockWidget(parent), ui(new Ui::Hist
         << _l("user")
         << _l("size")
         << _l("summary")
-        << _l("id")
-        << _l("date");
+        << _l("time")
+        << _l("id");
     this->ui->tableWidget->setHorizontalHeaderLabels(header);
     this->ui->tableWidget->verticalHeader()->setVisible(false);
     this->ui->tableWidget->horizontalHeader()->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -99,6 +101,7 @@ void HistoryForm::Update(WikiEdit *edit)
     if (edit == nullptr)
         throw new Huggle::NullPointerException("WikiEdit *edit", BOOST_CURRENT_FUNCTION);
     this->CurrentEdit = edit;
+    this->IgnoreSelectionChanges = true;
     this->ui->pushButton->setText(_l("historyform-retrieve-history"));
     this->ui->pushButton->show();
     this->ui->pushButton->setEnabled(true);
@@ -150,19 +153,8 @@ void HistoryForm::onTick01()
     bool IsLatest = false;
     QList<ApiQueryResultNode*> revision_data = this->query->GetApiQueryResult()->GetNodes("rev");
     int x = 0;
-    QColor xb;
-    bool xt = false;
     while (x < revision_data.count())
     {
-        if (xt)
-        {
-            xb = QColor(206, 202, 250);
-        }
-        else
-        {
-            xb = QColor(224, 222, 250);
-        }
-        xt = !xt;
         ApiQueryResultNode *rv = revision_data.at(x);
         WikiPageHistoryItem *item = new WikiPageHistoryItem();
         if (rv->Attributes.contains("revid"))
@@ -245,27 +237,21 @@ void HistoryForm::onTick01()
         font.setItalic(founder);
         font.setBold(selected);
         QTableWidgetItem *i = new QTableWidgetItem(icon, "");
-        i->setBackgroundColor(xb);
         this->ui->tableWidget->setItem(x, 0, i);
         i = new QTableWidgetItem(item->User);
         i->setFont(font);
-        i->setBackgroundColor(xb);
         this->ui->tableWidget->setItem(x, 1, i);
         i = new QTableWidgetItem(item->Size);
         i->setFont(font);
-        i->setBackgroundColor(xb);
         this->ui->tableWidget->setItem(x, 2, i);
         i = new QTableWidgetItem(item->Summary);
         i->setFont(font);
-        i->setBackgroundColor(xb);
         this->ui->tableWidget->setItem(x, 3, i);
-        i = new QTableWidgetItem(item->RevID);
-        i->setFont(font);
-        i->setBackgroundColor(xb);
-        this->ui->tableWidget->setItem(x, 4, i);
         i = new QTableWidgetItem(item->Date);
         i->setFont(font);
-        i->setBackgroundColor(xb);
+        this->ui->tableWidget->setItem(x, 4, i);
+        i = new QTableWidgetItem(item->RevID);
+        i->setFont(font);
         this->ui->tableWidget->setItem(x, 5, i);
         this->Items.append(item);
         x++;
@@ -278,6 +264,7 @@ void HistoryForm::onTick01()
         if (Configuration::HuggleConfiguration->UserConfig->LastEdit)
         {
             this->Display(0, Resources::Html_StopFire, true);
+            return;
         }
         else
         {
@@ -291,6 +278,47 @@ void HistoryForm::onTick01()
             QToolTip::showText(pntr, "<b><big>" + _l("historyform-not-latest-tip") + "</big></b>", this);
         }
     }
+    if (hcfg->UserConfig->AutomaticallyGroup)
+    {
+        // Check if edits made around of this one weren't made by same user
+        // in case they were we need to display a range of them
+        QString user = this->CurrentEdit->User->Username;
+        int RangeStart = this->SelectedRow;
+        int RangeEnd = this->SelectedRow;
+        int row = this->SelectedRow;
+        while (row > 0)
+        {
+            if (user != this->ui->tableWidget->item(row - 1, 1)->text())
+                break;
+            row--;
+        }
+        RangeStart = row;
+        row = this->SelectedRow;
+        while (row < (this->ui->tableWidget->rowCount() - 1))
+        {
+            if (user != this->ui->tableWidget->item(row + 1, 1)->text())
+                break;
+            row++;
+        }
+        RangeEnd = row;
+        if (RangeStart != RangeEnd)
+        {
+            QItemSelectionModel *selectionModel = this->ui->tableWidget->selectionModel();
+            row = RangeStart;
+            this->IgnoreSelectionChanges = true;
+            this->ui->tableWidget->clearSelection();
+            QItemSelection itemSelection = selectionModel->selection();
+            while (row <= RangeEnd)
+            {
+                this->ui->tableWidget->selectRow(row++);
+                itemSelection.merge(selectionModel->selection(), QItemSelectionModel::Select);
+            }
+            selectionModel->clearSelection();
+            this->IgnoreSelectionChanges = false;
+            selectionModel->select(itemSelection, QItemSelectionModel::Select);
+        }
+    }
+    this->IgnoreSelectionChanges = false;
     MainWindow::HuggleMain->wEditBar->RefreshPage();
 }
 
@@ -315,7 +343,7 @@ void HistoryForm::Clear()
 
 void HistoryForm::Display(int row, QString html, bool turtlemode)
 {
-    if (row == this->SelectedRow)
+    if (row == this->SelectedRow && previous_edit == this->CurrentEdit->Page->PageName)
     {
         // there is nothing to do because we want to display exactly that row which was already selected
         return;
@@ -326,7 +354,8 @@ void HistoryForm::Display(int row, QString html, bool turtlemode)
         return;
     }
 
-    int revid = this->ui->tableWidget->item(row, 4)->text().toInt();
+    int revid = this->ui->tableWidget->item(row, 5)->text().toInt();
+    previous_edit = this->CurrentEdit->Page->PageName;
     if (revid == 0)
         return;
 
@@ -354,11 +383,26 @@ void HistoryForm::GetEdit(long revid, QString prev, QString user, QString html, 
     }
     // there is no such edit, let's get it
     WikiEdit *w = new WikiEdit();
-    w->DiffTo = prev;
+    // this is some weird work around for weird logic used somewhere deep in
+    // mediawiki internals
+    if (prev == "prev")
+    {
+        w->DiffTo = prev;
+        w->RevID = revid;
+    } else
+    {
+        w->DiffTo = QString::number(revid);
+        w->RevID = prev.toLongLong();
+    }
     w->User = new WikiUser(user);
     w->User->Site = this->CurrentEdit->GetSite();
     w->Page = new WikiPage(this->CurrentEdit->Page);
-    w->RevID = revid;
+    if (QueryPool::HugglePool == nullptr)
+    {
+        // Huggle is shutting down now
+        w->SafeDelete();
+        return;
+    }
     QueryPool::HugglePool->PreProcessEdit(w);
     QueryPool::HugglePool->PostProcessEdit(w);
     if (this->t1 != nullptr)
@@ -373,7 +417,7 @@ void HistoryForm::GetEdit(long revid, QString prev, QString user, QString html, 
         this->t1->start(HUGGLE_TIMER);
         return;
     }
-    this->t1->start(2000);
+    this->t1->start(HUGGLE_TIMER * 10);
 }
 
 void HistoryForm::MakeSelectedRowBold()
@@ -405,6 +449,11 @@ void HistoryForm::MakeSelectedRowBold()
 
 void Huggle::HistoryForm::on_tableWidget_itemSelectionChanged()
 {
+    if (this->IgnoreSelectionChanges)
+    {
+        // We are doing some complex selection now, so let's wait for it to happen
+        return;
+    }
     // check if user selected a range
     QItemSelection selection(this->ui->tableWidget->selectionModel()->selection());
     QList<int> rows;
@@ -419,8 +468,12 @@ void Huggle::HistoryForm::on_tableWidget_itemSelectionChanged()
     }
     else if (rows.count() > 1)
     {
-        int max = this->ui->tableWidget->item(rows[0], 4)->text().toInt();
-        QString min = this->ui->tableWidget->item(rows[rows.count() - 1], 4)->text();
+        int max = this->ui->tableWidget->item(rows[0], 5)->text().toInt();
+        QString min;
+        int row_id = rows[rows.count() - 1];
+        if (this->ui->tableWidget->rowCount() > row_id + 1)
+            row_id++;
+        min = this->ui->tableWidget->item(row_id, 5)->text();
         if (!max)
             return;
 

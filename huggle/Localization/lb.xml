@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="name">Lëtzebuergesch</string>
-  <string name="isrtl">falsch</string>
+  <string name="isrtl">false</string>
   <string name="add">Derbäisetzen</string>
   <string name="cancel">Ofbriechen</string>
   <string name="clear">Eidel maachen</string>
@@ -67,6 +67,7 @@
   <string name="block-type">Spären / Spär ophiewen</string>
   <string name="block-admin">Administrateur dee gespaart huet</string>
   <string name="block-none">Et gëtt kee Benotzer fir ze spären.</string>
+  <string name="contribution-browser-user-info">Rezent Kontributioune vum Benotzer $1</string>
   <string name="config-function">Funktioun</string>
   <string name="config-description">Beschreiwung</string>
   <string name="config-queue-filter-ignore">Ignoréieren (spillt keng Roll)</string>
@@ -258,7 +259,7 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="main-tip-userblock">Dëse Benotzer spären</string>
   <string name="main-revert-null">Kann net zréckgesat ginn:Ännerung ass \'null\'</string>
   <string name="main-revert-newpage-title">Dëst konnt net zréckgesat ginn</string>
-  <string name="main-revert-newpage">Dëst ass eng nei Säit dofir ka se net zréckgesat ginn, Dir kënnt se entweder markéieren oder läschen.</string>
+  <string name="main-revert-newpage">Dëst ass eng nei Säit dofir ka se net zréckgesat ginn. Dir kënnt se entweder markéieren oder läschen.</string>
   <string name="message-title">Message $1</string>
   <string name="message-subject">Sujet:</string>
   <string name="message-message">Message:</string>
@@ -313,7 +314,7 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="speedy-notifycreator">Auteur informéieren deen d\'Säit ugeluecht huet</string>
   <string name="rollback">$1 zréchsetzen</string>
   <string name="tag-title">Markéierung $1</string>
-  <string name="tag-tagselector">Markéierung derbäsetzen</string>
+  <string name="tag-tagselector">Markéierung derbäisetzen</string>
   <string name="tag-parameter">Parameter</string>
   <string name="tag-summary">Resumé:</string>
   <string name="tag-insertatend">Um Schluss vun der Säit drasetzen</string>
@@ -328,6 +329,8 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="updater-disable-notify">Aktualisatiounen desaktivéieren</string>
   <string name="userinfo-generic">Benotzerinformatioun</string>
   <string name="userinfo-retrieve">Informatiounen ofruffen</string>
+  <string name="shortcut-report-username">Benotzernumm mellen</string>
+  <string name="shortcut-report-user">Benotzer mellen</string>
   <string name="shortcut-my-talk">Meng Diskussiounssäit</string>
   <string name="shortcut-raw">Ännerung zrécksetzen an e Benotzer warnen</string>
   <string name="shortcut-exit">Huggle normal zoumaachen</string>
@@ -386,6 +389,10 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="welcome-tp-empty-fail">Dëse Benotzer huet keng eidel Diskussiounssäit, sidd Dir sécher datt Dir him e Message schécke wëllt?</string>
   <string name="cr-newer-edits">Konflikt geléist: all Ännerunge goufen zréckgesat, inklusiv nei Ännerungen. D\'Ännerunge ware vum selwechte Benotzer: $1.</string>
   <string name="cr-message-new">Et gëtt méi nei Ännerunge vu(n) $1, sidd Dir sécher datt Dir se wierklech zrécksetze wëllt?</string>
+  <string name="preferences-watchlist-watch">Op d\'Iwwerwaachungslëscht derbäisetzen</string>
+  <string name="preferences-watchlist-unwatch">Vun der Iwwerwaachungslëscht erofhuelen</string>
+  <string name="preferences-watchlist-preferences">Iwwerwaacht Är Wiki-Astellungen</string>
+  <string name="preferences-watchlist-nochange">Näischt maachen</string>
   <string name="request">Ufro</string>
   <string name="requesting">Ufroen</string>
   <string name="requested">Ugefrot</string>
@@ -395,4 +402,18 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="namespace">Nummraum</string>
   <string name="block-alreadyblocked">Benotzer ass scho gespaart</string>
   <string name="error-unknown-code">Onbekannte Feeler: $1</string>
+  <string name="projects">Projeten</string>
+  <string name="login-no-userinfo">De Site huet keng Benotzerinformatioun zréckginn</string>
+  <string name="login-no-site-info-returned">Et goufe keng Informatioune fir dës Wiki zréckginn</string>
+  <string name="login-username-doesnt-exist">Dëse Benotzernumm gëtt et net</string>
+  <string name="developer-mode-enter-title">Whee</string>
+  <string name="unimplemented">Dës Funktioun gouf nach net implementéiert</string>
+  <string name="unknown-item">Onbekannten Objet</string>
+  <string name="title-multiple-projects">méi Projeten ($1)</string>
+  <string name="title-on">op $1</string>
+  <string name="main-revert-already-pending-title">Dës Ännerung gouf schonn zeréckgesat</string>
+  <string name="main-revert-already-pending-text">Dir kënnt dës Ännerung net zerécksetze well se schonn zeréckgesat gëtt. Gedëllegt Iech w.e.g. e bëssen.</string>
+  <string name="main-revert-type-unknown">onbekannt</string>
+  <string name="main-revert-type-in-userspace">am Benotzerraum</string>
+  <string name="main-revert-type-made-by-you">vun Iech gemaach</string>
 </resources>

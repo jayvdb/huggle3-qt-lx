@@ -12,10 +12,12 @@
 #include "apiqueryresult.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
+#include "localization.hpp"
+#ifndef HUGGLE_SDK
+#include "mainwindow.hpp"
 #include "history.hpp"
 #include "historyitem.hpp"
-#include "localization.hpp"
-#include "mainwindow.hpp"
+#endif
 #include "generic.hpp"
 #include "syslog.hpp"
 #include "querypool.hpp"
@@ -168,6 +170,7 @@ bool EditQuery::IsProcessed()
                 if (edit->Attributes["result"] == "Success")
                 {
                     failed = false;
+#ifndef HUGGLE_SDK
                     if (MainWindow::HuggleMain != nullptr)
                     {
                         HistoryItem *item = new HistoryItem();
@@ -177,6 +180,7 @@ bool EditQuery::IsProcessed()
                         this->HI = item;
                         MainWindow::HuggleMain->_History->Prepend(item);
                     }
+#endif
                     this->ProcessCallback();
                     Huggle::Syslog::HuggleLogs->Log(_l("editquery-success", this->Page->PageName, this->Page->GetSite()->Name));
                 }
@@ -208,7 +212,7 @@ void EditQuery::EditPage()
     {
         // we first need to get a text of current page
         this->qRetrieve = Generic::RetrieveWikiPageContents(this->Page);
-        QueryPool::HugglePool->AppendQuery(this->qRetrieve);
+        HUGGLE_QP_APPEND(this->qRetrieve);
         this->qRetrieve->Process();
         return;
     }
@@ -231,6 +235,9 @@ void EditQuery::EditPage()
     QString base = "";
     QString start_ = "";
     QString section = "";
+    QString tag = "";
+    if (Huggle::Version("1.25.2") <= this->Page->GetSite()->MediawikiVersion && !this->Page->GetSite()->GetProjectConfig()->Tag.isEmpty())
+        tag = "&tags=" + QUrl::toPercentEncoding(this->Page->GetSite()->GetProjectConfig()->Tag);
     QString wl = "&watchlist=" + UserConfiguration::WatchListOptionToString(hcfg->UserConfig->Watchlist);
     if (this->InsertTargetToWatchlist)
         wl = "&watchlist=" + UserConfiguration::WatchListOptionToString(WatchlistOption_Watch);
@@ -243,9 +250,9 @@ void EditQuery::EditPage()
     if (!this->StartTimestamp.isEmpty())
         start_ = "&starttimestamp=" + QUrl::toPercentEncoding(this->StartTimestamp);
     this->qEdit->Parameters = "title=" + QUrl::toPercentEncoding(this->Page->PageName) + "&text=" + QUrl::toPercentEncoding(this->text) + section +
-                              wl + "&summary=" + QUrl::toPercentEncoding(this->Summary) + base + start_ + "&token=" +
+                              wl + "&summary=" + QUrl::toPercentEncoding(this->Summary) + tag + base + start_ + "&token=" +
                               QUrl::toPercentEncoding(this->Page->GetSite()->GetProjectConfig()->Token_Csrf);
-    QueryPool::HugglePool->AppendQuery(this->qEdit);
+    HUGGLE_QP_APPEND(this->qEdit);
     this->qEdit->Process();
 }
 

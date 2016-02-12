@@ -82,6 +82,7 @@
   <string name="block-type">Block / unblock</string>
   <string name="block-admin">Blocking sysop</string>
   <string name="block-none">There is no user to block.</string>
+  <string name="contribution-browser-user-info">Showing recent contributions of user $1</string>
   <string name="config-function">Function</string>
   <string name="config-description">Description</string>
   <string name="config-shortcut">Shortcut</string>
@@ -470,6 +471,7 @@
   <string name="report-warn">This user has already reached warning level 4, so no further templates will be delivered to them. You can report them now, but please, make sure that they already reached the proper number of recent warnings! You can do so by clicking the &quot;talk page&quot; button in the following form. Keep in mind that this form and this warning are displayed whether your revert was successful or not, so you might conflict with other users here (double check if the user isn&apos;t already reported). Do you want to report this user?</string>
   <string name="report-tu">Report user</string>
   <string name="report-reason">Reason:</string>
+  <string name="report-auto">Reported $1</string>
   <string name="report-intro">You are going to report user $1</string>
   <string name="report-message">Message:</string>
   <string name="report-log">Warnings for this user:</string>
@@ -540,8 +542,11 @@
   <string name="user-history-fail">unable to retrieve history for user: $1</string>
   <string name="userinfo-generic">User info</string>
   <string name="userinfo-retrieve">Retrieve info</string>
+  <string name="shortcut-report-username">Report username</string>
+  <string name="shortcut-report-user">Report user</string>
   <string name="shortcut-my-talk">My talk page</string>
   <string name="shortcut-raw">Revert edit and warn a user</string>
+  <string name="shortcut-contrib">Show contribution for user who made the currently displayed edit</string>
   <string name="shortcut-exit">Terminate Huggle in a usual way</string>
   <string name="shortcut-next">Go to the next edit</string>
   <string name="shortcut-suspicious">Mark edit as suspicious</string>
@@ -674,7 +679,7 @@
   <string name="preferences-extension-enabled-restart">Extension was enabled, however you need to restart huggle for it to happen</string>
   <string name="preferences-watchlist-watch">Add to watchlist</string>
   <string name="preferences-watchlist-unwatch">Remove from watchlist</string>
-  <string name="preferences-watchlist-preferences">Follow your on wiki preferences</string>
+  <string name="preferences-watchlist-preferences">Follow your on-wiki preferences</string>
   <string name="preferences-watchlist-nochange">Do nothing</string>
   <string name="fail">Fail</string>
   <string name="request">Request</string>
@@ -689,6 +694,7 @@
   <string name="page-tag-fail">Failed to tag page</string>
   <string name="page-tag-error">Unable to tag the page, error was: $1</string>
   <string name="page-unknown">Unknown page</string>
+  <string name="summary-edit-range">Showing a range diff from revid $1 to $2</string>
   <string name="speedy-csd-invalid">Invalid CSD tag, there is no message and wiki tag to use</string>
   <string name="speedy-csd-existing">There is already a CSD tag on the page.</string>
   <string name="namespace">Namespace</string>
@@ -702,4 +708,28 @@
   <string name="about-qt">, compiled using QT $1 Running on QT $1</string>
   <string name="error-unknown-code">Unknown Error: $1</string>
   <string name="relogin-fail">Unable to login to wiki: $1</string>
+  <string name="projects">Projects</string>
+  <string name="unable-to-retrieve-user-list">Unable to retrieve user list: $1</string>
+  <string name="login-no-userinfo">Site didn't return any userinfo information</string>
+  <string name="login-invalid-register-date">Invalid registrationdate returned by mediawiki</string>
+  <string name="login-site-info-query-failed">Site info query for $1 has failed: $2</string>
+  <string name="login-no-site-info-returned">No site info was returned for this wiki</string>
+  <string name="loading-main-window">Loading main huggle window</string>
+  <string name="api.php-invalid-response">The api.php responded with invalid text (webserver is down?), please check debug log for precise information</string>
+  <string name="login-username-doesnt-exist">This username doesn't exist</string>
+  <string name="developer-mode-enter-title">Whee</string>
+  <string name="developer-mode-enter-message">You entered a developer mode!</string>
+  <string name="unimplemented">This feature was not implemented yet</string>
+  <string name="unknown-item">Unknown item</string>
+  <string name="title-multiple-projects">multiple projects ($1)</string>
+  <string name="title-on">on $1</string>
+  <string name="main-revert-custom-reason-text">No reason was provided / custom revert</string>
+  <string name="main-revert-already-pending-title">This edit is already being reverted</string>
+  <string name="main-revert-already-pending-text">You can't revert this edit, because it's already being reverted. Please wait!</string>
+  <string name="main-revert-type-unknown">unknown</string>
+  <string name="main-revert-type-in-userspace">in userspace</string>
+  <string name="main-revert-type-made-by-you">made by you</string>
+  <string name="main-revert-type-made-on-talk-page">made on talk page</string>
+  <string name="main-revert-type-made-white-list">made by a user who is on white list</string>
+  <string name="main-revert-warn">This edit is $1, so even if it looks like it is a vandalism, it may not be, are you sure you want to revert it?</string>
 </resources>

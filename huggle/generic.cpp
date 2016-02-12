@@ -27,9 +27,7 @@ static QString options_ = QUrl::toPercentEncoding("timestamp|user|comment|conten
 QString Generic::Bool2String(bool b)
 {
     if (b)
-    {
         return "true";
-    }
     return "false";
 }
 
@@ -281,4 +279,9 @@ int Generic::MessageBox(QString title, QString text, MessageBoxStyle st, bool en
 int Generic::pMessageBox(QWidget *parent, QString title, QString text, MessageBoxStyle st, bool enforce_stop)
 {
     return Generic::MessageBox(title, text, st, enforce_stop, parent);
+}
+
+QString Generic::IRCQuitDefaultMessage()
+{
+    return "Huggle (" + hcfg->HuggleVersion + "), the anti vandalism software. See #huggle on irc://chat.freenode.net";
 }

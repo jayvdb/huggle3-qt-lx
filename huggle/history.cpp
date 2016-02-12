@@ -113,7 +113,7 @@ void History::Undo(HistoryItem *hist)
             this->qEdit = Generic::RetrieveWikiPageContents("User_talk:" + hist->Target, hist->GetSite());
             this->qEdit->Site = hist->GetSite();
             this->qEdit->Process();
-            QueryPool::HugglePool->AppendQuery(this->qEdit);
+            HUGGLE_QP_APPEND(this->qEdit);
             this->timerRetrievePageInformation->start(20);
             break;
         case HistoryRollback:
@@ -123,17 +123,17 @@ void History::Undo(HistoryItem *hist)
             this->qEdit = Generic::RetrieveWikiPageContents(hist->Target, hist->GetSite());
             this->qEdit->Site = hist->GetSite();
             this->qEdit->Process();
-            QueryPool::HugglePool->AppendQuery(this->qEdit);
+            HUGGLE_QP_APPEND(this->qEdit);
             this->timerRetrievePageInformation->start(20);
             break;
         case HistoryBlock:
         case HistoryDelete:
         case HistoryProtect:
         case HistoryUndelete:
-            Generic::MessageBox(_l("history-error-message-title"), "This feature was not implemented yet");
+            Generic::MessageBox(_l("history-error-message-title"), _l("unimplemented"));
             return;
         case HistoryUnknown:
-            Generic::MessageBox(_l("history-error-message-title"), "Unknown item");
+            Generic::MessageBox(_l("history-error-message-title"), _l("unknown-item"));
             return;
     }
     Syslog::HuggleLogs->Log(_l("history-work", hist->Target));

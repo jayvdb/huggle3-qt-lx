@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="name">Македонски</string>
-  <string name="isrtl">неточно</string>
+  <string name="isrtl">false</string>
   <string name="add">Додај</string>
   <string name="cancel">Откажи</string>
   <string name="clear">Исчисти</string>
@@ -52,6 +52,7 @@
   <string name="disable">Оневозможи</string>
   <string name="no-token">Нема шифра</string>
   <string name="flags">Бележници</string>
+  <string name="gracetime">Чекаме да се завршат барањата за уредување...</string>
   <string name="browser-none">Сега не се прикажува ниедна страница</string>
   <string name="browser-load">Ги преземам разликите користејќи резервен семрежен испис. Почекајте...</string>
   <string name="browser-miss-summ">Нема укажано опис</string>
@@ -82,6 +83,7 @@
   <string name="block-type">Блокирај / одблокирај</string>
   <string name="block-admin">Администратор што блокирал</string>
   <string name="block-none">Нема корисник за блокирање.</string>
+  <string name="contribution-browser-user-info">Приказ на скорешни придонеси на корисникот $1</string>
   <string name="config-function">Функција</string>
   <string name="config-description">Опис</string>
   <string name="config-shortcut">Кратенка</string>
@@ -97,7 +99,7 @@
   <string name="config-ircport">IRC-порта</string>
   <string name="config-difffontsize">Големина на фонтот за разликите</string>
   <string name="config-logfile">Записник</string>
-  <string name="config-viewlocalconfig">Дај локална папка со поставки</string>
+  <string name="config-viewlocalconfig">Дај месна папка со поставки</string>
   <string name="config-trayicon">Прикажувај икона во долната лента</string>
   <string name="config-startupmessage">Прикажувај порака на почетокот</string>
   <string name="config-shownewmessages">Прикажувај лента со нови пораки</string>
@@ -119,7 +121,7 @@
   <string name="config-instant-reverts">Користи непосредни отповикувања (многу брзо, но штом ќе се направим не може да се поврати)</string>
   <string name="config-revert-wait">Чекање за отповикување (секунди)</string>
   <string name="config-revert">Отповикај</string>
-  <string name="config-revert-diff">Отповикај ги поновите уредувања наместо само прикажаните во разликата ако се направени од еден ист корисник (ист вандал)</string>
+  <string name="config-revert-diff">Отповикај ги поновите уредувања наместо само прикажаните во разликата ако се направени од еден ист вандал</string>
   <string name="config-change-all">Смени ги сите поставки на Huggle за да се однесува повеќе како Huggle 2</string>
   <string name="config-merge-messages">Спој ги моите пораки со други од постоечките делови</string>
   <string name="config-months-name">Користи месеци како заглавија наместо имиња на страниците</string>
@@ -129,8 +131,8 @@
   <string name="config-remove-old">Отстрани стари уредувања ако е расчленето поново уредување на истата страница</string>
   <string name="config-auto-load-history">Атоматски вчитај ја историјата и корисничките информации (податочно обемно)</string>
   <string name="config-last-revision">Прикажувај ја последната преработка на страница во случај тековно вчитаното уредување да не е последната верзиаја (се презема со заобиколување на меѓускладот)</string>
-  <string name="config-require-delay">Барај одложување по секое вчитување на следното уредување за кое не е можно да се употреби никаква записна функција (корисно при решавање на проблем со стискање на повеќе копчиња на тастатурата)</string>
-  <string name="config-wait-edit">За колку да се одложи помеѓу вклучувањето на уредните можности (секунди):</string>
+  <string name="config-require-delay">Барај одложување по секое вчитување на следното уредување во чиј тек нема да може се употреби никаква записна функција (за избегнување на бубачката што се јавува при стискање на повеќе копчиња на тастатурата)</string>
+  <string name="config-wait-edit">Одолжувањето, во секунди, до овозможувањето на записните функции:</string>
   <string name="config-display-text">Прикажи следно</string>
   <string name="config-retrieve-edit">Дај мое уредување</string>
   <string name="config-nothing">Ништо</string>
@@ -470,6 +472,7 @@
   <string name="report-warn">Овој корисик веќе е опоменат на IV степен, па затоа веќе нема да добива шаблони. Можете да го пријавите сега, но секогаш проверувајте дали е опоменат доволен број пати во достатно краток период! Ова можете да го направите стискајќи на копчето „страница за разговор“ во следниот образец. Имајте на ум дека овој образец и опомена се прикажува без оглед на тоа дали вашето отповикување успеало, па затоа тука може да се јави спротиставеност со други корисници (секогаш проверувајте дали некој веќе го пријавил корисникот). Дали сакате да го пријавите корисников?</string>
   <string name="report-tu">Пријави корисник</string>
   <string name="report-reason">Причина:</string>
+  <string name="report-auto">Пријавено $1</string>
   <string name="report-intro">Го пријавувате корисникот $1</string>
   <string name="report-message">Порака:</string>
   <string name="report-log">Опомени за овој корисник:</string>
@@ -540,8 +543,11 @@
   <string name="user-history-fail">не можам да ја добијам историјата на корисникот: $1</string>
   <string name="userinfo-generic">Кориснички информации</string>
   <string name="userinfo-retrieve">Повикај се на информациите</string>
+  <string name="shortcut-report-username">Пријави корисничко име</string>
+  <string name="shortcut-report-user">Пријави корисник</string>
   <string name="shortcut-my-talk">Моја страница за разговор</string>
   <string name="shortcut-raw">Отповикај го уредувањето и опомени го корисникот</string>
+  <string name="shortcut-contrib">Прикажи придонеси за корисникот кој го има направено тековно прикажаното уредување</string>
   <string name="shortcut-exit">Изгасни го Huggle на нормален начин</string>
   <string name="shortcut-next">Прејди на следното уредување</string>
   <string name="shortcut-suspicious">Означи го уредувањето како сомнително</string>
@@ -573,7 +579,7 @@
   <string name="warning-warntype">Тип на опомена:</string>
   <string name="warning-warnlog">Опомени за овој корисник:</string>
   <string name="warning-submit">Испрати</string>
-  <string name="wikiedit-tp-fail">Не можам да ја добијам $1. Нема да може да го оцени степенот на опомена.</string>
+  <string name="wikiedit-tp-fail">Не можам да го добијам степенот на опомена за $1. Нема да може да се употреби во оценување.</string>
   <string name="missing-warning">Нема таков предупредувачки шаблон „$1“</string>
   <string name="han-not">Противвандалистичката мрежа не е допуштена во нагодувањата</string>
   <string name="han-connecting">Се поврзувам со противвандалистичката мрежа на Huggle</string>
@@ -669,22 +675,27 @@
   <string name="cr-message-not-same">$1 има понови уредувања од различен корисник. Дали сте сигурни дека навистина сакате да ги отповикате сите нив? (веројатно бездруго нема да успеете поради старата шифра)</string>
   <string name="preferences-delete-using-filter">Не можете да избришете филтер кој е во тековна употреба</string>
   <string name="preferences-extension-disabled">Овој додаток е веќе предвиден да го оневозможи следното пуштање на Huggle</string>
-  <string name="preferences-extension-disabled-restart">Овој додаток е веќе предвиден да го оневозможи следното пуштање на Huggle</string>
+  <string name="preferences-extension-disabled-restart">Додатокот е оневозможен почнувајќи од следново вклучување на Huggle</string>
   <string name="preferences-extension-enabled">Овој додаток не е предвиден да го оневозможи следното пуштање на Huggle</string>
   <string name="preferences-extension-enabled-restart">Додатокот е оневозможен. Меѓутоа, ќе треба да го превклучите Higgle одново за да се доврши оневозможувањето.</string>
+  <string name="preferences-watchlist-watch">Додај во набљудувани</string>
+  <string name="preferences-watchlist-unwatch">Отстрани набљудуваните</string>
+  <string name="preferences-watchlist-preferences">Води се по моите нагодувања на викито</string>
+  <string name="preferences-watchlist-nochange">Не прави ништо</string>
   <string name="fail">Неуспех</string>
   <string name="request">Барање</string>
   <string name="requesting">Барање</string>
   <string name="requested">Побарано</string>
   <string name="protect-request-fail">Не можам да ја добијам тековната пријавна страница: $1</string>
   <string name="protect-request-fail-notext">Не можам да ја добијам тековната приајвна страница бидејќи барањето не даде никаков текст од оваа страница</string>
-  <string name="protect-request-fail-notime">Барањето не даде никакакво време и датум (грешка во МедијаВики?). Запирам со барањето.</string>
+  <string name="protect-request-fail-notime">Барањето не даде никакакво време и датум. Ова може да е грешка во МедијаВики. Запирам со барањето.</string>
   <string name="message-fail">Не успеав да ја доставам пораката</string>
   <string name="edit-conflict">Спротиставеност во уредувањето.</string>
   <string name="page-tag-nodescription">нема опис за оваа ознака :/</string>
   <string name="page-tag-fail">Не успеав да ја означам страницата</string>
   <string name="page-tag-error">Не можам да ја означам страницата. Грешката гласи: $1</string>
   <string name="page-unknown">Непозната страница</string>
+  <string name="summary-edit-range">Приказ на разлики во опсег од $1 до $2</string>
   <string name="speedy-csd-invalid">Неважечка CSD-ознака. Нема порака и викиознака што може да се употреби</string>
   <string name="speedy-csd-existing">Веќе има CSD-ознака на страницата.</string>
   <string name="namespace">Именски простор</string>
@@ -700,4 +711,28 @@
   <string name="about-qt">, составен користејќи QT $1 Работи на QT $1</string>
   <string name="error-unknown-code">Непозната грешка: $1</string>
   <string name="relogin-fail">Не можам да ве најавам на викито: $1</string>
+  <string name="projects">Проекти</string>
+  <string name="unable-to-retrieve-user-list">Не можам да го добијам корисничкиот список: $1</string>
+  <string name="login-no-userinfo">Мрежното место не даде никакви кориснички информации</string>
+  <string name="login-invalid-register-date">МедијаВики даде неважечки датум на регистрација</string>
+  <string name="login-site-info-query-failed">Барањето за информации од мрежното место $1 на успеа: $2</string>
+  <string name="login-no-site-info-returned">Нема информации за ова вики</string>
+  <string name="loading-main-window">Го вчитувам главниот прозорец</string>
+  <string name="api.php-invalid-response">api.php одговори со неважечки текст (мрежниот опслужувач не работи?). Погледајте во дневникот на отстранување грешки за поточни информации</string>
+  <string name="login-username-doesnt-exist">Не постои такво корисничко име.</string>
+  <string name="developer-mode-enter-title">Одлично!</string>
+  <string name="developer-mode-enter-message" fuzzy="true">Влеговте во развоен режим. Addshore е за никаде!</string>
+  <string name="unimplemented">Оваа функција сè уште не е воведена.</string>
+  <string name="unknown-item">Непозната ставка</string>
+  <string name="title-multiple-projects">повеќе проекти ($1)</string>
+  <string name="title-on" fuzzy="true">на</string>
+  <string name="main-revert-custom-reason-text">Нема укажано причина / кориснички-определено отповикување</string>
+  <string name="main-revert-already-pending-title">Ова уредување е веќе отповикано</string>
+  <string name="main-revert-already-pending-text">Не можам да го отповикам уредувањето бидејќи истото веќе е во тек. Почекајте!</string>
+  <string name="main-revert-type-unknown">непознато</string>
+  <string name="main-revert-type-in-userspace">во кориснички простор</string>
+  <string name="main-revert-type-made-by-you">направено од Вас</string>
+  <string name="main-revert-type-made-on-talk-page">направно на страница за разговор</string>
+  <string name="main-revert-type-made-white-list">направено од корисник на кој е на белиот список</string>
+  <string name="main-revert-warn">Ова уредување е $1, па затоа може да не е вандализам, дури и ако ви изгледа така. Дали сте сигурни дека сакате да го отповикате?</string>
 </resources>

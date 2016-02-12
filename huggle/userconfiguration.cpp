@@ -148,7 +148,7 @@ QString UserConfiguration::MakeLocalUserConfig(ProjectConfiguration *Project)
     //configuration_ += "confirm-warned:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmWarned) + "\n";
     // configuration_ += "confirm-range:" + Bool2String(HuggleConfiguration->ProjectConfig->ConfirmRange) + "\n";
     configuration_ += "default-summary:" + Project->DefaultSummary + "\n";
-    configuration_ += "// this option will change the behaviour of automatic resolution, be carefull\n";
+    configuration_ += "// This option will change the behaviour of automatic resolution, be carefull\n";
     configuration_ += "revert-auto-multiple-edits:" + Bool2String(this->RevertOnMultipleEdits) + "\n";
     configuration_ += "automatically-resolve-conflicts:" + Bool2String(this->AutomaticallyResolveConflicts) + "\n";
     configuration_ += "software-rollback:" + Bool2String(this->EnforceManualSoftwareRollback) + "\n";
@@ -161,19 +161,22 @@ QString UserConfiguration::MakeLocalUserConfig(ProjectConfiguration *Project)
     configuration_ += "TruncateEdits:" + Bool2String(this->TruncateEdits) + "\n";
     configuration_ += "TalkpageFreshness:" + QString::number(this->TalkPageFreshness) + "\n";
     configuration_ += "RemoveAfterTrustedEdit:" + Bool2String(this->RemoveAfterTrustedEdit) + "\n";
-    configuration_ += "//Get original creator of every page so that you can G7 instead of reverting the page\n";
+    configuration_ += "// Get original creator of every page so that you can G7 instead of reverting the page\n";
     configuration_ += "RetrieveFounder:" + Bool2String(this->RetrieveFounder) + "\n";
     configuration_ += "DisplayTitle:" + Bool2String(this->DisplayTitle) + "\n";
     configuration_ += "// Periodically check if you received new messages and display a notification box if you get them\n";
     configuration_ += "CheckTP:" + Bool2String(this->CheckTP) + "\n";
     configuration_ += "ManualWarning:" + Bool2String(this->ManualWarning) + "\n";
     configuration_ += "SummaryMode:" + QString::number(this->SummaryMode) + "\n";
+    configuration_ += "AutomaticReports:" + Bool2String(this->AutomaticReports) + "\n";
     configuration_ += "// HAN\n";
     configuration_ += "HAN_Html:" + Bool2String(hcfg->UserConfig->HtmlAllowedInIrc) + "\n";
     configuration_ += "HAN_DisplayUserTalk:" + Bool2String(this->HAN_DisplayUserTalk) + "\n";
     configuration_ += "HAN_DisplayBots:" + Bool2String(this->HAN_DisplayBots) + "\n";
     configuration_ += "HAN_DisplayUser:" + Bool2String(this->HAN_DisplayUser) + "\n";
     configuration_ += "Watchlist:" + WatchListOptionToString(this->Watchlist) + "\n";
+    configuration_ += "// Whether edits made by same user should be grouped up together in page\n";
+    configuration_ += "AutomaticallyGroup:" + Bool2String(this->AutomaticallyGroup) + "\n";
     configuration_ += "QueueID:" + this->QueueID + "\n";
     // shortcuts
     QStringList shortcuts = Configuration::HuggleConfiguration->Shortcuts.keys();
@@ -253,8 +256,12 @@ QString UserConfiguration::MakeLocalUserConfig(ProjectConfiguration *Project)
             configuration_ += "        filter-users:" + Bool2ExcludeRequire(fltr->getIgnoreUsers()) + "\n";
             configuration_ += "        nsfilter-user:" + Bool2ExcludeRequire(fltr->getIgnore_UserSpace()) + "\n";
             configuration_ += "        filter-talk:" + Bool2ExcludeRequire(fltr->getIgnoreTalk()) + "\n";
+            configuration_ += "        ignored-tags:" + fltr->GetIgnoredTags_CommaSeparated() + "\n";
+            configuration_ += "        required-tags:" + fltr->GetRequiredTags_CommaSeparated() + "\n";
             QString ns = "";
-            foreach (int nsid, fltr->Namespaces.keys())
+            QList<int> filter_keys = fltr->Namespaces.keys();
+            qSort(filter_keys);
+            foreach (int nsid, filter_keys)
             {
                 if (fltr->IgnoresNS(nsid))
                     ns += QString::number(nsid) + ",";
@@ -331,12 +338,14 @@ bool UserConfiguration::ParseUserConfig(QString config, ProjectConfiguration *Pr
     this->HAN_DisplayUserTalk = SafeBool(ConfigurationParse("HAN_DisplayUserTalk", config, "true"));
     this->HtmlAllowedInIrc = SafeBool(ConfigurationParse("HAN_Html", config, "false"));
     this->Watchlist = WatchlistOptionFromString(ConfigurationParse("Watchlist", config));
+    this->AutomaticallyGroup = SafeBool(ConfigurationParse("AutomaticallyGroup", config), this->AutomaticallyGroup);
     this->TalkPageFreshness = ConfigurationParse("TalkpageFreshness", config, QString::number(this->TalkPageFreshness)).toInt();
     this->RemoveOldQueueEdits = SafeBool(ConfigurationParse("RemoveOldestQueueEdits", config, "false"));
     this->QueueID = ConfigurationParse("QueueID", config);
     this->GoNext = static_cast<Configuration_OnNext>(ConfigurationParse("OnNext", config, "1").toInt());
     this->DeleteEditsAfterRevert = SafeBool(ConfigurationParse("DeleteEditsAfterRevert", config, "true"));
     this->WelcomeGood = this->SetOption("welcome-good", config, ProjectConfig->WelcomeGood).toBool();
+    this->AutomaticReports = SafeBool(ConfigurationParse("AutomaticReports", config), this->AutomaticReports);
     delete this->Previous_Version;
     this->Previous_Version = new Version(ConfigurationParse("version", config, HUGGLE_VERSION));
     // for now we do this only for home wiki but later we need to make it for every wiki

@@ -78,7 +78,7 @@ PendingWarning *Warnings::WarnUser(QString WarningType, RevertQuery *Dependency,
             return nullptr;
         }
 
-        if (Generic::ReportPreFlightCheck())
+        if (hcfg->UserConfig->AutomaticReports || Generic::ReportPreFlightCheck())
         {
             *Report = true;
         }
@@ -236,7 +236,16 @@ void Warnings::ResendWarnings()
                 bool Report_;
                 PendingWarning *ptr_warning_ = Warnings::WarnUser(warning->Template, nullptr, warning->RelatedEdit, &Report_);
                 if (Report_)
-                    MainWindow::HuggleMain->DisplayReportUserWindow(warning->RelatedEdit->User);
+                {
+                    if (hcfg->UserConfig->AutomaticReports)
+                    {
+                        ReportUser::SilentReport(warning->RelatedEdit->User);
+                    }
+                    else
+                    {
+                        MainWindow::HuggleMain->DisplayReportUserWindow(warning->RelatedEdit->User);
+                    }
+                }
 
                 if (ptr_warning_ != nullptr)
                     PendingWarning::PendingWarnings.append(ptr_warning_);
@@ -276,7 +285,7 @@ void Warnings::ResendWarnings()
                 warning->Query = new Huggle::ApiQuery(ActionQuery, warning->RelatedEdit->GetSite());
                 warning->Query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
                                              "&titles=" + QUrl::toPercentEncoding(warning->Warning->User->GetTalk());
-                QueryPool::HugglePool->AppendQuery(warning->Query);
+                HUGGLE_QP_APPEND(warning->Query);
                 warning->Query->Target = _l("main-user-retrieving-tp", warning->Warning->User->Username);
                 warning->Query->Process();
             } else if (warning->Warning->Error == Huggle::MessageError_Expired)
@@ -286,7 +295,7 @@ void Warnings::ResendWarnings()
                 warning->Query = new Huggle::ApiQuery(ActionQuery, warning->RelatedEdit->GetSite());
                 warning->Query->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("timestamp|user|comment|content") +
                                              "&titles=" + QUrl::toPercentEncoding(warning->Warning->User->GetTalk());
-                QueryPool::HugglePool->AppendQuery(warning->Query);
+                HUGGLE_QP_APPEND(warning->Query);
                 warning->Query->Target = _l("main-user-retrieving-tp", warning->Warning->User->Username);
                 warning->Query->Process();
             } else

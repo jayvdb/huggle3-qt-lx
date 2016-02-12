@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="name">Inglês</string>
-  <string name="isrtl">falso</string>
+  <string name="name">português do Brasil</string>
+  <string name="isrtl">false</string>
   <string name="add">Adicionar</string>
   <string name="cancel">Cancelar</string>
   <string name="clear">Limpar</string>
@@ -22,6 +22,7 @@
   <string name="result">Resultado</string>
   <string name="save">Salvar</string>
   <string name="show">Exibir</string>
+  <string name="no-instant">Avisos instantâneos não estão ativados no projeto $1, a mensagem não enviada para $2, escolha um nível de aviso diferente.</string>
   <string name="undo">Desfazer</string>
   <string name="yes">Sim</string>
   <string name="editing-page">Editando página</string>
@@ -51,6 +52,7 @@
   <string name="disable">Desabilitar</string>
   <string name="no-token">Sem token</string>
   <string name="flags">Sinalizações</string>
+  <string name="gracetime">Aguardando consultas de edições terminarem...</string>
   <string name="browser-none">Nenhuma página é exibida agora</string>
   <string name="browser-load">Baixando diff usando um renderizador web, por favor aguarde...</string>
   <string name="browser-miss-summ">Nenhum sumário foi fornecido</string>
@@ -81,6 +83,7 @@ Este bloqueio substituirá o efeito do bloqueio de faixa. Continuar?</string>
   <string name="block-type">Bloquear / desbloquear</string>
   <string name="block-admin">O administrador que fez o bloqueio</string>
   <string name="block-none">Não há nenhum usuário para bloquear.</string>
+  <string name="contribution-browser-user-info">Mostrar recente contribuições de usuário $1</string>
   <string name="config-function">Função</string>
   <string name="config-description">Descrição</string>
   <string name="config-shortcut">Atalho</string>
@@ -350,6 +353,7 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="main-page-protect">Proteger</string>
   <string name="main-page-delete">Eliminar</string>
   <string name="main-page-load">Carregar</string>
+  <string name="main-patrol-not-enabled">Patrulhamento não está habilitado em $1</string>
   <string name="main-page-restore">Restaurar revisão</string>
   <string name="main-user-info">Mostrar informações do usuário</string>
   <string name="main-user-ignore">Ignorar edições deste usuário</string>
@@ -469,6 +473,7 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="report-warn">Este usuário já atingiu o 4º nível de aviso, então nenhuma outra predefinição será enviada. Você pode denunciá-lo agora, mas por favor, certifique-se de que já foi atingido o número adequado de avisos! Pode fazê-lo ao clicar no botão \"página de discussão\" no formulário a seguir. Tenha em mente que este formulário e este aviso é exibido, não importa se a sua reversão foi ou não bem sucedida, por isso pode entrar em conflito com outros usuários (verifique se o usuário não foi já denunciado). Pretende denunciar este usuário?</string>
   <string name="report-tu">Denunciar usuário</string>
   <string name="report-reason">Razão:</string>
+  <string name="report-auto">relatado $1</string>
   <string name="report-intro">Você está reportando usuário $1</string>
   <string name="report-message">Mensagem:</string>
   <string name="report-log">Avisos para este usuário:</string>
@@ -490,6 +495,8 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="score-take-whole-no-talk-word">Coincide apenas palavras inteiras em páginas que não são de discussão</string>
   <string name="score-only-whole-word">Combinar somente palavras inteiras</string>
   <string name="score-take-any-word">Combinar qualquer palavra que contenha essa sequência de caracteres</string>
+  <string name="ssl-is-not-supported">Você solicitou o uso do SSL, mas $1 não o suporta.</string>
+  <string name="ssl-required">Webserver de $1 requer SSL para ser ativado. Por favor ative o SSL e tente novamente. Se não for possível ativar o SSL (opção fica acinzentada) pode ser necessário a instalação de bibliotecas open ssl em seu sistema.</string>
   <string name="uaa-not-supported">UAA não disponível</string>
   <string name="uaa-not-supported-text">O painel de notícias \"Nomes de usuários que precisam de atenção do administrador\" não está disponível em sua wiki.</string>
   <string name="uaa-reporting">Denunciando $1 para UAA</string>
@@ -537,8 +544,11 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="user-history-fail">não é possível recuperar o histórico do utilizador: $1</string>
   <string name="userinfo-generic">Informação de usuário</string>
   <string name="userinfo-retrieve">Recuperar informação</string>
+  <string name="shortcut-report-username">relatório nome de usuário</string>
+  <string name="shortcut-report-user">Denunciar usuário</string>
   <string name="shortcut-my-talk">Minha página de discussão</string>
   <string name="shortcut-raw">Reverter edição e avisar usuário</string>
+  <string name="shortcut-contrib">Mostrar contribuição do utilizador que realizou a edição apresentada</string>
   <string name="shortcut-exit">Encerrar o Huggle normalmente</string>
   <string name="shortcut-next">Ir para a próxima edição</string>
   <string name="shortcut-suspicious">Marcar como edição suspeita</string>
@@ -570,9 +580,11 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="warning-warntype">Tipo de aviso:</string>
   <string name="warning-warnlog">Avisos a este usuário:</string>
   <string name="warning-submit">Enviar</string>
+  <string name="wikiedit-tp-fail">Não foi possível obter o nível de aviso da página $1. Não será utilizada para a pontuação</string>
   <string name="missing-warning">A predefinição de aviso $1 não existe</string>
   <string name="han-not">Rede de vandalismo não está disponível nas opções</string>
   <string name="han-connecting">Conectando à rede de anti-vandalismo do Huggle</string>
+  <string name="han-already-connected">Não foi possível conectar a HAN porque já está conectada</string>
   <string name="han-already-connecting">Por favor aguarde, estou me conectando a HAN</string>
   <string name="han-disconnected">Você foi desconectado da HAN</string>
   <string name="error-loggedout">Você saiu de sua conta de usuário, entrando na conta...</string>
@@ -607,10 +619,11 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="history-not-found">Nada foi encontrado para desfazer</string>
   <string name="history-already-done">isto já foi desfeito</string>
   <string name="history-message-revert-body">Essa foi uma mensagem modificada por um reversor, você tem certeza que deseja reverter somente o modelo e não a pagina que você editou? (você terá que reverter o reversor se você quiser reverter os dois)</string>
-  <string name="history-revert-fail" fuzzy="true">Impossível de desfazer a sua edição em $1. Erro durante a reversão: $2</string>
+  <string name="history-revert-fail">Não foi possível desfazer sua edição em $1, o seguinte erro foi encontrado: $2</string>
   <string name="history-undone">A edição em $1 foi desfeita com sucesso</string>
+  <string name="history-retrieve-fail">Não foi possível obter o conteúdo da página na qual queria desfazer a edição, o erro foi: $1</string>
   <string name="history-welcome-msg-title">Enviar mensagem de boas-vindas?</string>
-  <string name="history-welcome-msg">Você criou esta página de discussão, por isso não pode ser desfeita, quer substituí-la por uma predefinição de boas-vindas?</string>
+  <string name="history-welcome-msg">Você criou esta página de discussão, por isso não pode ser desfeita. Quer substituí-la por uma predefinição de boas-vindas?</string>
   <string name="notify-fail">Não foi possível notificar o criador de \'$1\'</string>
   <string name="notify-unknowncreator">Não foi possível determinar o criador da página</string>
   <string name="protect-done">Nível de proteção de \'$1\' foi alterado</string>
@@ -635,7 +648,8 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="editquery-success">$1 editado com sucesso em $2</string>
   <string name="editquery-token">Recuperando token para editar $1</string>
   <string name="editquery-token-error">Não foi possível recuperar chave para editar</string>
-  <string name="provider-failure" fuzzy="true">Falha do provedor de feed primário, tentando recuperar</string>
+  <string name="editquery-invalid-token">Não foi possível editar $1 porque o token que eu tinha no cache não é mais válido. Por favor, tente editar a página novamente</string>
+  <string name="provider-failure">Falha do provedor de feed $1 em $2, tentando encontrar um provedor alternativo</string>
   <string name="provider-primary-failure">Provedor de feed primário falhou, trocando para provedor wiki</string>
   <string name="rc-error">Impossível recuperar dados do feed da wiki, último erro: $1</string>
   <string name="rc-timestamp-missing">RC Feed: Item estava sem o atributo de data: $1</string>
@@ -661,26 +675,34 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="cr-message-new">Existem novas edições para $1, tem certeza que quer revertê-las?</string>
   <string name="cr-message-not-same">Existem novas edições feitas para $1 por um usuário diferente. Tem certeza que quer revertê-las? (é provável que falhe de qualquer jeito por causa da chave antiga)</string>
   <string name="preferences-delete-using-filter">Você não pode excluir um filtro que atualmente está sendo usado</string>
+  <string name="preferences-extension-disabled">Esta extensão já está programada para ser desabilitada na próxima inicialização do huggle</string>
+  <string name="preferences-extension-disabled-restart">Esta extensão foi programada para ser desabilitada na próxima inicialização do huggle</string>
+  <string name="preferences-extension-enabled">Esta extensão não está programada para ser desativada na próxima inicialização do huggle</string>
   <string name="preferences-extension-enabled-restart">A extensão foi ativada, no entanto, você precisará reiniciar o Huggle para que isso aconteça</string>
+  <string name="preferences-watchlist-watch">Adicionar às páginas vigiadas</string>
+  <string name="preferences-watchlist-unwatch">Remover das páginas vigiadas</string>
+  <string name="preferences-watchlist-preferences">Seguir suas preferências na wiki</string>
+  <string name="preferences-watchlist-nochange">Não fazer nada</string>
   <string name="fail">Falha</string>
   <string name="request">Solicitar</string>
   <string name="requesting">Solicitando</string>
   <string name="requested">Solicitado</string>
   <string name="protect-request-fail">Não foi possível recuperar a página do relatório atual: $1</string>
   <string name="protect-request-fail-notext">Não foi possível recuperar a página do relatório atual, porque a consulta não retornou nenhum texto para esta página</string>
-  <string name="protect-request-fail-notime">A consulta não retornou nenhuma data (bug no mediawiki?) abortando a consulta</string>
+  <string name="protect-request-fail-notime">A consulta não retornou nenhuma data. Deve ser um bug no mediawiki. Abortando a consulta</string>
   <string name="message-fail">Falha na entrega da mensagem</string>
   <string name="edit-conflict">Conflito de edição</string>
   <string name="page-tag-nodescription">não há descrição para esta etiqueta :/</string>
   <string name="page-tag-fail">A marcação da página falhou</string>
   <string name="page-tag-error">Não foi possível marcar a página, o erro foi: $1</string>
   <string name="page-unknown">Página desconhecida</string>
+  <string name="summary-edit-range">Mostrando um diff de intervalo de revid $1 até $2</string>
   <string name="speedy-csd-invalid">Tag CSD inválida, não há nenhuma mensagem e tag wiki para usar</string>
   <string name="speedy-csd-existing">Já há uma marcação CSD na página</string>
   <string name="namespace">Espaço nominal</string>
   <string name="block-alreadyblocked">O usuário já está bloqueado</string>
   <string name="report-fail">Falha ao denunciar o usuário porque: $1</string>
-  <string name="report-page-fail">Erro. Não é possível recuperar a página de relatório em $1</string>
+  <string name="report-page-fail">Erro: Não é possível recuperar a página de relatório em $1</string>
   <string name="report-page-fail-time">Não foi possível recuperar data da página do relatório atual, falha da API:
 
  $1</string>
@@ -690,4 +712,28 @@ Especial:MyPage/huggle3.css está em falta. Você criou a página huggle3.css no
   <string name="about-qt">, compilado usando QT $1 Rodando em QT $1</string>
   <string name="error-unknown-code">Erro desconhecido: $1</string>
   <string name="relogin-fail">Não foi possível fazer login na wiki: $1</string>
+  <string name="projects">Projetos</string>
+  <string name="unable-to-retrieve-user-list">Não foi possível recuperar lista de usuários: $1</string>
+  <string name="login-no-userinfo">O site não retornou nenhuma userinfo</string>
+  <string name="login-invalid-register-date">registrationdate inválida retornada pelo mediawiki</string>
+  <string name="login-site-info-query-failed">Consulto por info no site para $1 falhou: $2</string>
+  <string name="login-no-site-info-returned">Nenhuma site info foi retornada para essa wiki</string>
+  <string name="loading-main-window">Carregando janela principal do huggle</string>
+  <string name="api.php-invalid-response">api.php respondeu com texto inválido (webserver fora do ar?), por favor confira o debug log para informação precisa</string>
+  <string name="login-username-doesnt-exist">Esse nome de usuário não existe</string>
+  <string name="developer-mode-enter-title">Viva</string>
+  <string name="developer-mode-enter-message">Você entrou no modo para desenvolvedor!</string>
+  <string name="unimplemented">Esta funcionalidade não foi implementada ainda</string>
+  <string name="unknown-item">Item desconhecido</string>
+  <string name="title-multiple-projects">múltiplos projetos ($1)</string>
+  <string name="title-on">Só $1</string>
+  <string name="main-revert-custom-reason-text">Nenhuma razão fornecida / reversão personalisada</string>
+  <string name="main-revert-already-pending-title">Esta edição já está sendo revertida</string>
+  <string name="main-revert-already-pending-text">Você não pode reverter esta decisão, porque ela já está sendo revertida. Aguarde por favor!</string>
+  <string name="main-revert-type-unknown">desconhecido</string>
+  <string name="main-revert-type-in-userspace">no espaço de usuário</string>
+  <string name="main-revert-type-made-by-you">feito por você</string>
+  <string name="main-revert-type-made-on-talk-page">feito na página de discussão</string>
+  <string name="main-revert-type-made-white-list">feito por um usuário na lista branca</string>
+  <string name="main-revert-warn">Essa edição é $1, então mesmo que pareça vandalismo pode não ser. Você está certo que deseja reverter?</string>
 </resources>

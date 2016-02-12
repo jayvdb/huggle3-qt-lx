@@ -30,14 +30,10 @@ bool TerminalParse(Huggle::TerminalParser *p)
 {
     // if parser get an argument which requires app to exit (like --help or --version)
     // we can terminate it now
-    if (p->Parse())
-    {
-        delete p;
-        return false;
-    }
-    // otherwise we can delete it and continue
+    bool require_exit = p->Parse();
     delete p;
-    return true;
+    // we can continue if we don't require exit
+    return !require_exit;
 }
 
 int Fatal(Huggle::Exception *fail)
@@ -66,6 +62,8 @@ int main(int argc, char *argv[])
             return ReturnCode;
         }
         Huggle::HgApplication a(argc, argv);
+        // make it possible to select text from message boxens
+        a.setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5;");
         QApplication::setApplicationName("Huggle");
         QApplication::setOrganizationName("Wikimedia");
         #if QT_VERSION >= 0x050100

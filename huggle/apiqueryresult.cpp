@@ -18,30 +18,27 @@ using namespace Huggle;
 
 ApiQueryResult::ApiQueryResult()
 {
-
+    this->Root = nullptr;
 }
 
 ApiQueryResult::~ApiQueryResult()
 {
-    while (this->Nodes.count())
-    {
-        delete this->Nodes.at(0);
-        this->Nodes.removeAt(0);
-    }
+    this->Nodes.clear();
+    delete this->Root;
 }
 
-static void ProcessChildXMLNodes(ApiQueryResult *result, QDomNodeList nodes)
+static void ProcessChildXMLNodes(ApiQueryResultNode *hiearchy_root, ApiQueryResult *result, QDomNodeList nodes)
 {
     int id = 0;
     while (id < nodes.count())
     {
-        QDomElement element = nodes.at(id).toElement();
-        id++;
+        QDomElement element = nodes.at(id++).toElement();
         if (element.tagName().isEmpty())
             continue;
         if (element.tagName() != "warnings")
         {
             ApiQueryResultNode *node = new ApiQueryResultNode();
+            hiearchy_root->ChildNodes.append(node);
             node->Name = element.tagName();
             int attr = 0;
             while (attr < element.attributes().count())
@@ -55,7 +52,7 @@ static void ProcessChildXMLNodes(ApiQueryResult *result, QDomNodeList nodes)
             }
             result->Nodes.append(node);
             if (element.childNodes().count())
-                ProcessChildXMLNodes(result, element.childNodes());
+                ProcessChildXMLNodes(node, result, element.childNodes());
 
             node->Value = element.text();
             if (node->Name == "error")
@@ -72,11 +69,9 @@ static void ProcessChildXMLNodes(ApiQueryResult *result, QDomNodeList nodes)
             int cn = 0;
             while (element.childNodes().count() > cn)
             {
-                QDomElement warning = element.childNodes().at(cn).toElement();
+                QDomElement warning = element.childNodes().at(cn++).toElement();
                 Syslog::HuggleLogs->WarningLog("API query (" + warning.tagName() + "): " + warning.text());
                 result->Warning = warning.text();
-                // let's go next
-                cn++;
             }
             HUGGLE_DEBUG(result->Data, 5);
         }
@@ -92,7 +87,9 @@ void ApiQueryResult::Process()
 
     QDomDocument result;
     result.setContent(this->Data);
-    ProcessChildXMLNodes(this, result.childNodes());
+    this->Root = new ApiQueryResultNode();
+    this->Root->Name = "Huggle_ApiQueryResultRoot";
+    ProcessChildXMLNodes(this->Root, this, result.childNodes());
 }
 
 ApiQueryResultNode *ApiQueryResult::GetNode(QString node_name)
@@ -121,6 +118,16 @@ QList<ApiQueryResultNode*> ApiQueryResult::GetNodes(QString node_name)
 bool ApiQueryResult::HasWarnings()
 {
     return !this->Warning.isEmpty();
+}
+
+ApiQueryResultNode::ApiQueryResultNode()
+{
+    this->Name = "Huggle_None";
+}
+
+ApiQueryResultNode::~ApiQueryResultNode()
+{
+    HUGGLE_CLEAR_PQ_LIST(this->ChildNodes);
 }
 
 QString ApiQueryResultNode::GetAttribute(QString name, QString default_val)

@@ -97,6 +97,7 @@ namespace Huggle
             QString GetPixmap();
             //! Return a full url to edit
             QString GetFullUrl();
+            bool IsRangeOfEdits();
             //! Return true in case this edit was post processed already
             bool IsPostProcessed();
             //! If edit is ready to be added to queue
@@ -158,6 +159,7 @@ namespace Huggle
             QHash<QString, QVariant> PropertyBag;
             //! You can insert special properties for this edit here that are displayed in huggle interface
             QHash<QString, QString> MetaLabels;
+            QStringList Tags;
             //! List of parsed score words which were found in this edit
             QStringList ScoreWords;
             QDateTime Time;

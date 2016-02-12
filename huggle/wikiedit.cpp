@@ -14,7 +14,9 @@
 #include "apiqueryresult.hpp"
 #include "configuration.hpp"
 #include "generic.hpp"
-#include "hooks.hpp"
+#ifndef HUGGLE_SDK
+    #include "hooks.hpp"
+#endif
 #include "core.hpp"
 #include "querypool.hpp"
 #include "exception.hpp"
@@ -286,6 +288,15 @@ bool WikiEdit::FinalizePostProcessing()
                 this->Time = MediaWiki::FromMWTimestamp(revision->GetAttribute("timestamp"));
             if (revision->Attributes.contains("comment"))
                 this->Summary = revision->GetAttribute("comment");
+
+            foreach (ApiQueryResultNode *tags, revision->ChildNodes)
+            {
+                if (tags->Name == "tags" && tags->ChildNodes.count())
+                {
+                    foreach (ApiQueryResultNode *t, tags->ChildNodes)
+                        this->Tags.append(t->Value);
+                }
+            }
         }
         if (diffs.count() > 0)
         {
@@ -507,10 +518,12 @@ void WikiEdit::PostProcess()
     if (this->Status != Huggle::StatusProcessed)
         throw new Huggle::Exception("Unable to post process an edit that wasn't in processed status", BOOST_CURRENT_FUNCTION);
     this->PostProcessing = true;
+#ifndef HUGGLE_SDK
     // Send info to other functions
     Hooks::EditBeforePostProcess(this);
+#endif
     this->qTalkpage = Generic::RetrieveWikiPageContents(this->User->GetTalk(), this->GetSite());
-    QueryPool::HugglePool->AppendQuery(this->qTalkpage);
+    HUGGLE_QP_APPEND(this->qTalkpage);
     this->qTalkpage->Target = "Retrieving tp " + this->User->GetTalk();
     this->qTalkpage->Process();
     if (!this->NewPage)
@@ -519,24 +532,26 @@ void WikiEdit::PostProcess()
         if (this->RevID != WIKI_UNKNOWN_REVID)
         {
             // &rvprop=content can't be used because of fuck up of mediawiki
-            this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("ids|user|timestamp|comment") +
+            this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("ids|tags|user|timestamp|comment") +
                                             "&rvlimit=1&rvstartid=" + QString::number(this->RevID) + "&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         } else
         {
-            this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("ids|user|timestamp|comment") +
+            this->qDifference->Parameters = "prop=revisions&rvprop=" + QUrl::toPercentEncoding("ids|tags|user|timestamp|comment") +
                                             "&rvlimit=1&rvdiffto=" + this->DiffTo + "&titles=" +
                                             QUrl::toPercentEncoding(this->Page->PageName);
         }
         this->qDifference->Target = this->Page->PageName;
-        QueryPool::HugglePool->AppendQuery(this->qDifference);
+        HUGGLE_QP_APPEND(this->qDifference);
         this->qDifference->Process();
+        if (hcfg->Verbosity > 0)
+            this->PropertyBag.insert("debug_api_url_diff", this->qDifference->GetURL());
         this->ProcessingDiff = true;
     } else if (this->Page->Contents.isEmpty())
     {
         this->qText = Generic::RetrieveWikiPageContents(this->Page, true);
         this->qText->Target = "Retrieving content of " + this->Page->PageName;
-        QueryPool::HugglePool->AppendQuery(this->qText);
+        HUGGLE_QP_APPEND(this->qText);
         this->qText->Process();
     }
     if (hcfg->UserConfig->RetrieveFounder)
@@ -545,7 +560,7 @@ void WikiEdit::PostProcess()
         this->qFounder->Parameters = "prop=revisions&titles=" + QUrl::toPercentEncoding(this->Page->PageName) + "&rvdir=newer&rvlimit=1&rvprop=" +
                                      QUrl::toPercentEncoding("ids|user|timestamp");
         this->qFounder->Target = this->Page->PageName + " (retrieving founder)";
-        QueryPool::HugglePool->AppendQuery(this->qFounder);
+        HUGGLE_QP_APPEND(this->qFounder);
         this->qFounder->Process();
     }
     this->ProcessingRevs = true;
@@ -632,9 +647,20 @@ QString WikiEdit::GetFullUrl()
             "&diff=" + QString::number(this->RevID);
 }
 
+bool WikiEdit::IsRangeOfEdits()
+{
+    return (this->DiffTo.toLower() != "prev"
+       && this->DiffTo.toLower() != "next"
+       && !this->DiffTo.isEmpty());
+}
+
 bool WikiEdit::IsReady()
 {
+#ifdef HUGGLE_SDK
+    return true;
+#else
     return Hooks::EditCheckIfReady(this);
+#endif
 }
 
 QMutex ProcessorThread::EditLock(QMutex::Recursive);
@@ -660,8 +686,10 @@ void ProcessorThread::run()
 
 void ProcessorThread::Process(WikiEdit *edit)
 {
+#ifndef HUGGLE_SDK
     if (Hooks::EditBeforeScore(edit))
     {
+#endif
         bool IgnoreWords = false;
         if (edit->IsRevert)
         {
@@ -678,29 +706,35 @@ void ProcessorThread::Process(WikiEdit *edit)
             }
         }
         // score
+        ProjectConfiguration *conf = edit->GetSite()->GetProjectConfig();
         if (edit->User->IsIP())
         {
-            edit->Score += edit->GetSite()->GetProjectConfig()->IPScore;
+            edit->Score += conf->IPScore;
         }
         if (edit->Bot)
-            edit->Score += edit->GetSite()->GetProjectConfig()->BotScore;
+            edit->Score += conf->BotScore;
         if (edit->Page->IsUserpage() && !edit->Page->SanitizedName().contains(edit->User->Username))
-            edit->Score += edit->GetSite()->GetProjectConfig()->ForeignUser;
+            edit->Score += conf->ForeignUser;
         else if (edit->Page->IsUserpage())
-            edit->Score += edit->GetSite()->GetProjectConfig()->ScoreUser;
+            edit->Score += conf->ScoreUser;
         if (edit->Page->IsTalk())
-            edit->Score += edit->GetSite()->GetProjectConfig()->ScoreTalk;
+            edit->Score += conf->ScoreTalk;
         if (edit->Size > 1200 || edit->Size < -1200)
-            edit->Score += edit->GetSite()->GetProjectConfig()->ScoreChange;
+            edit->Score += conf->ScoreChange;
         if (edit->Page->IsUserpage())
             IgnoreWords = true;
         if (edit->User->IsWhitelisted())
-            edit->Score += edit->GetSite()->GetProjectConfig()->WhitelistScore;
+            edit->Score += conf->WhitelistScore;
         edit->Score += edit->User->GetBadnessScore();
         if (!IgnoreWords)
             edit->ProcessWords();
-        if (edit->SizeIsKnown && edit->Size < (-1*edit->GetSite()->GetProjectConfig()->LargeRemoval))
-            edit->Score += edit->GetSite()->GetProjectConfig()->ScoreRemoval;
+        foreach (QString tx, edit->Tags)
+        {
+            if (conf->ScoreTags.contains(tx))
+                edit->Score += conf->ScoreTags[tx];
+        }
+        if (edit->SizeIsKnown && edit->Size < (-1 * conf->LargeRemoval))
+            edit->Score += conf->ScoreRemoval;
         edit->User->ParseTP(QDate::currentDate());
         if (edit->Summary.size() == 0)
             edit->Score += 10;
@@ -725,8 +759,10 @@ void ProcessorThread::Process(WikiEdit *edit)
                 edit->CurrentUserWarningLevel = WarningLevel4;
                 break;
         }
+#ifndef HUGGLE_SDK
     }
     Hooks::EditPostProcess(edit);
+#endif
     edit->PostProcessing = false;
     edit->ProcessedByWorkerThread = true;
     edit->Status = StatusPostProcessed;

@@ -69,6 +69,7 @@ namespace Huggle
             //! \todo This needs to be later used as a default value for user config, however it's not being ensured
             //!       this value is loaded before the user config right now
             bool AutomaticallyResolveConflicts = false;
+            QString ReportAutoSummary;
             bool IsSane = false;
             bool Approval = false;
             bool UserlistSync = false;
@@ -144,6 +145,8 @@ namespace Huggle
             QStringList     RevertSummaries;
             QStringList     Goto;
             QString         SoftwareRevertDefaultSummary;
+            //! This is used to identify edits made by huggle, if empty no tags are inserted to meta information of edit
+            QString         Tag;
             QString         Token_Csrf;
             //! This is a token returned by tokens query from mw which should be same for all rollback execs
             QString         Token_Rollback;
@@ -197,6 +200,7 @@ namespace Huggle
             QString         SharedIPTemplate = "";
 
             // Definitions
+            QHash<QString, int>     ScoreTags;
             QList<ScoreWord>        ScoreParts;
             QList<ScoreWord>        ScoreWords;
             QList<ScoreWord>        NoTalkScoreWords;

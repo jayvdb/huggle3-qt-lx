@@ -13,8 +13,10 @@
 
 #include "definitions.hpp"
 
+#ifndef HUGGLE_SDK
 #include "pythonengine.hpp"
 #include <QApplication>
+#endif
 #include <QList>
 #include <QDateTime>
 
@@ -27,6 +29,7 @@ namespace Huggle
         class PythonEngine;
     }
 #endif
+    class Configuration;
     class Login;
     class MainWindow;
     class Exception;
@@ -37,6 +40,7 @@ namespace Huggle
     class QueryPool;
     class iExtension;
 
+#ifndef HUGGLE_SDK
     //! Override of qapplication so that we can reimplement notify
     class HUGGLE_EX HgApplication : public QApplication
     {
@@ -44,6 +48,7 @@ namespace Huggle
             HgApplication(int& argc, char** argv) : QApplication(argc, argv) {}
             bool notify(QObject* receiver, QEvent* event);
     };
+#endif
 
     /*!
      * \brief Miscelanceous system functions
@@ -58,7 +63,9 @@ namespace Huggle
     class HUGGLE_EX Core
     {
         public:
+#ifndef HUGGLE_SDK
             static void ExceptionHandler(Exception *exception);
+#endif
             /*!
              * \brief VersionRead - read the version from embedded git file
              *
@@ -77,8 +84,13 @@ namespace Huggle
 
             Core();
             ~Core();
+#ifndef HUGGLE_SDK
             //! Function which is called as one of first when huggle is loaded
             void Init();
+#else
+            //! Use this to initialize huggle core if you are working with Huggle SDK
+            void SdkInit(Configuration *huggle_conf);
+#endif
             //! Load extensions (libraries as well as python)
             void ExtensionLoad();
             //! Terminate the process, call this after you release all resources and finish all queries
@@ -94,8 +106,10 @@ namespace Huggle
             QueryPool *HGQP;
             // Global variables
             QDateTime StartupTime;
+#ifndef HUGGLE_SDK
             //! Login form
             Login *fLogin;
+#endif
             Syslog *HuggleSyslog;
             //! List of extensions loaded in huggle
             QList<iExtension*> Extensions;

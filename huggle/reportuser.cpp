@@ -27,22 +27,51 @@
 #include "ui_reportuser.h"
 using namespace Huggle;
 
-ReportUser::ReportUser(QWidget *parent) : HW("reportuser", this, parent), ui(new Ui::ReportUser)
+void ReportUser::SilentReport(WikiUser *user)
 {
+    // We need to automatically report this user, that means we create a background instance
+    // of this report form, prefill it and submit without even showing it to user
+    if (Configuration::HuggleConfiguration->Restricted)
+    {
+        Generic::DeveloperError();
+        return;
+    }
+    if (user == nullptr)
+        throw new Huggle::NullPointerException("local WikiUser *user", BOOST_CURRENT_FUNCTION);
+    if (user->IsReported)
+    {
+        Syslog::HuggleLogs->ErrorLog(_l("report-duplicate"));
+        return;
+    }
+    // only use this if current projects support it
+    if (!user->GetSite()->GetProjectConfig()->AIV)
+        return;
+    ReportUser *window = new ReportUser();
+    window->SetUser(user);
+    window->SilentReport();
+}
+
+ReportUser::ReportUser(QWidget *parent, bool browser) : HW("reportuser", this, parent), ui(new Ui::ReportUser)
+{
+    this->isBrowser = browser;
     this->ui->setupUi(this);
     this->ReportedUser = nullptr;
     this->ui->tableWidget->horizontalHeader()->setSelectionBehavior(QAbstractItemView::SelectRows);
     this->ui->pushButton->setEnabled(false);
     this->ui->pushButton->setText(_l("report-history"));
     QStringList header;
-    this->ui->tableWidget->setColumnCount(5);
     this->tPageDiff = new QTimer(this);
     connect(this->tPageDiff, SIGNAL(timeout()), this, SLOT(On_DiffTick()));
     header << _l("page") <<
               _l("time") <<
               _l("link") <<
-              _l("diffid") <<
-              _l("report-include");
+              _l("diffid");
+    if (!this->isBrowser)
+    {
+        // In case we are in browser mode we don't want to use this column
+        header << _l("report-include");
+    }
+    this->ui->tableWidget->setColumnCount(header.size());
     this->ui->tableWidget->setHorizontalHeaderLabels(header);
     this->ui->tableWidget->verticalHeader()->setVisible(false);
     this->ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -85,6 +114,17 @@ ReportUser::ReportUser(QWidget *parent) : HW("reportuser", this, parent), ui(new
     this->tReportUser = nullptr;
     this->ui->webView->setHtml(_l("report-select"));
     this->RestoreWindow();
+    if (this->isBrowser)
+    {
+        this->ui->label_2->setVisible(false);
+        this->ui->label_3->setVisible(false);
+        this->ui->pushButton->setVisible(false);
+        this->ui->pushButton_2->setVisible(false);
+        this->ui->pushButton_4->setVisible(false);
+        this->ui->pushButton_5->setVisible(false);
+        this->ui->pushButton_6->setVisible(false);
+        this->ui->lineEdit->setVisible(false);
+    }
 }
 
 ReportUser::~ReportUser()
@@ -103,8 +143,15 @@ bool ReportUser::SetUser(WikiUser *user)
     if (this->ReportedUser)
         delete this->ReportedUser;
     this->ReportedUser = new WikiUser(user);
-    this->setWindowTitle(_l("report-title", this->ReportedUser->Username));
-    this->ui->label->setText(_l("report-intro", user->Username));
+    if (this->isBrowser)
+    {
+        this->ui->label->setText(_l("contribution-browser-user-info", user->Username));
+        this->setWindowTitle("Contribution browser for: " + user->Username);
+    } else
+    {
+        this->setWindowTitle(_l("report-title", this->ReportedUser->Username));
+        this->ui->label->setText(_l("report-intro", user->Username));
+    }
     this->ui->lineEdit->setText(this->ReportedUser->GetSite()->GetProjectConfig()->ReportDefaultReason);
     this->qHistory = new ApiQuery(ActionQuery, this->ReportedUser->GetSite());
     this->qHistory->Parameters = "list=recentchanges&rcuser=" + QUrl::toPercentEncoding(user->Username) +
@@ -122,6 +169,14 @@ bool ReportUser::SetUser(WikiUser *user)
     connect(this->tReportUser, SIGNAL(timeout()), this, SLOT(Tick()));
     this->tReportUser->start(HUGGLE_TIMER);
     return true;
+}
+
+void ReportUser::SilentReport()
+{
+    this->flagSilent = true;
+    this->setAttribute(Qt::WA_DeleteOnClose);
+    this->ui->lineEdit->setText(this->ReportedUser->GetSite()->GetProjectConfig()->ReportAutoSummary);
+    this->Report();
 }
 
 void ReportUser::Tick()
@@ -166,21 +221,41 @@ void ReportUser::Tick()
                     expiration = "unblock";
                     flags = "unblock";
                 }
-                QDomNodeList qlflags = node.childNodes();
+                QDomNodeList qlparams = node.childNodes();
                 int flag_n = 0;
-                while (flag_n < qlflags.count())
+                while (flag_n < qlparams.count())
                 {
-                    QDomElement fe = qlflags.at(flag_n).toElement();
+                    QDomElement fe = qlparams.at(flag_n).toElement();
                     ++flag_n;
-                    if (fe.nodeName() != "block")
-                        continue;
-                    if (fe.attributes().contains("duration"))
-                        duration = fe.attribute("duration");
+                    if (fe.nodeName() == "params")
+                    {
+                        if (fe.attributes().contains("duration"))
+                            duration = fe.attribute("duration");
 
-                    if (fe.attributes().contains("expiry"))
-                        expiration = fe.attribute("expiry");
-                    if (fe.attributes().contains("flags"))
-                        flags = fe.attribute("flags");
+                        if (fe.attributes().contains("expiry"))
+                            expiration = fe.attribute("expiry");
+
+                        // Look for the flags
+                        QDomNodeList params_l = node.childNodes();
+                        int param_n = 0;
+                        while (param_n++ < params_l.count())
+                        {
+                            QDomElement parameter = params_l.at(param_n).toElement();
+                            if (parameter.nodeName() == "flags")
+                            {
+                                // Flags
+                                QDomNodeList flags_l = parameter.childNodes();
+                                int f = 0;
+                                while (f++ < flags_l.count())
+                                {
+                                    QDomElement fx = flags_l.at(f).toElement();
+                                    if (fx.nodeName() != "f")
+                                        continue;
+                                    flags += fx.text() + ", ";
+                                }
+                            }
+                        }
+                    }
                 }
                 this->ui->tableWidget_2->insertRow(0);
                 this->ui->tableWidget_2->setItem(0, 0, new QTableWidgetItem(id));
@@ -208,15 +283,31 @@ void ReportUser::Tick()
                 this->tReportUser->stop();
                 this->ui->pushButton->setText(_l("report-user"));
                 this->ui->pushButton->setEnabled(true);
-                Generic::pMessageBox(this, "Failure", _l("report-fail", this->qEdit->GetFailureReason()), MessageBoxStyleError);
-                Syslog::HuggleLogs->DebugLog("REPORT: " + this->qEdit->Result->Data);
-                this->Kill();
-                return;
+                if (this->flagSilent)
+                {
+                    Syslog::HuggleLogs->ErrorLog(_l("report-fail", this->qEdit->GetFailureReason()));
+                    Syslog::HuggleLogs->DebugLog("REPORT: " + this->qEdit->Result->Data);
+                    this->Kill();
+                    //this->close();
+                    delete this;
+                } else
+                {
+                    Generic::pMessageBox(this, "Failure", _l("report-fail", this->qEdit->GetFailureReason()), MessageBoxStyleError);
+                    Syslog::HuggleLogs->DebugLog("REPORT: " + this->qEdit->Result->Data);
+                    this->Kill();
+                    return;
+                }
             }
             this->ReportedUser->IsReported = true;
             this->ui->pushButton->setText(_l("report-done"));
             WikiUser::UpdateUser(this->ReportedUser);
             this->Kill();
+            if (this->flagSilent)
+            {
+                Syslog::HuggleLogs->Log(_l("report-auto", this->ReportedUser->Username));
+                //this->close();
+                delete this;
+            }
         }
         return;
     }
@@ -255,6 +346,11 @@ void ReportUser::Tick()
                 this->ReportedUser->IsReported = true;
                 WikiUser::UpdateUser(this->ReportedUser);
                 this->Kill();
+                if (this->flagSilent)
+                {
+                    Syslog::HuggleLogs->ErrorLog(_l("report-duplicate"));
+                    this->close();
+                }
                 return;
             }
             this->InsertUser();
@@ -431,44 +527,7 @@ void ReportUser::Test()
 
 void ReportUser::on_pushButton_clicked()
 {
-    this->ui->pushButton->setEnabled(false);
-    // we need to get a report info for all selected diffs
-    QString reports = "";
-    int xx = 0;
-    int EvidenceID = 0;
-    while (xx < this->ui->tableWidget->rowCount())
-    {
-        if (this->CheckBoxes.count() > xx)
-        {
-            QCheckBox *checkBox = (QCheckBox*)this->ui->tableWidget->cellWidget(xx, 4);
-            if (checkBox->isChecked())
-            {
-                ++EvidenceID;
-                reports += "[[Special:Diff/" + this->ui->tableWidget->item(xx, 3)->text() + "|" +
-                           QString::number(EvidenceID) + "]] ";
-            }
-        }
-        ++xx;
-    }
-    if (reports.isEmpty())
-    {
-        QMessageBox::StandardButton mb;
-        mb = QMessageBox::question(this, "Question", _l("report-evidence-none-provid"), QMessageBox::Yes|QMessageBox::No);
-        if (mb == QMessageBox::No)
-        {
-            this->ui->pushButton->setEnabled(true);
-            return;
-        }
-    }
-    // obtain current page
-    this->Loading = true;
-    this->ui->pushButton->setText(_l("report-retrieving"));
-    this->qHistory = Generic::RetrieveWikiPageContents(this->ReportedUser->GetSite()->GetProjectConfig()->ReportAIV, this->ReportedUser->GetSite());
-    this->qHistory->Site = this->ReportedUser->GetSite();
-    this->qHistory->Process();
-    this->ReportText = reports;
-    this->tReportUser->start(HUGGLE_TIMER);
-    return;
+    this->Report();
 }
 
 void ReportUser::on_pushButton_2_clicked()
@@ -538,6 +597,47 @@ void ReportUser::InsertUser()
     text = text.replace("$2", ReportText);
     text = text.replace("$3", ui->lineEdit->text());
     this->ReportContent = ReportContent + "\n" + text;
+}
+
+void ReportUser::Report()
+{
+    this->ui->pushButton->setEnabled(false);
+    // we need to get a report info for all selected diffs
+    QString reports = "";
+    int xx = 0;
+    int EvidenceID = 0;
+    while (xx < this->ui->tableWidget->rowCount())
+    {
+        if (this->CheckBoxes.count() > xx)
+        {
+            QCheckBox *checkBox = (QCheckBox*)this->ui->tableWidget->cellWidget(xx, 4);
+            if (checkBox->isChecked())
+            {
+                ++EvidenceID;
+                reports += "[[Special:Diff/" + this->ui->tableWidget->item(xx, 3)->text() + "|" +
+                           QString::number(EvidenceID) + "]] ";
+            }
+        }
+        ++xx;
+    }
+    if (!this->flagSilent && reports.isEmpty())
+    {
+        QMessageBox::StandardButton mb;
+        mb = QMessageBox::question(this, "Question", _l("report-evidence-none-provid"), QMessageBox::Yes|QMessageBox::No);
+        if (mb == QMessageBox::No)
+        {
+            this->ui->pushButton->setEnabled(true);
+            return;
+        }
+    }
+    // obtain current page
+    this->Loading = true;
+    this->ui->pushButton->setText(_l("report-retrieving"));
+    this->qHistory = Generic::RetrieveWikiPageContents(this->ReportedUser->GetSite()->GetProjectConfig()->ReportAIV, this->ReportedUser->GetSite());
+    this->qHistory->Site = this->ReportedUser->GetSite();
+    this->qHistory->Process();
+    this->ReportText = reports;
+    this->tReportUser->start(HUGGLE_TIMER);
 }
 
 void ReportUser::Kill()

@@ -98,6 +98,10 @@ Configuration::Configuration()
     this->MakeShortcut("main-revert-warn-and-stay", "shortcut-rw-stay", "Shift+Q");
     this->MakeShortcut("main-tab", "shortcut-tab", "Ctrl+T");
     this->MakeShortcut("main-browser-close-tab", "shortcut-browser-close-tab", "Ctrl+W");
+    this->MakeShortcut("main-user-report-name", "shortcut-report-username", "Alt+R");
+    this->MakeShortcut("main-user-report-user", "shortcut-report-user", "Ctrl+R");
+    this->MakeShortcut("main-user-display-contribs", "shortcut-contrib", "C");
+    this->MakeShortcut("main-user-contribs-browser", "shortcut-user-contribs-browser", "Shift+C");
 }
 
 Configuration::~Configuration()
@@ -648,6 +652,14 @@ Shortcut::Shortcut(QString name, QString description)
         this->ID = HUGGLE_ACCEL_REVERT_STAY;
     else if (name == "main-talk")
         this->ID = HUGGLE_ACCEL_MAIN_TALK;
+    else if (name == "main-user-report-name")
+        this->ID = HUGGLE_ACCEL_USER_REPORT_USER_NAME;
+    else if (name == "main-user-report-user")
+        this->ID = HUGGLE_ACCEL_USER_REPORT;
+    else if (name == "main-user-display-contribs")
+        this->ID = HUGGLE_ACCEL_MAIN_USER_CONTRIBUTIONS;
+    else if (name == "main-user-contribs-browser")
+        this->ID = HUGGLE_ACCEL_MAIN_CONTRIB_BROWSER;
     else if (name.startsWith("main-revert-and-warn-"))
     {
         if (name == "main-revert-and-warn-0")

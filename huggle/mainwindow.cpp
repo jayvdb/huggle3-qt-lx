@@ -108,6 +108,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->Queries = new ProcessList(this);
     this->SystemLog = new HuggleLog(this);
     this->CreateBrowserTab("Welcome page", 0);
+    this->TrayIcon.setIcon(this->windowIcon());
+    this->TrayIcon.show();
+    this->TrayIcon.setToolTip("Huggle");
     this->Queue1 = new HuggleQueue(this);
     this->wEditBar = new EditBar(this);
     this->_History = new History(this);
@@ -146,13 +149,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QString projects = hcfg->Project->Name;
     if (hcfg->Multiple)
     {
-        projects = "multiple projects (";
         foreach (WikiSite *site, hcfg->Projects)
             projects += site->Name + ", ";
         projects = projects.mid(0, projects.length() - 2);
-        projects += ")";
     }
-    this->setWindowTitle("Huggle 3 QT-LX on " + projects);
+    if (!hcfg->Multiple)
+        this->setWindowTitle("Huggle 3 QT-LX " + _l("title-on", projects));
+    else
+        this->setWindowTitle("Huggle 3 QT-LX " + _l("title-on", _l("title-multiple-projects", projects)));
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@layout");
     this->DisplayWelcomeMessage();
     HUGGLE_PROFILER_PRINT_TIME("MainWindow::MainWindow(QWidget *parent)@welcome");
@@ -505,6 +509,11 @@ void MainWindow::RequestPD(WikiEdit *edit)
     this->fSpeedyDelete->show();
 }
 
+void MainWindow::TrayMessage(QString title, QString text)
+{
+    this->TrayIcon.showMessage(title, text);
+}
+
 void MainWindow::RevertAgf(bool only)
 {
     if (this->CurrentEdit == nullptr || !this->CheckExit() || !this->CheckEditableBrowserPage() || !this->CheckRevertable())
@@ -516,7 +525,7 @@ void MainWindow::RevertAgf(bool only)
     }
     bool ok;
     QString reason = QInputDialog::getText(this, _l("reason"), _l("main-revert-custom-reson"), QLineEdit::Normal,
-                                           "No reason was provided / custom revert", &ok);
+                                           _l("main-revert-custom-reason-text"), &ok);
     if (!ok)
         return;
     QString summary = this->GetCurrentWikiSite()->GetProjectConfig()->AgfRevert;
@@ -646,6 +655,12 @@ void MainWindow::ReloadShort(QString id)
         case HUGGLE_ACCEL_MAIN_REVERT:
             q = this->ui->actionRevert_currently_displayed_edit;
             tip = this->ui->actionRevert;
+            break;
+        case HUGGLE_ACCEL_MAIN_USER_CONTRIBUTIONS:
+            q = this->ui->actionUser_contributions;
+            break;
+        case HUGGLE_ACCEL_MAIN_CONTRIB_BROWSER:
+            q = this->ui->actionContribution_browser;
             break;
         case HUGGLE_ACCEL_CREATE_NEW_TAB:
             q = this->ui->actionOpen_new_tab;
@@ -793,6 +808,12 @@ void MainWindow::ReloadShort(QString id)
         case HUGGLE_ACCEL_MAIN_EXIT:
             q = this->ui->actionExit;
             break;
+        case HUGGLE_ACCEL_USER_REPORT_USER_NAME:
+            q = this->ui->actionReport_username;
+            break;
+        case HUGGLE_ACCEL_USER_REPORT:
+            q = this->ui->actionReport_user_2;
+            break;
     }
 
     if (q != nullptr)
@@ -894,35 +915,34 @@ bool MainWindow::PreflightCheck(WikiEdit *_e)
         return false;
     if (this->qNext != nullptr)
     {
-        Generic::pMessageBox(this, "This edit is already being reverted", "You can't revert this edit, because it's already being reverted. Please wait!",
+        Generic::pMessageBox(this, _l("main-revert-already-pending-title"), _l("main-revert-already-pending-text"),
                             MessageBoxStyleNormal, true);
         return false;
     }
     if (_e == nullptr)
         throw new Huggle::NullPointerException("WikiEdit *_e", BOOST_CURRENT_FUNCTION);
     bool Warn = false;
-    QString type = "unknown";
+    QString type = _l("main-revert-type-unknown");
     if (hcfg->WarnUserSpaceRoll && _e->Page->IsUserpage())
     {
+        type = _l("main-revert-type-in-userspace");
         Warn = true;
-        type = "in userspace";
     } else if (hcfg->ProjectConfig->ConfirmOnSelfRevs && (_e->User->Username.toLower() == hcfg->SystemConfig_Username.toLower()))
     {
-        type = "made by you";
+        type = _l("main-revert-type-made-by-you");
         Warn = true;
     } else if (hcfg->ProjectConfig->ConfirmTalk && _e->Page->IsTalk())
     {
-        type = "made on talk page";
+        type = _l("main-revert-type-made-on-talk-page");
         Warn = true;
     } else if (hcfg->ProjectConfig->ConfirmWL && _e->User->IsWhitelisted())
     {
-        type = "made by a user who is on white list";
+        type = _l("main-revert-type-white-list");
         Warn = true;
     }
     if (Warn)
     {
-        int q = Generic::pMessageBox(this, _l("shortcut-revert"), "This edit is " + type + ", so even if it looks like it is a vandalism,"\
-                                     " it may not be, are you sure you want to revert it?", MessageBoxStyleQuestion);
+        int q = Generic::pMessageBox(this, _l("shortcut-revert"), _l("main-revert-warn", type), MessageBoxStyleQuestion);
         if (q == QMessageBox::No)
             return false;
     }
@@ -936,7 +956,15 @@ bool MainWindow::Warn(QString WarningType, RevertQuery *dependency)
     bool Report_ = false;
     PendingWarning *ptr_Warning_ = Warnings::WarnUser(WarningType, dependency, this->CurrentEdit, &Report_);
     if (Report_)
-        this->DisplayReportUserWindow(this->CurrentEdit->User);
+    {
+        if (hcfg->UserConfig->AutomaticReports)
+        {
+            ReportUser::SilentReport(this->CurrentEdit->User);
+        } else
+        {
+            this->DisplayReportUserWindow(this->CurrentEdit->User);
+        }
+    }
     if (ptr_Warning_ != nullptr)
     {
         PendingWarning::PendingWarnings.append(ptr_Warning_);
@@ -1150,7 +1178,10 @@ void MainWindow::OnMainTimerTick()
             if (this->PendingEdits.at(c)->IsReady() && this->PendingEdits.at(c)->IsPostProcessed())
             {
                 WikiEdit *edit = this->PendingEdits.at(c);
-                this->Queue1->AddItem(edit);
+                // We need to check the edit against filter once more, because some of the checks work
+                // only on post processed edits
+                if (edit->GetSite()->CurrentFilter->Matches(edit))
+                    this->Queue1->AddItem(edit);
                 this->PendingEdits.removeAt(c);
                 edit->UnregisterConsumer(HUGGLECONSUMER_MAINPEND);
             } else
@@ -1178,18 +1209,20 @@ void MainWindow::OnMainTimerTick()
         }
     }
     QueryPool::HugglePool->CheckQueries();
-    Syslog::HuggleLogs->lUnwrittenLogs->lock();
-    if (Syslog::HuggleLogs->UnwrittenLogs.count() > 0)
+    if (this->SystemLog->isVisible())
     {
-        int c = 0;
-        while (c < Syslog::HuggleLogs->UnwrittenLogs.count())
-        {
-            this->SystemLog->InsertText(Syslog::HuggleLogs->UnwrittenLogs.at(c));
-            c++;
-        }
+        // We need to copy the list of unwritten logs so that we don't hold the lock for so long
+        QList<HuggleLog_Line> logs;
+        Syslog::HuggleLogs->lUnwrittenLogs->lock();
+        logs.append(Syslog::HuggleLogs->UnwrittenLogs);
         Syslog::HuggleLogs->UnwrittenLogs.clear();
+        Syslog::HuggleLogs->lUnwrittenLogs->unlock();
+        while (logs.count())
+        {
+            this->SystemLog->InsertText(logs.at(0));
+            logs.removeFirst();
+        }
     }
-    Syslog::HuggleLogs->lUnwrittenLogs->unlock();
     this->Queries->RemoveExpired();
     if (this->OnNext_EvPage != nullptr && this->qNext != nullptr && this->qNext->IsProcessed())
     {
@@ -1584,7 +1617,7 @@ void MainWindow::SuspiciousEdit()
                           + QString::number(this->CurrentEdit->RevID) + "&summary="
                           + QUrl::toPercentEncoding(this->CurrentEdit->Summary);
         wq_->Process();
-        QueryPool::HugglePool->AppendQuery(wq_);
+        HUGGLE_QP_APPEND(wq_);
         this->CurrentEdit->User->SetBadnessScore(this->CurrentEdit->User->GetBadnessScore() + 1);
     }
     this->DisplayNext();
@@ -1625,7 +1658,7 @@ void MainWindow::PatrolEdit(WikiEdit *e)
     if (flaggedrevs)
         query->Parameters += "&flag_accuracy=1";
 
-    QueryPool::HugglePool->AppendQuery(query);
+    HUGGLE_QP_APPEND(query);
     HUGGLE_DEBUG1("Patrolling " + e->Page->PageName);
     query->Process();
 }
@@ -2377,7 +2410,7 @@ void Huggle::MainWindow::on_actionShow_talk_triggered()
         ApiQuery *query = new ApiQuery(ActionClearHasMsg, this->GetCurrentWikiSite());
         query->IncRef();
         query->Target = "Flagging new messages as read";
-        QueryPool::HugglePool->AppendQuery(query);
+        HUGGLE_QP_APPEND(query);
         query->Process();
         query->DecRef();
     }
@@ -2726,7 +2759,7 @@ void Huggle::MainWindow::on_actionRevert_only_this_revision_triggered()
         this->Revert("", true, true);
 }
 
-void Huggle::MainWindow::on_actionTag_2_triggered()
+void MainWindow::on_actionTag_2_triggered()
 {
     if (!this->CheckEditableBrowserPage())
         return;
@@ -2738,7 +2771,7 @@ void Huggle::MainWindow::on_actionTag_2_triggered()
     this->fWikiPageTags->ChangePage(this->CurrentEdit->Page);
 }
 
-void Huggle::MainWindow::on_actionReload_menus_triggered()
+void MainWindow::on_actionReload_menus_triggered()
 {
     this->ReloadInterface();
 }
@@ -2770,7 +2803,7 @@ void MainWindow::SetProviderXml()
     this->ChangeProvider(wiki, new HuggleFeedProviderXml(wiki));
 }
 
-void Huggle::MainWindow::on_actionInsert_page_to_a_watchlist_triggered()
+void MainWindow::on_actionInsert_page_to_a_watchlist_triggered()
 {
     if (!this->CheckEditableBrowserPage())
         return;
@@ -2780,7 +2813,7 @@ void Huggle::MainWindow::on_actionInsert_page_to_a_watchlist_triggered()
     WikiUtil::Watchlist(this->CurrentEdit->Page);
 }
 
-void Huggle::MainWindow::on_actionRemove_page_from_a_watchlist_triggered()
+void MainWindow::on_actionRemove_page_from_a_watchlist_triggered()
 {
     if (!this->CheckEditableBrowserPage())
         return;
@@ -2790,7 +2823,7 @@ void Huggle::MainWindow::on_actionRemove_page_from_a_watchlist_triggered()
     WikiUtil::Unwatchlist(this->CurrentEdit->Page);
 }
 
-void Huggle::MainWindow::on_actionMy_talk_page_triggered()
+void MainWindow::on_actionMy_talk_page_triggered()
 {
     if (Configuration::HuggleConfiguration->Restricted)
         return;
@@ -2800,7 +2833,7 @@ void Huggle::MainWindow::on_actionMy_talk_page_triggered()
                                            QUrl::toPercentEncoding(hcfg->SystemConfig_Username));
 }
 
-void Huggle::MainWindow::on_actionMy_Contributions_triggered()
+void MainWindow::on_actionMy_Contributions_triggered()
 {
     if (Configuration::HuggleConfiguration->Restricted)
         return;
@@ -2816,12 +2849,12 @@ void MainWindow::Go()
     QDesktopServices::openUrl(QString(Configuration::GetProjectWikiURL() + action->toolTip()));
 }
 
-void Huggle::MainWindow::on_actionRevert_only_this_revision_assuming_good_faith_triggered()
+void MainWindow::on_actionRevert_only_this_revision_assuming_good_faith_triggered()
 {
     this->RevertAgf(true);
 }
 
-void Huggle::MainWindow::on_tabWidget_currentChanged(int index)
+void MainWindow::on_tabWidget_currentChanged(int index)
 {
     int in = this->ui->tabWidget->count() - 1;
     if (index == in)
@@ -2842,7 +2875,7 @@ void Huggle::MainWindow::on_tabWidget_currentChanged(int index)
     }
 }
 
-void Huggle::MainWindow::on_actionClose_current_tab_triggered()
+void MainWindow::on_actionClose_current_tab_triggered()
 {
     if (this->Browsers.count() < 2)
     {
@@ -2871,19 +2904,19 @@ void Huggle::MainWindow::on_actionClose_current_tab_triggered()
     delete br;
 }
 
-void Huggle::MainWindow::on_actionOpen_new_tab_triggered()
+void MainWindow::on_actionOpen_new_tab_triggered()
 {
     this->CreateBrowserTab("New tab", this->ui->tabWidget->count() - 1);
     this->CurrentEdit = nullptr;
     this->LockPage();
 }
 
-void Huggle::MainWindow::on_actionVerbosity_2_triggered()
+void MainWindow::on_actionVerbosity_2_triggered()
 {
     hcfg->Verbosity++;
 }
 
-void Huggle::MainWindow::on_actionVerbosity_triggered()
+void MainWindow::on_actionVerbosity_triggered()
 {
     if (hcfg->Verbosity > 0)
         hcfg->Verbosity--;
@@ -2895,21 +2928,21 @@ static void FinishLogout(Query *query)
     query->UnregisterConsumer(HUGGLECONSUMER_CALLBACK);
 }
 
-void Huggle::MainWindow::on_actionLog_out_triggered()
+void MainWindow::on_actionLog_out_triggered()
 {
     ApiQuery *qx = new ApiQuery(ActionLogout, this->GetCurrentWikiSite());
     qx->CallbackOwner = this->GetCurrentWikiSite();
     qx->callback = (Callback)FinishLogout;
-    QueryPool::HugglePool->AppendQuery(qx);
+    HUGGLE_QP_APPEND(qx);
     qx->Process();
 }
 
-void Huggle::MainWindow::on_actionReload_tokens_triggered()
+void MainWindow::on_actionReload_tokens_triggered()
 {
     WikiUtil::RetrieveTokens(this->GetCurrentWikiSite());
 }
 
-void Huggle::MainWindow::on_actionXmlRcs_triggered()
+void MainWindow::on_actionXmlRcs_triggered()
 {
     WikiSite *site = this->GetCurrentWikiSite();
     this->ChangeProvider(site, new HuggleFeedProviderXml(site));
@@ -2920,14 +2953,14 @@ void MainWindow::OnStatusBarRefreshTimerTick()
     this->UpdateStatusBarData();
 }
 
-void Huggle::MainWindow::on_actionQueue_legend_triggered()
+void MainWindow::on_actionQueue_legend_triggered()
 {
     QueueHelp *w = new QueueHelp(this);
     w->setAttribute(Qt::WA_DeleteOnClose);
     w->show();
 }
 
-void Huggle::MainWindow::on_actionPatrol_triggered()
+void MainWindow::on_actionPatrol_triggered()
 {
     if (!this->CheckEditableBrowserPage())
         return;
@@ -2941,7 +2974,24 @@ void Huggle::MainWindow::on_actionPatrol_triggered()
     this->PatrolEdit();
 }
 
-void Huggle::MainWindow::on_actionFinal_triggered()
+void MainWindow::on_actionFinal_triggered()
 {
     this->ForceWarn(0);
+}
+
+void MainWindow::on_actionPrint_API_for_diff_triggered()
+{
+    if (this->CurrentEdit == nullptr)
+        return;
+    if (!this->CurrentEdit->PropertyBag.contains("debug_api_url_diff"))
+        return;
+    HUGGLE_DEBUG1(this->CurrentEdit->PropertyBag["debug_api_url_diff"].toString());
+}
+
+void Huggle::MainWindow::on_actionContribution_browser_triggered()
+{
+    if (this->CurrentEdit == nullptr)
+        return;
+
+    WikiUtil::DisplayContributionBrowser(this->CurrentEdit->User, this);
 }

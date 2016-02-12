@@ -101,6 +101,22 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     this->ScoreUser = HuggleParser::ConfigurationParse("score-user", config, "-200").toInt();
     this->ScoreTalk = HuggleParser::ConfigurationParse("score-talk", config, "-800").toInt();
     this->ScoreRemoval = HuggleParser::ConfigurationParse("score-remove", config, "800").toInt();
+    QStringList tags = HuggleParser::ConfigurationParseTrimmed_QL("score-tags", config);
+    foreach (QString tx, tags)
+    {
+        QStringList parts = tx.split(";");
+        if (parts.count() != 2)
+        {
+            Syslog::HuggleLogs->DebugLog("Ignoring malformed score-tag: " + tx);
+            continue;
+        }
+        if (this->ScoreTags.contains(parts[0]))
+        {
+            Syslog::HuggleLogs->DebugLog("Multiple definitions of score-tag " + parts[0]);
+            continue;
+        }
+        this->ScoreTags.insert(parts[0], parts[1].toInt());
+    }
     // Summaries
     this->WarnSummary = HuggleParser::ConfigurationParse("warn-summary", config);
     this->WarnSummary2 = HuggleParser::ConfigurationParse("warn-summary-2", config);
@@ -164,6 +180,8 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     this->Patrolling = SafeBool(HuggleParser::ConfigurationParse("patrolling-enabled", config));
     this->PatrollingFlaggedRevs = SafeBool(HuggleParser::ConfigurationParse("patrolling-flaggedrevs", config, "false"));
     this->ReportSummary = HuggleParser::ConfigurationParse("report-summary", config);
+    this->ReportAutoSummary = HuggleParser::ConfigurationParse("report-auto-summary", config, "This user was automatically reported by huggle, please verify their"\
+                                                                                              " contributions carefully, it may be a false positive");
     this->SpeedyTemplates = HuggleParser::ConfigurationParse_QL("speedy-options", config);
     // Parsing
     this->TemplateAge = HuggleParser::ConfigurationParse("template-age", config, QString::number(this->TemplateAge)).toInt();
@@ -237,6 +255,7 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
         this->BlockExpiryOptions.append(item);
         list.removeAt(0);
     }
+    this->Tag = HuggleParser::ConfigurationParse("tag", config);
     this->DeletionSummaries = HuggleParser::ConfigurationParseTrimmed_QL("deletion-reasons", config, false);
     this->BlockSummary = HuggleParser::ConfigurationParse("block-summary", config, "Notification: Blocked");
     this->BlockTime = HuggleParser::ConfigurationParse("blocktime", config, "indef");
@@ -292,7 +311,8 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     }
     while (month_ < 13)
     {
-        Syslog::HuggleLogs->WarningLog("Project config for " + this->ProjectName + " is missing alternative month names for month " + QString::number(month_) + " the warning parser may not work properly");
+        Syslog::HuggleLogs->WarningLog("Project config for " + this->ProjectName + " is missing alternative month names for month "
+                                       + QString::number(month_) + " the warning parser may not work properly");
         this->AlternativeMonths.insert(month_, QStringList());
         month_++;
     }
@@ -361,7 +381,7 @@ QDateTime ProjectConfiguration::ServerTime()
 ScoreWord::ScoreWord(QString Word, int Score)
 {
     this->score = Score;
-    this->word = Word;
+    this->word = Word.toLower();
 }
 
 ScoreWord::ScoreWord(ScoreWord *word)

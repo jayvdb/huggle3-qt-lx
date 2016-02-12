@@ -13,9 +13,12 @@
 #include "collectable.hpp"
 #include "configuration.hpp"
 #include "exception.hpp"
-#include "history.hpp"
 #include "localization.hpp"
-#include "mainwindow.hpp"
+#ifndef HUGGLE_SDK
+    #include "mainwindow.hpp"
+    #include "history.hpp"
+    #include "historyitem.hpp"
+#endif
 #include "generic.hpp"
 #include "querypool.hpp"
 #include "syslog.hpp"
@@ -200,6 +203,9 @@ void Message::Finish()
                 {
                     Huggle::Syslog::HuggleLogs->Log(_l("message-done", this->User->Username, this->User->GetSite()->Name));
                     sent = true;
+#ifndef HUGGLE_SDK
+                    /// \todo Relocate this to different file later, it should be in main window, not in message handler
+                    /// for this has no use in SDK library
                     HistoryItem *item = new HistoryItem();
                     item->Result = _l("successful");
                     item->NewPage = this->CreateOnly;
@@ -215,6 +221,7 @@ void Message::Finish()
                     {
                         MainWindow::HuggleMain->_History->Prepend(item);
                     }
+#endif
                 }
             }
         }
@@ -238,7 +245,7 @@ void Message::PreflightCheck()
         // we need to retrieve the talk page
         this->query = Generic::RetrieveWikiPageContents(this->User->GetTalk(), this->User->GetSite());
         // inform user what is going on
-        QueryPool::HugglePool->AppendQuery(this->query);
+        HUGGLE_QP_APPEND(this->query);
         this->query->Target = _l("main-user-retrieving-tp", this->User->Username);
         this->query->Process();
     } else
@@ -273,6 +280,8 @@ void Message::ProcessSend()
     this->query->UsingPOST = true;
     QString summary = this->Summary;
     QString parameters = "&watchlist=" + UserConfiguration::WatchListOptionToString(hcfg->UserConfig->Watchlist);
+    if (Huggle::Version("1.25.2") <= this->User->GetSite()->MediawikiVersion && !this->User->GetSite()->GetProjectConfig()->Tag.isEmpty())
+        parameters += "&tags=" + QUrl::toPercentEncoding(this->User->GetSite()->GetProjectConfig()->Tag);
     if (!this->BaseTimestamp.isEmpty())
     {
         parameters += "&basetimestamp=" + QUrl::toPercentEncoding(this->BaseTimestamp);
@@ -313,7 +322,7 @@ void Message::ProcessSend()
                 + QUrl::toPercentEncoding(this->User->GetSite()->GetProjectConfig()->Token_Csrf);
     }
     HUGGLE_DEBUG(QString(" Message to %1 with parameters: %2").arg(this->User->Username, parameters), 2);
-    QueryPool::HugglePool->AppendQuery(query);
+    HUGGLE_QP_APPEND(query);
     this->query->Process();
 }
 
@@ -338,8 +347,8 @@ void Message::ProcessTalk()
     {
         if (!missing)
         {
-            this->Fail(_l("message-fail-re-user-tp", this->User->GetTalk()));
             Huggle::Syslog::HuggleLogs->DebugLog(this->query->Result->Data);
+            this->Fail(_l("message-fail-re-user-tp", this->User->GetTalk()));
             return;
         }
     }
