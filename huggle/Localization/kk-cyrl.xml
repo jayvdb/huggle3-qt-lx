@@ -102,7 +102,7 @@
   <string name="config-use-rollback">Бағдарлама шегіндіруін қолдану</string>
   <string name="config-welcome-empty-page">Жақсы өңдеме жасаған бос талқылау беті бар қатысушыларға қарсы алу хабарламаларын жіберу</string>
   <string name="config-conflicts-revert">Бетті өзгерткен немесе жоққа шығарған басқа қатысушылар арасындағы қақтығыстарды автоматты шешу</string>
-  <string name="config-revert-wait">Жоққа шығаруды күтіңіз (бірнеше секунт)</string>
+  <string name="config-revert-wait">Жоққа шығаруды күтіңіз (бірнеше секунд)</string>
   <string name="config-revert">Қайтару</string>
   <string name="config-display-text">Келесісін көрсету</string>
   <string name="config-retrieve-edit">Өзіңіздің өңдемеңізді қайтып алу</string>
@@ -161,7 +161,7 @@
   <string name="irc-connecting">$1 сайтындағы IRC жуықтағы өзгерістер тізбегіне байлануға әрекеттенуде, бұл біраз уақыт алуы мүмкін...</string>
   <string name="irc-disconnected">$1 сайтындағы IRC жуықтағы өзгерістер тізбегіне байланысы жоғалды. Қайта байланысуда...</string>
   <string name="irc-switch-rc">Уикидің жуықтағы өзгерістер тізбегіне ауысуда</string>
-  <string name="login-tab-login">Кіру</string>
+  <string name="login-tab-login" fuzzy="true">Кіру</string>
   <string name="login-language">Тіл:</string>
   <string name="login-project">Жоба:</string>
   <string name="login-username">Қатысушы есімі</string>

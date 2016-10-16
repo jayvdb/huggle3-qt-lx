@@ -66,6 +66,11 @@ Configuration::Configuration()
     this->MakeShortcut("main-revert-and-warn-7", "shortcut-x-raw");
     this->MakeShortcut("main-revert-and-warn-8", "shortcut-x-raw");
     this->MakeShortcut("main-revert-and-warn-9", "shortcut-x-raw");
+    this->MakeShortcut("main-revert-and-warn-10", "shortcut-x-raw");
+    this->MakeShortcut("main-revert-and-warn-11", "shortcut-x-raw");
+    this->MakeShortcut("main-revert-and-warn-12", "shortcut-x-raw");
+    this->MakeShortcut("main-revert-and-warn-13", "shortcut-x-raw");
+    this->MakeShortcut("main-revert-and-warn-14", "shortcut-x-raw");
     this->MakeShortcut("main-warn-0", "shortcut-x-warn");
     this->MakeShortcut("main-warn-1", "shortcut-x-warn");
     this->MakeShortcut("main-warn-2", "shortcut-x-warn");
@@ -76,6 +81,11 @@ Configuration::Configuration()
     this->MakeShortcut("main-warn-7", "shortcut-x-warn");
     this->MakeShortcut("main-warn-8", "shortcut-x-warn");
     this->MakeShortcut("main-warn-9", "shortcut-x-warn");
+    this->MakeShortcut("main-warn-10", "shortcut-x-warn");
+    this->MakeShortcut("main-warn-11", "shortcut-x-warn");
+    this->MakeShortcut("main-warn-12", "shortcut-x-warn");
+    this->MakeShortcut("main-warn-13", "shortcut-x-warn");
+    this->MakeShortcut("main-warn-14", "shortcut-x-warn");
     this->MakeShortcut("main-revert-0", "shortcut-x-revert");
     this->MakeShortcut("main-revert-1", "shortcut-x-revert");
     this->MakeShortcut("main-revert-2", "shortcut-x-revert");
@@ -86,6 +96,11 @@ Configuration::Configuration()
     this->MakeShortcut("main-revert-7", "shortcut-x-revert");
     this->MakeShortcut("main-revert-8", "shortcut-x-revert");
     this->MakeShortcut("main-revert-9", "shortcut-x-revert");
+    this->MakeShortcut("main-revert-10", "shortcut-x-revert");
+    this->MakeShortcut("main-revert-11", "shortcut-x-revert");
+    this->MakeShortcut("main-revert-12", "shortcut-x-revert");
+    this->MakeShortcut("main-revert-13", "shortcut-x-revert");
+    this->MakeShortcut("main-revert-14", "shortcut-x-revert");
     this->MakeShortcut("main-talk", "shortcut-talk", "T");
     this->MakeShortcut("main-mytalk", "shortcut-my-talk", "Alt+M");
     this->MakeShortcut("main-open-in-browser", "shortcut-open", "O");
@@ -102,6 +117,7 @@ Configuration::Configuration()
     this->MakeShortcut("main-user-report-user", "shortcut-report-user", "Ctrl+R");
     this->MakeShortcut("main-user-display-contribs", "shortcut-contrib", "C");
     this->MakeShortcut("main-user-contribs-browser", "shortcut-user-contribs-browser", "Shift+C");
+    this->MakeShortcut("main-page-patrol-edit", "shortcut-page-patrol-edit");
 }
 
 Configuration::~Configuration()
@@ -143,7 +159,7 @@ QString Configuration::GetExtensionsRootPath()
     QDir conf(path_);
     if (!conf.exists() && !conf.mkpath(path_))
     {
-            Syslog::HuggleLogs->WarningLog("Unable to create " + path_);
+        Syslog::HuggleLogs->WarningLog("Unable to create " + path_);
     }
     return path_;
 }
@@ -216,6 +232,29 @@ void Configuration::NormalizeConf(WikiSite *site)
         site->UserConfig->EnforceMonthsAsHeaders = false;
 }
 
+// These macros saves us some typing
+// For historical purposes and because it's cleaner, we store variables as real variables, rather than hashes
+// this however make some stuff more complicated, such as reading and writing of configuration, which can't be dynamic this way.
+// Following function basically consist of huge stack of if {} blocks that check if key name matches the known name.
+
+// These will make the writing of code easier, you basically just type RC(variable_name) for every string where variable_name
+// gets substituted to SystemConfig_variable_name, or other version for int and bools
+
+// If you use some exotic variable name or just can't use any of these data types, just write the if condition yourself.
+
+// RC(Test) gets expanded to:
+/*
+  if (key == "Test")
+  {
+      hcfg->SystemConfig_Test = option.attribute("text");
+      continue;
+  }
+*/
+#define RC(n)   if (key == #n) { hcfg->SystemConfig_##n = option.attribute("text"); continue; }
+#define RCU(n)  if (key == #n) { hcfg->SystemConfig_##n = option.attribute("text").toUInt(); continue; }
+#define RCB(n)  if (key == #n) { hcfg->SystemConfig_##n = SafeBool(option.attribute("text")); continue; }
+#define RCN(n)  if (key == #n) { hcfg->SystemConfig_##n = option.attribute("text").toInt(); continue; }
+
 void Configuration::LoadSystemConfig(QString fn)
 {
     QFile file(fn);
@@ -252,26 +291,11 @@ void Configuration::LoadSystemConfig(QString fn)
             continue;
         }
         QString key = option.attribute("key");
-        if (key == "Multiple")
-        {
-            hcfg->Multiple = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "Cache_InfoSize")
-        {
-            hcfg->SystemConfig_QueueSize = option.attribute("text").toInt();
-            continue;
-        }
-        if (key == "Font")
-        {
-            hcfg->SystemConfig_Font = option.attribute("text");
-            continue;
-        }
-        if (key == "FontSize")
-        {
-            hcfg->SystemConfig_FontSize = option.attribute("text").toInt();
-            continue;
-        }
+        // Load properly named config using macros
+        RCB(Multiple);
+        RC(Font);
+        RCN(FontSize);
+        RCN(QueueSize);
         if (key == "GlobalConfigurationWikiAddress")
         {
             hcfg->GlobalConfigurationWikiAddress = option.attribute("text");
@@ -302,21 +326,13 @@ void Configuration::LoadSystemConfig(QString fn)
             Localizations::HuggleLocalizations->PreferredLanguage = option.attribute("text");
             continue;
         }
-        if (key == "ProviderCache")
-        {
-            hcfg->SystemConfig_ProviderCache = option.attribute("text").toInt();
-            continue;
-        }
+        RCN(ProviderCache);
         if (key == "AskUserBeforeReport")
         {
             hcfg->AskUserBeforeReport = SafeBool(option.attribute("text"));
             continue;
         }
-        if (key == "HistorySize")
-        {
-            hcfg->SystemConfig_HistorySize = option.attribute("text").toInt();
-            continue;
-        }
+        RCN(HistorySize);
         if (key == "VandalNw_Login")
         {
             hcfg->VandalNw_Login = SafeBool(option.attribute("text"));
@@ -327,101 +343,51 @@ void Configuration::LoadSystemConfig(QString fn)
             hcfg->SystemConfig_Username = option.attribute("text");
             continue;
         }
-        if (key == "RingLogMaxSize")
+        if (key == "BotLogin" && hcfg->SystemConfig_BotLogin.isEmpty())
         {
-            hcfg->SystemConfig_RingLogMaxSize = option.attribute("text").toInt();
+            hcfg->SystemConfig_BotLogin = option.attribute("text");
             continue;
         }
-        if (key == "GlobalConfig")
-        {
-            hcfg->SystemConfig_GlobalConfig = option.attribute("text");
-            continue;
-        }
-        if (key == "DynamicColsInList")
-        {
-            hcfg->SystemConfig_DynamicColsInList = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "WarnUserSpaceRoll")
-        {
-            hcfg->WarnUserSpaceRoll = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "EnableUpdates")
-        {
-            hcfg->SystemConfig_UpdatesEnabled = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "NotifyBeta")
-        {
-            hcfg->SystemConfig_NotifyBeta = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "QueueNewEditsUp")
-        {
-            hcfg->SystemConfig_QueueNewEditsUp = SafeBool(option.attribute("text"));
-            continue;
-        }
+        RCN(RingLogMaxSize);
+        RC(GlobalConfig);
+        RCB(DynamicColsInList);
+        RCB(WarnUserSpaceRoll);
+        RCB(EnableUpdates);
+        RCB(NotifyBeta);
+        RCB(QueueNewEditsUp);
         if (key == "IndexOfLastWiki")
         {
             hcfg->IndexOfLastWiki = option.attribute("text").toInt();
             continue;
         }
-        if (key == "UsingSSL")
-        {
-            hcfg->SystemConfig_UsingSSL = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "GlobalConfigWikiList")
-        {
-            hcfg->SystemConfig_GlobalConfigWikiList = option.attribute("text");
-            continue;
-        }
-        if (key == "DelayVal")
-        {
-            hcfg->SystemConfig_DelayVal = option.attribute("text").toUInt();
-            continue;
-        }
-        if (key == "WikiRC")
-        {
-            hcfg->SystemConfig_WikiRC = option.attribute("text").toUInt();
-            continue;
-        }
-        if (key == "RequestDelay")
-        {
-            hcfg->SystemConfig_RequestDelay = SafeBool(option.attribute("text"));
-            continue;
-        }
-        if (key == "RevertDelay")
-        {
-            hcfg->SystemConfig_RevertDelay = option.attribute("text").toUInt();
-            continue;
-        }
-        if (key == "InstantReverts")
-        {
-            hcfg->SystemConfig_InstantReverts = SafeBool(option.attribute("text"));
-            continue;
-        }
+        RCB(UsingSSL);
+        RC(GlobalConfigWikiList);
+        RCU(DelayVal);
+        RCU(WikiRC);
+        RCB(RequestDelay);
+        RCB(BotPassword);
+        RCU(RevertDelay);
+        RCB(FirstRun);
+        RCB(ShowStartupInfo);
+        RCB(InstantReverts);
         if (key == "Projects")
         {
             hcfg->ProjectString = option.attribute("text").split(",");
             continue;
         }
-        if (key == "SuppressWarnings")
+        RCB(SuppressWarnings);
+        RC(RememberedPassword);
+        RCB(StorePassword);
+        RCB(UseProxy);
+        RC(ProxyUser);
+        RCN(ProxyType);
+        if (key == "ProxyHost")
         {
-            hcfg->SystemConfig_SuppressWarnings = SafeBool(option.attribute("text"));
+            hcfg->SystemConfig_ProxyHost = option.attribute("text");
             continue;
         }
-        if (key == "RememberedPassword")
-        {
-            hcfg->SystemConfig_RememberedPassword = option.attribute("text");
-            continue;
-        }
-        if (key == "StorePassword")
-        {
-            hcfg->SystemConfig_StorePassword = SafeBool(option.attribute("text"));
-            continue;
-        }
+        RCU(ProxyPort);
+        RC(ProxyPass);
     }
     item = 0;
     while (item < e.count())
@@ -442,6 +408,11 @@ void Configuration::LoadSystemConfig(QString fn)
     Huggle::Syslog::HuggleLogs->DebugLog("Finished conf");
 }
 
+// These macros make our life easier, but work only if you name the variables properly
+#define INSERT_CONFIG(name)     InsertConfig(#name, Huggle::Configuration::HuggleConfiguration->SystemConfig_##name, writer)
+#define INSERT_CONFIG_B(name)   InsertConfig(#name, Bool2String(Huggle::Configuration::HuggleConfiguration->SystemConfig_##name), writer)
+#define INSERT_CONFIG_N(name)   InsertConfig(#name, QString::number(Huggle::Configuration::HuggleConfiguration->SystemConfig_##name), writer)
+
 void Configuration::SaveSystemConfig()
 {
     QFile file(Configuration::GetConfigurationPath() + QDir::separator() + "huggle3.xml");
@@ -455,37 +426,49 @@ void Configuration::SaveSystemConfig()
     writer->setAutoFormatting(true);
     writer->writeStartDocument();
     writer->writeStartElement("huggle");
-    InsertConfig("DelayVal", QString::number(hcfg->SystemConfig_DelayVal), writer);
-    InsertConfig("RequestDelay", Bool2String(hcfg->SystemConfig_RequestDelay), writer);
-    InsertConfig("RevertDelay", QString::number(hcfg->SystemConfig_RevertDelay), writer);
-    InsertConfig("InstantReverts", Bool2String(hcfg->SystemConfig_InstantReverts), writer);
-    InsertConfig("UsingSSL", Bool2String(hcfg->SystemConfig_UsingSSL), writer);
-    InsertConfig("Cache_InfoSize", QString::number(hcfg->SystemConfig_QueueSize), writer);
-    InsertConfig("GlobalConfig", hcfg->SystemConfig_GlobalConfig, writer);
+    INSERT_CONFIG_B(FirstRun);
+    INSERT_CONFIG_B(ShowStartupInfo);
+    INSERT_CONFIG_N(DelayVal);
+    INSERT_CONFIG_B(RequestDelay);
+    INSERT_CONFIG_N(RevertDelay);
+    INSERT_CONFIG_B(InstantReverts);
+    INSERT_CONFIG_B(UsingSSL);
+    INSERT_CONFIG_N(QueueSize);
+    INSERT_CONFIG(GlobalConfig);
     InsertConfig("GlobalConfigurationWikiAddress", hcfg->GlobalConfigurationWikiAddress, writer);
     InsertConfig("IRCIdent", hcfg->IRCIdent, writer);
     InsertConfig("IRCNick", hcfg->IRCNick, writer);
     InsertConfig("IRCPort", QString::number(hcfg->IRCPort), writer);
     InsertConfig("IRCServer", hcfg->IRCServer, writer);
     InsertConfig("Language", Localizations::HuggleLocalizations->PreferredLanguage, writer);
-    InsertConfig("ProviderCache", QString::number(hcfg->SystemConfig_ProviderCache), writer);
+    INSERT_CONFIG_N(ProviderCache);
     InsertConfig("AskUserBeforeReport", Bool2String(hcfg->AskUserBeforeReport), writer);
-    InsertConfig("HistorySize", QString::number(hcfg->SystemConfig_HistorySize), writer);
-    InsertConfig("QueueNewEditsUp", Bool2String(hcfg->SystemConfig_QueueNewEditsUp), writer);
-    InsertConfig("RingLogMaxSize", QString::number(hcfg->SystemConfig_RingLogMaxSize), writer);
-    InsertConfig("TrimOldWarnings", Bool2String(hcfg->TrimOldWarnings), writer);
-    InsertConfig("EnableUpdates", Bool2String(hcfg->SystemConfig_UpdatesEnabled), writer);
-    InsertConfig("NotifyBeta", Bool2String(hcfg->SystemConfig_NotifyBeta), writer);
-    InsertConfig("WarnUserSpaceRoll", Bool2String(hcfg->WarnUserSpaceRoll), writer);
-    InsertConfig("WikiRC", QString::number(hcfg->SystemConfig_WikiRC), writer);
+    INSERT_CONFIG_N(HistorySize);
+    INSERT_CONFIG_B(QueueNewEditsUp);
+    INSERT_CONFIG_B(BotPassword);
+    INSERT_CONFIG_N(RingLogMaxSize);
+    INSERT_CONFIG_B(TrimOldWarnings);
+    INSERT_CONFIG_B(EnableUpdates);
+    INSERT_CONFIG_B(NotifyBeta);
+    INSERT_CONFIG_B(WarnUserSpaceRoll);
+    INSERT_CONFIG_N(WikiRC);
+    InsertConfig("BotLogin", hcfg->SystemConfig_BotLogin, writer);
     InsertConfig("UserName", hcfg->SystemConfig_Username, writer);
     InsertConfig("IndexOfLastWiki", QString::number(hcfg->IndexOfLastWiki), writer);
     InsertConfig("DynamicColsInList", Bool2String(hcfg->SystemConfig_DynamicColsInList), writer);
-    InsertConfig("Multiple", Bool2String(hcfg->Multiple), writer);
+    INSERT_CONFIG_B(Multiple);
     InsertConfig("Font", hcfg->SystemConfig_Font, writer);
     InsertConfig("FontSize", QString::number(hcfg->SystemConfig_FontSize), writer);
     InsertConfig("SuppressWarnings", Bool2String(hcfg->SystemConfig_SuppressWarnings), writer);
     InsertConfig("StorePassword", Bool2String(hcfg->SystemConfig_StorePassword), writer);
+    InsertConfig("UseProxy", Bool2String(hcfg->SystemConfig_UseProxy), writer);
+    // Only store password if user wants it
+    if (hcfg->SystemConfig_UseProxy)
+        InsertConfig("ProxyPass", hcfg->SystemConfig_ProxyPass, writer);
+    InsertConfig("ProxyHost", hcfg->SystemConfig_ProxyHost, writer);
+    InsertConfig("ProxyUser", hcfg->SystemConfig_ProxyUser, writer);
+    InsertConfig("ProxyPort", QString::number(hcfg->SystemConfig_ProxyPort), writer);
+    InsertConfig("ProxyType", QString::number(hcfg->SystemConfig_ProxyType), writer);
     if (hcfg->SystemConfig_StorePassword)
         InsertConfig("RememberedPassword", hcfg->SystemConfig_RememberedPassword, writer);
     QString projects;
@@ -660,6 +643,8 @@ Shortcut::Shortcut(QString name, QString description)
         this->ID = HUGGLE_ACCEL_MAIN_USER_CONTRIBUTIONS;
     else if (name == "main-user-contribs-browser")
         this->ID = HUGGLE_ACCEL_MAIN_CONTRIB_BROWSER;
+    else if (name == "main-page-patrol-edit")
+        this->ID = HUGGLE_ACCEL_MAIN_PATROL;
     else if (name.startsWith("main-revert-and-warn-"))
     {
         if (name == "main-revert-and-warn-0")
@@ -682,6 +667,16 @@ Shortcut::Shortcut(QString name, QString description)
             this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN8;
         else if (name == "main-revert-and-warn-9")
             this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN9;
+        else if (name == "main-revert-and-warn-10")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN10;
+        else if (name == "main-revert-and-warn-11")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN11;
+        else if (name == "main-revert-and-warn-12")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN12;
+        else if (name == "main-revert-and-warn-13")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN13;
+        else if (name == "main-revert-and-warn-14")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_AND_WARN14;
     } else if (name.startsWith("main-revert-"))
     {
         if (name == "main-revert-0")
@@ -704,6 +699,16 @@ Shortcut::Shortcut(QString name, QString description)
             this->ID = HUGGLE_ACCEL_MAIN_REVERT_8;
         else if (name == "main-revert-9")
             this->ID = HUGGLE_ACCEL_MAIN_REVERT_9;
+        else if (name == "main-revert-10")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_10;
+        else if (name == "main-revert-11")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_11;
+        else if (name == "main-revert-12")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_12;
+        else if (name == "main-revert-13")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_13;
+        else if (name == "main-revert-14")
+            this->ID = HUGGLE_ACCEL_MAIN_REVERT_14;
     } else if (name.startsWith("main-warn-"))
     {
         if (name == "main-warn-0")
@@ -726,6 +731,16 @@ Shortcut::Shortcut(QString name, QString description)
             this->ID = HUGGLE_ACCEL_MAIN_WARN8;
         else if (name == "main-warn-9")
             this->ID = HUGGLE_ACCEL_MAIN_WARN9;
+        else if (name == "main-warn-10")
+            this->ID = HUGGLE_ACCEL_MAIN_WARN10;
+        else if (name == "main-warn-11")
+            this->ID = HUGGLE_ACCEL_MAIN_WARN11;
+        else if (name == "main-warn-12")
+            this->ID = HUGGLE_ACCEL_MAIN_WARN12;
+        else if (name == "main-warn-13")
+            this->ID = HUGGLE_ACCEL_MAIN_WARN13;
+        else if (name == "main-warn-14")
+            this->ID = HUGGLE_ACCEL_MAIN_WARN14;
     }
 }
 

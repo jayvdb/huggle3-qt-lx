@@ -161,8 +161,7 @@
   <string name="history-error-message-title">Künne mer nit retuhr maache</string>
   <string name="history-failure">Mer kunnte de ällder Väsjohne nit holle</string>
   <string name="userhistory-title">Ding ällder Väsjohne</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">Enlogge</string>
+  <string name="login-tab-login" fuzzy="true">Enlogge</string>
   <string name="login-language">De Schprohch:</string>
   <string name="login-project">Et Projäk:</string>
   <string name="login-username">Dä Metmaacher_Nahme:</string>
@@ -266,7 +265,7 @@
   <string name="main-user-report">Bereeschte</string>
   <string name="main-user-ib">Däm Metmaacher sing „Schlääschteschkeid“ erop säze</string>
   <string name="main-user-clear-tp">Däm Metmaacher sing Klaafsigg läddesch maache</string>
-  <string name="main-user-retrieving-tp">Ben de Klaafsigg vun %1 aam holle …</string>
+  <string name="main-user-retrieving-tp">Ben de Klaafsigg vum $1 aam holle …</string>
   <string name="main-user-block">Schpärre …</string>
   <string name="main-browser-back">Retuhr</string>
   <string name="main-browser-forward">Förahn</string>
@@ -369,6 +368,7 @@
   <string name="user-history-fail">kann de verjangeheid vum Metmaacher $1 nit affrohfe</string>
   <string name="userinfo-generic">Aanjahbe zom Metmaacher</string>
   <string name="userinfo-retrieve">Aanjahbe holle</string>
+  <string name="shortcut-page-patrol-edit">Ännderonge nohlohre</string>
   <string name="shortcut-report-username">Donn enem Metmaacher singe Nahme mällde</string>
   <string name="shortcut-report-user">Donn ene Metmaacher mällde</string>
   <string name="shortcut-my-talk">Ming Klaafsigg</string>
@@ -405,5 +405,6 @@
   <string name="error-unknown-code">Ene onbikannte Fähler es opjetrodde: $1</string>
   <string name="relogin-fail">Mer künne em Wikki nit enlogge, weil: $1</string>
   <string name="projects">Projäkte</string>
+  <string name="developer-mode-enter-title">Auwieh!</string>
   <string name="title-on">op $1</string>
 </resources>

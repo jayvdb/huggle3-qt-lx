@@ -217,8 +217,9 @@
   <string name="irc-switch-rc">Passaggio al feed RC del wiki</string>
   <string name="login-old">Recupero della configurazione utente dalla vecchia posizione</string>
   <string name="login-intro">Per favore scegli un progetto e inserisci nome utente e password. Puoi anche accedere a più progetti cliccando sul pulsante \"Progetti\".</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">Accedi</string>
+  <string name="invalid-bot-user-name">Questo non è un nome di bot valido. Esempio di nome valido: Jimbo@Huggle</string>
+  <string name="login-tab-botp">Password bot</string>
+  <string name="login-tab-login">Normale</string>
   <string name="login-reload-tool-tip">Ricarica una lista di progetti disponibili che possono essere utilizzati con Huggle. Può essere utile in caso tu voglia usare Huggle in un progetto dove Huggle è stato attivato da poco.</string>
   <string name="login-language">Lingua:</string>
   <string name="login-project">Progetto:</string>
@@ -227,6 +228,7 @@
   <string name="login-proxygroup">Impostazioni proxy</string>
   <string name="login-proxy">Utilizza un server proxy</string>
   <string name="login-proxyaddress">Indirizzo:</string>
+  <string name="login-proxy-remember-this">Ricorda questa impostazione per la prossima volta</string>
   <string name="login-proxyport">Porta:</string>
   <string name="login-proxydomain">Dominio:</string>
   <string name="login-retrieving-user-conf">Recupero della configurazione utente</string>
@@ -234,6 +236,7 @@
 Special:MyPage/huggle3.css è assente. Hai creato huggle3.css nel tuo spazio utente?</string>
   <string name="login-fail-enable-true">Accesso non riuscito a $1: Non hai enable:true nella tua configurazione personale.</string>
   <string name="login-fail-no-info">Accesso non riuscito a $1: Impossibile recuperare le informazioni dell\'utente: $2</string>
+  <string name="login-bot">Qual è la differenza tra accesso bot e normale?</string>
   <string name="login-fail-parse-config">Accesso non riuscito a $1: Impossibile analizzare la configurazione dell\'utente. Vedi il registro di debug per ulteriori dettagli.</string>
   <string name="login-fail-user-data">Accesso non riuscito a $1: Impossibile recuperare le informazioni dell\'utente. L\'interrogazione API non ha restituito dati.</string>
   <string name="login-fail-rollback-rights">Accesso non riuscito a $1: Non hai i permessi di rollback su questo progetto.</string>
@@ -366,7 +369,7 @@ Special:MyPage/huggle3.css è assente. Hai creato huggle3.css nel tuo spazio ute
   <string name="main-user-report">Segnala</string>
   <string name="main-user-ib">Aumenta il punteggio di cattiveria dell\'utente</string>
   <string name="main-user-clear-tp">Pulisci la pagina di discussione dell\'utente</string>
-  <string name="main-user-retrieving-tp">Recupero Pagina di discussione di %1</string>
+  <string name="main-user-retrieving-tp">Recupero Pagina di discussione di $1</string>
   <string name="main-user-block">Blocca...</string>
   <string name="main-browser-back">Indietro</string>
   <string name="main-browser-forward">Avanti</string>
@@ -438,7 +441,7 @@ Special:MyPage/huggle3.css è assente. Hai creato huggle3.css nel tuo spazio ute
   <string name="queue-title">Code</string>
   <string name="queue-queues">Code:</string>
   <string name="queue-typegroup">Tipo di coda</string>
-  <string name="queue-listselector">Lista:</string>
+  <string name="queue-listselector">Elenco:</string>
   <string name="queue-listbuilder">Generatore di liste...</string>
   <string name="queue-sortorder">Ordinamento:</string>
   <string name="queue-removeviewed">Rimuovi le modifiche quando vengono visualizzate</string>
@@ -543,6 +546,7 @@ Special:MyPage/huggle3.css è assente. Hai creato huggle3.css nel tuo spazio ute
   <string name="user-history-fail">impossibile recuperare la cronologia per l\'utente: $1</string>
   <string name="userinfo-generic">Informazioni utente</string>
   <string name="userinfo-retrieve">Recupera le informazioni</string>
+  <string name="shortcut-page-patrol-edit">Verifica modifica</string>
   <string name="shortcut-report-username">Segnala il nome utente</string>
   <string name="shortcut-report-user">Segnala l\'utente</string>
   <string name="shortcut-my-talk">La mia pagina di discussione</string>
@@ -569,6 +573,7 @@ Special:MyPage/huggle3.css è assente. Hai creato huggle3.css nel tuo spazio ute
   <string name="shortcut-tab">Apre una nuova scheda</string>
   <string name="shortcut-rw-stay">Annulla la modifica attuale, avverte un utente e rimane sulla pagina</string>
   <string name="shortcut-revert-and-stay">Ripristina la versione attuale e rimani sulla pagina</string>
+  <string name="shortcut-user-contribs-browser">Apre i contributi dell\'utente in un browser</string>
   <string name="warning-title">Avverti $1</string>
   <string name="warning-levelgroup">Livello di avviso</string>
   <string name="warning-levelauto">Automatico</string>
@@ -663,6 +668,7 @@ Special:MyPage/huggle3.css è assente. Hai creato huggle3.css nel tuo spazio ute
   <string name="updating-wl">Aggiornamento della lista bianca...</string>
   <string name="feature-nfru">Questa funzionalità è solo per gli utenti IP</string>
   <string name="report-no-user">Nessun utente è stato scelto per la segnalazione, per favore prima scegli un utente</string>
+  <string name="welcome-show">Visualizza questo messaggio anche la prossima volta che si avvia huggle</string>
   <string name="welcome-tp-empty-fail">Questo utente non ha una pagina di discussione vuota, sei sicuro di volergli inviare un messaggio?</string>
   <string name="welcome-page-miss-fail">Huggle non è riuscito a recuperare il contenuto della pagina di discussione dell\'utente, sei sicuro di volergli inviare un messaggio di benvenuto?</string>
   <string name="cr-newer-edits">Confitto risolto: ripristinate tutte le modifiche, incluse le nuove modifiche. Le modifiche provenivano dallo stesso utente: $1.</string>

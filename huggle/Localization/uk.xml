@@ -218,8 +218,7 @@
   <string name="irc-switch-rc">Переходжу на постачання списку нових редагувань через wiki</string>
   <string name="login-old">Отримання користувацьких налаштувань</string>
   <string name="login-intro">Будь ласка, виберіть проект і введіть ім’я користувача та пароль. Ви також можете одразу ввійти до декількох проектів, скориставшись кнопкою «Проекти».</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">Вхід</string>
+  <string name="login-tab-login" fuzzy="true">Вхід</string>
   <string name="login-reload-tool-tip">Перезавантажити список проектів, у яких можна використовувати Huggle. Це може бути корисним, якщо Ви хочете використовувати Huggle у проекті, для котрого його було підключено лише нещодавно.</string>
   <string name="login-language">Мова інтерфейсу:</string>
   <string name="login-project">Проект:</string>
@@ -228,6 +227,7 @@
   <string name="login-proxygroup">Налаштування проксі</string>
   <string name="login-proxy">Використовувати проксі</string>
   <string name="login-proxyaddress">Адреса:</string>
+  <string name="login-proxy-remember-this">Запам\'ятати це налаштування на наступний раз</string>
   <string name="login-proxyport">Порт:</string>
   <string name="login-proxydomain">Домен:</string>
   <string name="login-retrieving-user-conf">Отримання користувацьких налаштувань</string>
@@ -366,7 +366,7 @@
   <string name="main-user-report">Повідомити</string>
   <string name="main-user-ib">Збільшити штрафні бали користувача</string>
   <string name="main-user-clear-tp">Очистити сторінку обговорення аноніма</string>
-  <string name="main-user-retrieving-tp">Завантажую сторінку обговорення користувача %1</string>
+  <string name="main-user-retrieving-tp">Завантажую сторінку обговорення користувача $1</string>
   <string name="main-user-block">Заблокувати…</string>
   <string name="main-browser-back">Назад</string>
   <string name="main-browser-forward">Вперед</string>
@@ -543,6 +543,7 @@
   <string name="user-history-fail">неможливо отримати внесок користувача $1</string>
   <string name="userinfo-generic">Внесок користувача</string>
   <string name="userinfo-retrieve">Завантажити внесок</string>
+  <string name="shortcut-page-patrol-edit">Відпатрулювати редагування</string>
   <string name="shortcut-report-username">Поскаржитися на ім\'я користувача</string>
   <string name="shortcut-report-user">Поскаржитися на користувача</string>
   <string name="shortcut-my-talk">Моя сторінка обговорення</string>
@@ -569,6 +570,7 @@
   <string name="shortcut-tab">Відкрити нову вкладку</string>
   <string name="shortcut-rw-stay">Відкинути, попередити користувача та залишитися на сторінці</string>
   <string name="shortcut-revert-and-stay">Відкинути та залишитися на сторінці</string>
+  <string name="shortcut-user-contribs-browser">Відкрити внесок користувача в браузері</string>
   <string name="warning-title">Попередити $1</string>
   <string name="warning-levelgroup">Рівень попередження</string>
   <string name="warning-levelauto">Автоматично</string>
@@ -721,7 +723,7 @@ $1</string>
   <string name="api.php-invalid-response">api.php відповів із неправильним текстом (впав веб-сервер?). Будь ласка, перевірте журнал зневадження для точної інформації</string>
   <string name="login-username-doesnt-exist">Це ім\'я користувача не існує</string>
   <string name="developer-mode-enter-title">Ура</string>
-  <string name="developer-mode-enter-message" fuzzy="true">Ви увійшли в режим розробника! Addshore смердить!</string>
+  <string name="developer-mode-enter-message">Ви увійшли в режим розробника!</string>
   <string name="unimplemented">Ця функція ще не втілена</string>
   <string name="unknown-item">Невідомий елемент</string>
   <string name="title-multiple-projects">кілька проектів ($1)</string>

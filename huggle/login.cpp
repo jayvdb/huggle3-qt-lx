@@ -21,6 +21,7 @@
 #include "mainwindow.hpp"
 #include "mediawiki.hpp"
 #include "proxy.hpp"
+#include "welcomeinfo.hpp"
 #include "syslog.hpp"
 #include "ui_login.h"
 #include "updateform.hpp"
@@ -41,15 +42,13 @@
 
 using namespace Huggle;
 
-QString Login::Test = "<login result=\"NeedToken\" token=\"";
-
 Login::Login(QWidget *parent) : HW("login", this, parent), ui(new Ui::Login)
 {
     HUGGLE_PROFILER_RESET;
     this->Loading = true;
     this->ui->setupUi(this);
     this->ui->tableWidget->setVisible(false);
-    if (hcfg->Multiple)
+    if (hcfg->SystemConfig_Multiple)
         this->on_pushButton_2_clicked();
     this->ui->tableWidget->setColumnCount(2);
     this->ui->tableWidget->horizontalHeader()->setVisible(false);
@@ -93,20 +92,43 @@ Login::Login(QWidget *parent) : HW("login", this, parent), ui(new Ui::Login)
         this->ui->checkBox->setEnabled(false);
         this->ui->checkBox->setChecked(false);
     }
-    if (hcfg->SystemConfig_UpdatesEnabled)
+    if (hcfg->SystemConfig_EnableUpdates)
     {
         this->Updater = new UpdateForm();
         this->Updater->Check();
     }
-    if (!hcfg->SystemConfig_Username.isEmpty())
+    if (hcfg->SystemConfig_BotPassword)
     {
-        this->ui->lineEdit_username->setText(hcfg->SystemConfig_Username);
-        this->ui->lineEdit_password->setFocus();
+        this->ui->tab_oauth->show();
+        if (!hcfg->SystemConfig_Username.isEmpty())
+        {
+            this->ui->lineEditBotUser->setText(hcfg->SystemConfig_BotLogin);
+            this->ui->lineEditBotP->setFocus();
+        }
+    } else
+    {
+        this->ui->tab_login->show();
+        if (!hcfg->SystemConfig_Username.isEmpty())
+        {
+            this->ui->lineEdit_username->setText(hcfg->SystemConfig_Username);
+            this->ui->lineEdit_password->setFocus();
+        }
     }
-    this->ui->lineEdit_password->setText(hcfg->TemporaryConfig_Password);
     this->Loading = false;
     this->Localize();
-    HUGGLE_PROFILER_PRINT_TIME("Login::Login(QWidget *parent)");
+    // Load the proxy
+    if (hcfg->SystemConfig_UseProxy)
+    {
+        Proxy::SetProxy(hcfg->SystemConfig_ProxyType, hcfg->SystemConfig_ProxyHost, hcfg->SystemConfig_ProxyPort,
+            hcfg->SystemConfig_ProxyUser, hcfg->SystemConfig_ProxyPass);
+    }
+    HUGGLE_PROFILER_PRINT_TIME(BOOST_CURRENT_FUNCTION);
+    if (!hcfg->Login && (hcfg->SystemConfig_FirstRun ||
+        hcfg->SystemConfig_ShowStartupInfo))
+    {
+        WelcomeInfo info;
+        info.exec();
+    }
     if (hcfg->Login)
     {
         // user wanted to login using a terminal
@@ -114,10 +136,17 @@ Login::Login(QWidget *parent) : HW("login", this, parent), ui(new Ui::Login)
         this->PressOK();
     } else if (hcfg->SystemConfig_StorePassword)
     {
-        this->ui->lineEdit_password->setText(hcfg->SystemConfig_RememberedPassword);
+        if (hcfg->SystemConfig_BotPassword)
+            this->ui->lineEditBotP->setText(hcfg->SystemConfig_RememberedPassword);
+        else
+            this->ui->lineEdit_password->setText(hcfg->SystemConfig_RememberedPassword);
         this->ui->checkBox_2->setChecked(true);
     }
     this->RestoreWindow();
+    if (hcfg->SystemConfig_BotPassword)
+        this->ui->tabWidget->setCurrentIndex(0);
+    else
+        this->ui->tabWidget->setCurrentIndex(1);
 }
 
 Login::~Login()
@@ -135,21 +164,22 @@ void Login::Localize()
     this->ui->ButtonExit->setText(_l("main-system-exit"));
     this->ui->ButtonOK->setText(_l("login-start"));
     this->ui->checkBox->setText(_l("login-ssl"));
-    this->ui->labelOauthUsername->setText(_l("login-username"));
+    this->ui->labelBotUserName->setText(_l("login-username"));
     this->ui->pushButton->setToolTip(_l("login-reload-tool-tip"));
     this->ui->pushButton->setText(_l("reload"));
-    this->ui->tabWidget->setTabText(0, _l("login-tab-oauth"));
+    this->ui->labelBotPassword->setText(_l("login-password"));
+    this->ui->tabWidget->setTabText(0, _l("login-tab-botp"));
     this->ui->tabWidget->setTabText(1, _l("login-tab-login"));
-    this->ui->labelOauthNotSupported->setText(_l("login-oauth-notsupported"));
+    //this->ui->labelOauthNotSupported->setText(_l("login-oauth-notsupported"));
     this->ui->labelUsername->setText(_l("login-username"));
     this->ui->labelProject->setText(_l("login-project"));
     this->ui->labelLanguage->setText(_l("login-language"));
+    this->ui->label_2->setText("<a href=\"https://www.mediawiki.org/wiki/Manual:Huggle/Bot_passwords\">" + _l("login-bot") + "</a>");
     this->ui->labelPassword->setText(_l("login-password"));
     this->ui->checkBox_2->setText(_l("login-remember-password"));
     this->ui->labelIntro->setText(_l("login-intro"));
     this->ui->labelTranslate->setText(QString("<html><head/><body><p><a href=\"http://meta.wikimedia.org/wiki/Huggle/Localization\"><span style=\""\
-                                              " text-decoration: underline; color:#0000ff;\">%1</span></a></p></body></html>")
-                                              .arg(_l("login-translate")));
+                                              " text-decoration: underline; color:#0000ff;\">%1</span></a></p></body></html>").arg(_l("login-translate")));
     // Change the layout based on preference
     if (Localizations::HuggleLocalizations->IsRTL())
         QApplication::setLayoutDirection(Qt::RightToLeft);
@@ -228,7 +258,8 @@ int Login::GetRowIDForSite(WikiSite *site, int row)
 void Login::Enable(bool value)
 {
     this->ui->checkBox_2->setEnabled(value);
-    this->ui->lineEdit_oauth_username->setEnabled(value);
+    this->ui->lineEditBotP->setEnabled(value);
+    this->ui->lineEditBotUser->setEnabled(value);
     this->ui->Language->setEnabled(value);
     this->ui->label->setEnabled(value);
     this->ui->Project->setEnabled(value);
@@ -318,11 +349,7 @@ void Login::DB()
 void Login::PressOK()
 {
     this->GlobalConfig = false;
-    if (this->ui->tab_oauth->isVisible())
-    {
-        Generic::pMessageBox(this, _l("function-miss"), "This function is not available for wmf wikis in this moment");
-        return;
-    }
+    hcfg->SystemConfig_BotPassword = this->ui->tab_oauth->isVisible();
     if (this->ui->Project->count() == 0)
     {
         // there are no projects in login form
@@ -330,15 +357,33 @@ void Login::PressOK()
         return;
     }
     hcfg->SystemConfig_StorePassword = this->ui->checkBox_2->isChecked();
-    if (hcfg->SystemConfig_StorePassword)
-        hcfg->SystemConfig_RememberedPassword = this->ui->lineEdit_password->text();
+    if (hcfg->SystemConfig_BotPassword)
+    {
+        hcfg->SystemConfig_BotLogin = this->ui->lineEditBotUser->text();
+        if (!this->ui->lineEditBotUser->text().contains("@"))
+        {
+            this->DisplayError(_l("invalid-bot-user-name"));
+            return;
+        }
+        QString name = hcfg->SystemConfig_BotLogin;
+        hcfg->SystemConfig_Username = WikiUtil::SanitizeUser(name.mid(0, name.indexOf("@")));
+        if (hcfg->SystemConfig_StorePassword)
+            hcfg->SystemConfig_RememberedPassword = this->ui->lineEditBotP->text();
+        hcfg->TemporaryConfig_Password = ui->lineEditBotP->text();
+    } else
+    {
+        if (hcfg->SystemConfig_StorePassword)
+            hcfg->SystemConfig_RememberedPassword = this->ui->lineEdit_password->text();
+        hcfg->SystemConfig_Username = WikiUtil::SanitizeUser(ui->lineEdit_username->text());
+        hcfg->TemporaryConfig_Password = ui->lineEdit_password->text();
+    }
     hcfg->IndexOfLastWiki = this->ui->Project->currentIndex();
     hcfg->Project = hcfg->ProjectList.at(this->ui->Project->currentIndex());
     // we need to clear a list of projects we are logged to and insert at least this one
     hcfg->Projects.clear();
     hcfg->SystemConfig_UsingSSL = this->ui->checkBox->isChecked();
     hcfg->Projects << hcfg->Project;
-    if (hcfg->Multiple)
+    if (hcfg->SystemConfig_Multiple)
     {
         int project_id = 0;
         foreach (QCheckBox* cb, this->Project_CheckBoxens)
@@ -351,7 +396,7 @@ void Login::PressOK()
             project_id++;
         }
     }
-    hcfg->Multiple = hcfg->Projects.count() > 1;
+    hcfg->SystemConfig_Multiple = hcfg->Projects.count() > 1;
     if (hcfg->SystemConfig_UsingSSL)
     {
         foreach(WikiSite *wiki, hcfg->Projects)
@@ -374,8 +419,6 @@ void Login::PressOK()
             }
         }
     }
-    hcfg->SystemConfig_Username = WikiUtil::SanitizeUser(ui->lineEdit_username->text());
-    hcfg->TemporaryConfig_Password = ui->lineEdit_password->text();
     if (this->loadingForm != nullptr)
         delete this->loadingForm;
 
@@ -440,12 +483,10 @@ void Login::PerformLogin(WikiSite *site)
 {
     this->Update(_l("[[login-progress-start]]", site->Name));
     // we create an api request to login
-    this->LoginQueries.insert(site, new ApiQuery(ActionLogin, site));
+    this->LoginQueries.insert(site, new ApiQuery(ActionQuery, site));
     ApiQuery *qr = this->LoginQueries[site];
-    qr->Parameters = "lgname=" + QUrl::toPercentEncoding(hcfg->SystemConfig_Username);
-    qr->HiddenQuery = true;
-    qr->UsingPOST = true;
     qr->IncRef();
+    qr->Parameters = "meta=tokens&type=login";
     qr->Process();
     this->Statuses[site] = WaitingForLoginQuery;
 }
@@ -463,7 +504,14 @@ void Login::PerformLoginPart2(WikiSite *site)
         this->Update(_l("login-fail", site->Name) + ": " + query->GetFailureReason());
         return;
     }
-    QString token = this->GetToken(query->Result->Data);
+    ApiQueryResultNode *token_info = query->GetApiQueryResult()->GetNode("tokens");
+    if (!token_info || !token_info->Attributes.contains("logintoken"))
+    {
+        this->CancelLogin();
+        this->Update(_l("login-fail", site->Name) + ": No valid login token returned by the site");
+        return;
+    }
+    QString token = token_info->GetAttribute("logintoken");
     this->Tokens.insert(site, token);
     this->Statuses[site] = WaitingForToken;
     this->LoginQueries.remove(site);
@@ -472,9 +520,17 @@ void Login::PerformLoginPart2(WikiSite *site)
     this->LoginQueries.insert(site, query);
     query->HiddenQuery = true;
     query->IncRef();
-    query->Parameters = "lgname=" + QUrl::toPercentEncoding(hcfg->SystemConfig_Username)
-            + "&lgpassword=" + QUrl::toPercentEncoding(hcfg->TemporaryConfig_Password)
-            + "&lgtoken=" + QUrl::toPercentEncoding(token);
+    if (hcfg->SystemConfig_BotPassword)
+    {
+        query->Parameters = "lgname=" + QUrl::toPercentEncoding(hcfg->SystemConfig_BotLogin)
+                + "&lgpassword=" + QUrl::toPercentEncoding(hcfg->TemporaryConfig_Password)
+                + "&lgtoken=" + QUrl::toPercentEncoding(token);
+    } else
+    {
+        query->Parameters = "lgname=" + QUrl::toPercentEncoding(hcfg->SystemConfig_Username)
+                + "&lgpassword=" + QUrl::toPercentEncoding(hcfg->TemporaryConfig_Password)
+                + "&lgtoken=" + QUrl::toPercentEncoding(token);
+    }
     query->UsingPOST = true;
     query->Process();
 }
@@ -604,57 +660,6 @@ void Login::RetrieveWhitelist(WikiSite *site)
 
 void Login::RetrieveProjectConfig(WikiSite *site)
 {
-    // check approval page
-    if (this->qApproval.contains(site))
-    {
-        ApiQuery *query = this->qApproval[site];
-        if (query->IsProcessed())
-        {
-            QString result;
-            bool failed = false;
-            result = Generic::EvaluateWikiPageContents(query, &failed);
-            if (failed)
-            {
-                this->DisplayError(_l("unable-to-retrieve-user-list", result));
-                return;
-            }
-            QStringList users = result.toLower().split("\n");
-            QStringList sanitized;
-            // sanitize user list
-            foreach(QString user, users)
-            {
-                user = user.replace("_", " ");
-                user = user.trimmed();
-                sanitized.append(user);
-            }
-            QString sanitized_name = hcfg->SystemConfig_Username;
-            sanitized_name = sanitized_name.toLower();
-            sanitized_name = sanitized_name.replace("_", " ");
-            if (!sanitized.contains("* [[special:contributions/" + sanitized_name + "|" + sanitized_name + "]]"))
-            {
-                if (site->GetProjectConfig()->Approval)
-                {
-                    this->DisplayError(_l("login-error-approval", site->Name));
-                    return;
-                }
-                if (site->GetProjectConfig()->UserlistSync)
-                {
-                    // we need to insert this user into the list
-                    QString un = WikiUtil::SanitizeUser(hcfg->SystemConfig_Username);
-                    QString line = "* [[Special:Contributions/" + un + "|" + un + "]]";
-                    result += "\n" + line;
-                    QString summary = site->GetProjectConfig()->UserlistUpdateSummary;
-                    summary.replace("$1", hcfg->SystemConfig_Username);
-                    WikiUtil::EditPage(site->GetProjectConfig()->ApprovalPage, result, summary, false, "", 0, site);
-                    //WikiUtil::AppendTextToPage(site->GetProjectConfig()->ApprovalPage, line, site->GetProjectConfig()->UserlistUpdateSummary, true, site);
-                }
-            }
-            this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_LOCALCONFIG), LoadingForm_Icon_Success);
-            this->Statuses[site] = RetrievingUserConfig;
-        }
-        return;
-    }
-
     if (this->LoginQueries.contains(site))
     {
         ApiQuery *query = this->LoginQueries[site];
@@ -683,13 +688,6 @@ void Login::RetrieveProjectConfig(WikiSite *site)
                 if (!site->GetProjectConfig()->EnableAll)
                 {
                     this->DisplayError(_l("login-error-projdisabled", site->Name));
-                    return;
-                }
-                if (site->GetProjectConfig()->UserlistSync || site->GetProjectConfig()->Approval)
-                {
-                    this->qApproval.insert(site, Generic::RetrieveWikiPageContents(site->GetProjectConfig()->ApprovalPage, site));
-                    this->qApproval[site]->IncRef();
-                    this->qApproval[site]->Process();
                     return;
                 }
                 this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_LOCALCONFIG), LoadingForm_Icon_Success);
@@ -796,6 +794,58 @@ void Login::RetrieveUserConfig(WikiSite *site)
 
 void Login::RetrieveUserInfo(WikiSite *site)
 {
+    // check approval page
+    if (this->qApproval.contains(site))
+    {
+        ApiQuery *query = this->qApproval[site];
+        if (query->IsProcessed())
+        {
+            QString result;
+            bool failed = false;
+            result = Generic::EvaluateWikiPageContents(query, &failed);
+            if (failed)
+            {
+                this->DisplayError(_l("unable-to-retrieve-user-list", result));
+                return;
+            }
+            QStringList users = result.toLower().split("\n");
+            QStringList sanitized;
+            // sanitize user list
+            foreach(QString user, users)
+            {
+                user = user.replace("_", " ");
+                user = user.trimmed();
+                sanitized.append(user);
+            }
+            QString sanitized_name = hcfg->SystemConfig_Username;
+            sanitized_name = sanitized_name.toLower();
+            sanitized_name = sanitized_name.replace("_", " ");
+            if (!sanitized.contains("* [[special:contributions/" + sanitized_name + "|" + sanitized_name + "]]"))
+            {
+                if (site->GetProjectConfig()->Approval)
+                {
+                    this->DisplayError(_l("login-error-approval", site->Name));
+                    return;
+                }
+                if (site->GetProjectConfig()->UserlistSync)
+                {
+                    // we need to insert this user into the list
+                    QString un = WikiUtil::SanitizeUser(hcfg->SystemConfig_Username);
+                    QString line = "* [[Special:Contributions/" + un + "|" + un + "]]";
+                    result += "\n" + line;
+                    QString summary = site->GetProjectConfig()->UserlistUpdateSummary;
+                    summary.replace("$1", hcfg->SystemConfig_Username);
+                    WikiUtil::EditPage(site->GetProjectConfig()->ApprovalPage, result, summary, false, "", 0, site);
+                    //WikiUtil::AppendTextToPage(site->GetProjectConfig()->ApprovalPage, line, site->GetProjectConfig()->UserlistUpdateSummary, true, site);
+                }
+            }
+            this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_USERINFO), LoadingForm_Icon_Success);
+            this->processedLogin[site] = true;
+            this->Statuses[site] = LoginDone;
+        }
+        return;
+    }
+
     if (this->LoginQueries.contains(site))
     {
         ApiQuery *query = this->LoginQueries[site];
@@ -863,6 +913,15 @@ void Login::RetrieveUserInfo(WikiSite *site)
             }
 
             /// \todo Implement check for "require-time"
+
+            // So now we passed all checks if we can use huggle, so let's update the user list in case we want that
+            if (site->GetProjectConfig()->UserlistSync || site->GetProjectConfig()->Approval)
+            {
+                this->qApproval.insert(site, Generic::RetrieveWikiPageContents(site->GetProjectConfig()->ApprovalPage, site));
+                this->qApproval[site]->IncRef();
+                this->qApproval[site]->Process();
+                return;
+            }
             this->loadingForm->ModifyIcon(this->GetRowIDForSite(site, LOGINFORM_USERINFO), LoadingForm_Icon_Success);
             this->processedLogin[site] = true;
             this->Statuses[site] = LoginDone;
@@ -1130,26 +1189,6 @@ bool Login::ProcessOutput(WikiSite *site)
     return false;
 }
 
-QString Login::GetToken(QString source_code)
-{
-    QString token = source_code;
-    if (!token.contains(Login::Test))
-    {
-        Syslog::HuggleLogs->WarningLog("the result of api request doesn't contain valid token");
-        Syslog::HuggleLogs->DebugLog("The token didn't contain the correct string, token was " + token);
-        return "<invalid token>";
-    }
-    token = token.mid(token.indexOf(Login::Test) + Login::Test.length());
-    if (!token.contains("\""))
-    {
-        Syslog::HuggleLogs->WarningLog("the result of api request doesn't contain valid token");
-        Syslog::HuggleLogs->DebugLog("The token didn't contain the closing mark, token was " + token);
-        return "<invalid token>";
-    }
-    token = token.mid(0, token.indexOf("\""));
-    return token;
-}
-
 void Login::on_ButtonOK_clicked()
 {
     if (!this->Processing)
@@ -1213,16 +1252,16 @@ void Login::OnTimerTick()
                 this->PerformLogin(site);
                 break;
             case WaitingForLoginQuery:
-                PerformLoginPart2(site);
+                this->PerformLoginPart2(site);
                 break;
             case WaitingForToken:
-                FinishLogin(site);
+                this->FinishLogin(site);
                 break;
             case RetrievingProjectConfig:
-                RetrieveProjectConfig(site);
+                this->RetrieveProjectConfig(site);
                 break;
             case RetrievingUserConfig:
-                RetrieveUserConfig(site);
+                this->RetrieveUserConfig(site);
                 break;
             case RetrievingUser:
                 RetrieveUserInfo(site);
@@ -1303,7 +1342,8 @@ void Huggle::Login::on_lineEdit_password_textChanged(const QString &arg1)
 
 void Login::VerifyLogin()
 {
-    if((this->ui->lineEdit_username->text().size() == 0 || this->ui->lineEdit_password->text().size() == 0) &&
+    if(((this->ui->lineEditBotUser->text().size() == 0 && this->ui->lineEdit_username->text().size() == 0) ||
+        (this->ui->lineEdit_password->text().size() == 0) && this->ui->lineEditBotP->text().size() == 0 ) &&
        (this->ui->lineEdit_username->text() != "Developer Mode" &&
         this->ui->lineEdit_username->text() != "Developer_Mode"))
         this->ui->ButtonOK->setEnabled( false );
@@ -1332,10 +1372,10 @@ void Huggle::Login::on_pushButton_2_clicked()
     {
         this->ui->pushButton_2->setText(_l("projects") + " >>");
         this->ui->tableWidget->setVisible(false);
-        hcfg->Multiple = false;
+        hcfg->SystemConfig_Multiple = false;
     } else
     {
-        hcfg->Multiple = true;
+        hcfg->SystemConfig_Multiple = true;
         this->ui->pushButton_2->setText(_l("projects") + " >>");
         this->ui->tableWidget->setVisible(true);
         if (this->height() < 460)
@@ -1348,4 +1388,21 @@ void Huggle::Login::on_label_linkActivated(const QString &link)
     Q_UNUSED(link);
     Proxy pr;
     pr.exec();
+}
+
+void Huggle::Login::on_lineEditBotUser_textChanged(const QString &arg1)
+{
+    Q_UNUSED(arg1)
+    Login::VerifyLogin();
+}
+
+void Huggle::Login::on_lineEditBotP_textChanged(const QString &arg1)
+{
+    Q_UNUSED(arg1)
+    Login::VerifyLogin();
+}
+
+void Huggle::Login::on_label_2_linkActivated(const QString &link)
+{
+    QDesktopServices::openUrl(link);
 }

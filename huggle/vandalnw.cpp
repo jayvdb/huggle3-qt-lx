@@ -25,10 +25,10 @@
 #include "wikisite.hpp"
 #include "wikiuser.hpp"
 #include <QUrl>
-#include "../libs/libirc/libircclient/network.h"
-#include "../libs/libirc/libircclient/parser.h"
-#include "../libs/libirc/libircclient/channel.h"
-#include "../libs/libirc/libirc/serveraddress.h"
+#include "libs/libirc/libircclient/network.h"
+#include "libs/libirc/libircclient/parser.h"
+#include "libs/libirc/libircclient/channel.h"
+#include "libs/libirc/libirc/serveraddress.h"
 
 using namespace Huggle;
 
@@ -670,7 +670,7 @@ void VandalNw::OnIRCChannelMessage(libircclient::Parser *px)
         QString message_ = message;
         if (!hcfg->UserConfig->HtmlAllowedInIrc)
             message_ = SafeHtml(message_);
-        if (hcfg->Multiple)
+        if (hcfg->SystemConfig_Multiple)
         {
             this->Insert(nick + " (" + site->Name + "): " + message_, HAN::MessageType_UserTalk);
         } else

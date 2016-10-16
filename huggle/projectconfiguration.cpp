@@ -54,6 +54,8 @@ ProjectConfiguration::~ProjectConfiguration()
 
 bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site)
 {
+    this->configurationBuffer = config;
+    this->cache.clear();
     Version version(HuggleParser::ConfigurationParse("min-version", config, "3.0.0"));
     Version huggle_version(HUGGLE_VERSION);
     this->Site = site;
@@ -117,9 +119,6 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
         }
         this->ScoreTags.insert(parts[0], parts[1].toInt());
     }
-    // Summaries
-    this->WarnSummary = HuggleParser::ConfigurationParse("warn-summary", config);
-    this->WarnSummary2 = HuggleParser::ConfigurationParse("warn-summary-2", config);
     this->DefaultSummary = HuggleParser::ConfigurationParse("default-summary", config,
               "Reverted edits by [[Special:Contributions/$1|$1]] ([[User talk:$1|talk]]) to last revision by $2");
     this->WelcomeSummary = HuggleParser::ConfigurationParse("welcome-summary", config, this->WelcomeSummary);
@@ -127,8 +126,6 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
                                                        " [[User talk:$2|talk]]: $1");
     this->EditSuffixOfHuggle = HuggleParser::ConfigurationParse("summary", config, "[[Project:Huggle|HG]]") + " (" + HUGGLE_VERSION + ")";
     this->Goto = HuggleParser::ConfigurationParse_QL("go", config);
-    this->WarnSummary3 = HuggleParser::ConfigurationParse("warn-summary-3", config);
-    this->WarnSummary4 = HuggleParser::ConfigurationParse("warn-summary-4", config);
     this->InstantWarnings = SafeBool(HuggleParser::ConfigurationParse("warning-im", config));
     this->RevertSummaries = HuggleParser::ConfigurationParse_QL("template-summ", config);
     if (!this->RevertSummaries.count())
@@ -271,10 +268,16 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     this->RFPP_Section = (unsigned int)HuggleParser::ConfigurationParse("rfpp-section", config, "0").toInt();
     this->RFPP_Page = HuggleParser::ConfigurationParse("protection-request-page", config);
     this->RFPP_Template = HuggleParser::ConfigurationParse("rfpp-template", config);
+    this->TemplateHeader = HuggleParser::ConfigurationParse("template-header", config, "Your edits to $1");
     this->RFPP_Mark = HuggleParser::ConfigurationParse("rfpp-mark", config);
     this->RFPP_Summary = HuggleParser::ConfigurationParse("protection-request-summary", config, "Request to protect page");
     this->RFPP = (this->RFPP_Template.length() && this->RFPP_Regex.length());
     this->RFPP_TemplateUser = HuggleParser::ConfigurationParse("rfpp-template-user", config);
+    this->WarningSummaries.clear();
+    this->WarningSummaries.insert(1, HuggleParser::ConfigurationParse("warn-summary", config, "Message re. [[$1]]"));
+    this->WarningSummaries.insert(2, HuggleParser::ConfigurationParse("warn-summary-2", config, "Level 2 re. [[$1]]"));
+    this->WarningSummaries.insert(3, HuggleParser::ConfigurationParse("warn-summary-3", config, "Level 3 re. [[$1]]"));
+    this->WarningSummaries.insert(4, HuggleParser::ConfigurationParse("warn-summary-4", config, "Level 4 re. [[$1]]"));
     QStringList MonthsHeaders_ = HuggleParser::ConfigurationParse_QL("months", config);
     if (MonthsHeaders_.count() != 12)
     {
@@ -371,6 +374,16 @@ bool ProjectConfiguration::Parse(QString config, QString *reason, WikiSite *site
     this->UAAavailable = this->UAAPath.size() > 0;
     this->IsSane = true;
     return true;
+}
+
+QString ProjectConfiguration::GetConfig(QString key, QString dv)
+{
+    if (this->cache.contains(key))
+        return this->cache[key];
+
+    QString value = HuggleParser::ConfigurationParse(key, this->configurationBuffer, dv);
+    this->cache.insert(key, value);
+    return value;
 }
 
 QDateTime ProjectConfiguration::ServerTime()

@@ -41,6 +41,11 @@ class QXmlStreamWriter;
 #define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN7      15
 #define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN8      16
 #define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN9      17
+#define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN10     10000
+#define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN11     10001
+#define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN12     10002
+#define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN13     10003
+#define HUGGLE_ACCEL_MAIN_REVERT_AND_WARN14     10004
 #define HUGGLE_ACCEL_MAIN_WARN0                 18
 #define HUGGLE_ACCEL_MAIN_WARN1                 19
 #define HUGGLE_ACCEL_MAIN_WARN2                 20
@@ -51,6 +56,11 @@ class QXmlStreamWriter;
 #define HUGGLE_ACCEL_MAIN_WARN7                 25
 #define HUGGLE_ACCEL_MAIN_WARN8                 26
 #define HUGGLE_ACCEL_MAIN_WARN9                 27
+#define HUGGLE_ACCEL_MAIN_WARN10                20001
+#define HUGGLE_ACCEL_MAIN_WARN11                20002
+#define HUGGLE_ACCEL_MAIN_WARN12                20003
+#define HUGGLE_ACCEL_MAIN_WARN13                20004
+#define HUGGLE_ACCEL_MAIN_WARN14                20005
 #define HUGGLE_ACCEL_MAIN_REVERT_0              28
 #define HUGGLE_ACCEL_MAIN_REVERT_1              29
 #define HUGGLE_ACCEL_MAIN_REVERT_2              30
@@ -61,6 +71,11 @@ class QXmlStreamWriter;
 #define HUGGLE_ACCEL_MAIN_REVERT_7              35
 #define HUGGLE_ACCEL_MAIN_REVERT_8              36
 #define HUGGLE_ACCEL_MAIN_REVERT_9              37
+#define HUGGLE_ACCEL_MAIN_REVERT_10             20110
+#define HUGGLE_ACCEL_MAIN_REVERT_11             20111
+#define HUGGLE_ACCEL_MAIN_REVERT_12             20112
+#define HUGGLE_ACCEL_MAIN_REVERT_13             20113
+#define HUGGLE_ACCEL_MAIN_REVERT_14             20114
 #define HUGGLE_ACCEL_MAIN_TALK                  38
 #define HUGGLE_ACCEL_REVERT_STAY                39
 #define HUGGLE_ACCEL_MAIN_OPEN_IN_BROWSER       40
@@ -70,6 +85,7 @@ class QXmlStreamWriter;
 #define HUGGLE_ACCEL_MAIN_REVERT_AGF_ONE_REV    44
 #define HUGGLE_ACCEL_MAIN_WATCH                 45
 #define HUGGLE_ACCEL_MAIN_UNWATCH               46
+#define HUGGLE_ACCEL_MAIN_PATROL                47
 #define HUGGLE_ACCEL_MAIN_OPEN                  48
 #define HUGGLE_ACCEL_MAIN_USER_CONTRIBUTIONS    50
 #define HUGGLE_ACCEL_MAIN_CONTRIB_BROWSER       52
@@ -207,7 +223,7 @@ namespace Huggle
             QString           HuggleVersion;
             QString           HANMask = "$feed.huggle";
             QByteArray        WebqueryAgent;
-            bool              Multiple = false;
+            bool              SystemConfig_Multiple = false;
             bool              SystemConfig_UM = false;
             QString           UpdaterRoot;
             //! Every site in which the user is currently logged to
@@ -235,6 +251,8 @@ namespace Huggle
             int             SystemConfig_RingLogMaxSize = 2000;
             //! Path where huggle contains its data, known as $huggle_home in manual
             QString         HomePath;
+            bool            SystemConfig_ShowStartupInfo = false;
+            bool            SystemConfig_FirstRun = true;
             //! Path to a file where information about wikis are stored
             QString         WikiDB = "";
             //! URL of wiki that contains a global config
@@ -246,7 +264,7 @@ namespace Huggle
             //! Ask user if they really want to report someone
             bool            AskUserBeforeReport = true;
             //! This is experimental feature that removes the old templates from talk pages when they are being read
-            bool            TrimOldWarnings = true;
+            bool            SystemConfig_TrimOldWarnings = true;
             //! Size of fonts in diff
             int             SystemConfig_FontSize = 12;
             //! Font that we use to render diffs and similar pages
@@ -272,7 +290,7 @@ namespace Huggle
             //! This path is used when Log2File is true to write the logs to
             QString         SystemConfig_SyslogPath = "huggle.log";
             //! Whether huggle check for an update on startup
-            bool            SystemConfig_UpdatesEnabled = true;
+            bool            SystemConfig_EnableUpdates = true;
             bool            SystemConfig_NotifyBeta = false;
             //! If true huggle will perform a sanity check of its language files on startup
             bool            SystemConfig_LanguageSanity = false;
@@ -291,6 +309,13 @@ namespace Huggle
             bool            SystemConfig_Dot = false;
             bool            SystemConfig_InstantReverts = false;
             int             SystemConfig_RevertDelay = 6;
+            //! If you set this to true the proxy settings will be applied next time you start huggle
+            bool            SystemConfig_UseProxy = false;
+            int             SystemConfig_ProxyType = 0;
+            QString         SystemConfig_ProxyHost;
+            unsigned int    SystemConfig_ProxyPort = 0;
+            QString         SystemConfig_ProxyUser;
+            QString         SystemConfig_ProxyPass;
             //! This is index for login form so that we can remember which was last wiki user logged to
 
             //! We are storing index instead of wiki name, because in case it was a wiki that later
@@ -332,6 +357,8 @@ namespace Huggle
             QString     SystemConfig_Username = "";
             //! If SSL is being used
             bool        SystemConfig_UsingSSL = true;
+            QString     SystemConfig_BotLogin;
+            bool        SystemConfig_BotPassword = true;
             //! Consumer key
             QString     WmfOAuthConsumerKey;
             //! Password
@@ -367,7 +394,7 @@ namespace Huggle
             //! even if user wants that (used by toolbar when user info is loaded).
             bool        ForcedNoEditJump = false;
             //! Warn you in case you want to revert a user page
-            bool        WarnUserSpaceRoll = true;
+            bool        SystemConfig_WarnUserSpaceRoll = true;
             //! Send a message to user on good edit
             bool        WelcomeEmpty = true;
             //! This is changed to true in case that someone send a message to user

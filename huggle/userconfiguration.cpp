@@ -302,18 +302,22 @@ bool UserConfiguration::ParseUserConfig(QString config, ProjectConfiguration *Pr
     // so there is no point in using a hash for it
     ProjectConfig->IPScore = this->SetOption(ProjectConfig_IPScore_Key, config, ProjectConfig->IPScore).toInt();
     ProjectConfig->ScoreFlag = this->SetOption("score-flag", config, ProjectConfig->ScoreFlag).toInt();
-    ProjectConfig->WarnSummary = this->SetOption("warn-summary", config, ProjectConfig->WarnSummary).toString();
     this->EnforceManualSoftwareRollback = SafeBool(ConfigurationParse("software-rollback", config));
-    ProjectConfig->WarnSummary2 = this->SetOption("warn-summary-2", config, ProjectConfig->WarnSummary2).toString();
-    ProjectConfig->WarnSummary3 = this->SetOption("warn-summary-3", config, ProjectConfig->WarnSummary3).toString();
-    ProjectConfig->WarnSummary4 = this->SetOption("warn-summary-4", config, ProjectConfig->WarnSummary4).toString();
+    if (ProjectConfig->WarningSummaries.contains(1))
+        ProjectConfig->WarningSummaries[1] = this->SetOption("warn-summary", config, ProjectConfig->WarningSummaries[1]).toString();
+    if (ProjectConfig->WarningSummaries.contains(2))
+        ProjectConfig->WarningSummaries[2] = this->SetOption("warn-summary-2", config, ProjectConfig->WarningSummaries[2]).toString();
+    if (ProjectConfig->WarningSummaries.contains(3))
+        ProjectConfig->WarningSummaries[3] = this->SetOption("warn-summary-3", config, ProjectConfig->WarningSummaries[3]).toString();
+    if (ProjectConfig->WarningSummaries.contains(4))
+        ProjectConfig->WarningSummaries[4] = this->SetOption("warn-summary-4", config, ProjectConfig->WarningSummaries[4]).toString();
     this->AutomaticallyResolveConflicts = SafeBool(ConfigurationParse("automatically-resolve-conflicts", config), false);
     ProjectConfig->TemplateAge = this->SetOption("template-age", config, ProjectConfig->TemplateAge).toInt();
     ProjectConfig->RevertSummaries = this->SetUserOptionList("template-summ", config, ProjectConfig->RevertSummaries);
     ProjectConfig->WarningTypes = this->SetUserOptionList("warning-types", config, ProjectConfig->WarningTypes);
     ProjectConfig->ScoreChange = this->SetOption("score-change", config, ProjectConfig->ScoreChange).toInt();
     ProjectConfig->ScoreUser = this->SetOption("score-user", config, ProjectConfig->ScoreUser).toInt();
-    this->SummaryMode = ConfigurationParse("SummaryMode", config, "0").toInt();
+    this->SummaryMode = ConfigurationParse("SummaryMode", config, QString::number(this->SummaryMode)).toInt();
     ProjectConfig->ScoreTalk = this->SetOption("score-talk", config, ProjectConfig->ScoreTalk).toInt();
     ProjectConfig->WarningDefs = this->SetUserOptionList("warning-template-tags", config, ProjectConfig->WarningDefs);
     ProjectConfig->BotScore = this->SetOption("score-bot", config, ProjectConfig->BotScore).toInt();
@@ -324,26 +328,26 @@ bool UserConfiguration::ParseUserConfig(QString config, ProjectConfiguration *Pr
     ProjectConfig->ConfirmTalk = SafeBool(ConfigurationParse("confirm-talk", config), ProjectConfig->ConfirmTalk);
     ProjectConfig->ConfirmOnSelfRevs = SafeBool(ConfigurationParse("confirm-self-revert", config), ProjectConfig->ConfirmOnSelfRevs);
     ProjectConfig->ConfirmWL = SafeBool(ConfigurationParse("confirm-whitelist", config), ProjectConfig->ConfirmWL);
-    this->DisplayTitle = SafeBool(ConfigurationParse("DisplayTitle", config, "false"));
-    this->TruncateEdits = SafeBool(ConfigurationParse("TruncateEdits", config, "false"));
-    this->HistoryLoad = SafeBool(ConfigurationParse("HistoryLoad", config, "true"));
-    this->LastEdit = SafeBool(ConfigurationParse("SkipToLastEdit", config, "false"));
+    this->DisplayTitle = SafeBool(ConfigurationParse("DisplayTitle", config), this->DisplayTitle);
+    this->TruncateEdits = SafeBool(ConfigurationParse("TruncateEdits", config), this->TruncateEdits);
+    this->HistoryLoad = SafeBool(ConfigurationParse("HistoryLoad", config), this->HistoryLoad);
+    this->LastEdit = SafeBool(ConfigurationParse("SkipToLastEdit", config), this->LastEdit);
     this->PreferredProvider = ConfigurationParse("PreferredProvider", config, QString::number(this->PreferredProvider)).toInt();
-    this->CheckTP = SafeBool(ConfigurationParse("CheckTP", config, "true"));
-    this->RetrieveFounder = SafeBool(ConfigurationParse("RetrieveFounder", config, "true"));
-    this->HAN_DisplayBots = SafeBool(ConfigurationParse("HAN_DisplayBots", config, "true"));
-    this->HAN_DisplayUser = SafeBool(ConfigurationParse("HAN_DisplayUser", config, "true"));
-    this->ManualWarning = SafeBool(ConfigurationParse("ManualWarning", config, "true"));
-    this->RemoveAfterTrustedEdit = SafeBool(ConfigurationParse("RemoveAfterTrustedEdit", config), true);
-    this->HAN_DisplayUserTalk = SafeBool(ConfigurationParse("HAN_DisplayUserTalk", config, "true"));
-    this->HtmlAllowedInIrc = SafeBool(ConfigurationParse("HAN_Html", config, "false"));
+    this->CheckTP = SafeBool(ConfigurationParse("CheckTP", config), this->CheckTP);
+    this->RetrieveFounder = SafeBool(ConfigurationParse("RetrieveFounder", config, Bool2String(this->RetrieveFounder)));
+    this->HAN_DisplayBots = SafeBool(ConfigurationParse("HAN_DisplayBots", config, Bool2String(this->HAN_DisplayBots)));
+    this->HAN_DisplayUser = SafeBool(ConfigurationParse("HAN_DisplayUser", config, Bool2String(this->HAN_DisplayUser)));
+    this->ManualWarning = SafeBool(ConfigurationParse("ManualWarning", config, Bool2String(this->ManualWarning)));
+    this->RemoveAfterTrustedEdit = SafeBool(ConfigurationParse("RemoveAfterTrustedEdit", config), this->RemoveAfterTrustedEdit);
+    this->HAN_DisplayUserTalk = SafeBool(ConfigurationParse("HAN_DisplayUserTalk", config), this->HAN_DisplayUserTalk);
+    this->HtmlAllowedInIrc = SafeBool(ConfigurationParse("HAN_Html", config), this->HtmlAllowedInIrc);
     this->Watchlist = WatchlistOptionFromString(ConfigurationParse("Watchlist", config));
     this->AutomaticallyGroup = SafeBool(ConfigurationParse("AutomaticallyGroup", config), this->AutomaticallyGroup);
     this->TalkPageFreshness = ConfigurationParse("TalkpageFreshness", config, QString::number(this->TalkPageFreshness)).toInt();
-    this->RemoveOldQueueEdits = SafeBool(ConfigurationParse("RemoveOldestQueueEdits", config, "false"));
+    this->RemoveOldQueueEdits = SafeBool(ConfigurationParse("RemoveOldestQueueEdits", config), this->RemoveOldQueueEdits);
     this->QueueID = ConfigurationParse("QueueID", config);
     this->GoNext = static_cast<Configuration_OnNext>(ConfigurationParse("OnNext", config, "1").toInt());
-    this->DeleteEditsAfterRevert = SafeBool(ConfigurationParse("DeleteEditsAfterRevert", config, "true"));
+    this->DeleteEditsAfterRevert = SafeBool(ConfigurationParse("DeleteEditsAfterRevert", config), this->DeleteEditsAfterRevert);
     this->WelcomeGood = this->SetOption("welcome-good", config, ProjectConfig->WelcomeGood).toBool();
     this->AutomaticReports = SafeBool(ConfigurationParse("AutomaticReports", config), this->AutomaticReports);
     delete this->Previous_Version;

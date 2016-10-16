@@ -218,8 +218,7 @@ Această blocare va lua locul efectului blocării gamei. Continuați?</string>
   <string name="irc-switch-rc">Comut la feedul de schimbări recente al wikiului</string>
   <string name="login-old">Citesc configurația utilizatorului din vechea locație</string>
   <string name="login-intro">Vă rog să alegeți un proiect și să vă introduceți numele de utilizator și parola. Vă puteți și autentifica la proiecte multiple, prin click pe butonul „Proiecte”</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">Autentificare</string>
+  <string name="login-tab-login" fuzzy="true">Autentificare</string>
   <string name="login-reload-tool-tip">Încarcă o listă de proiecte disponibile pentru a fi folosite de Huggle. Aceasta poate fi utilă în caz că doriți să folosiți Huggle într-un proiect în care Huggle a fost recent activat.</string>
   <string name="login-language">Limba:</string>
   <string name="login-project">Proiect:</string>
@@ -366,7 +365,7 @@ Această blocare va lua locul efectului blocării gamei. Continuați?</string>
   <string name="main-user-report">Reclamă</string>
   <string name="main-user-ib">Mărește scorul de malițiozitate</string>
   <string name="main-user-clear-tp">Golește pagina de discuție a utilizatorului</string>
-  <string name="main-user-retrieving-tp">Citesc pagina de discuție pentru %1</string>
+  <string name="main-user-retrieving-tp">Citesc pagina de discuție pentru $1</string>
   <string name="main-user-block">Blochează...</string>
   <string name="main-browser-back">Înapoi</string>
   <string name="main-browser-forward">Înainte</string>
@@ -711,4 +710,12 @@ $1</string>
   <string name="about-qt">, compilat folosind QT $1 rulând pe QT $1</string>
   <string name="error-unknown-code">Eroare necunoscută: $1</string>
   <string name="relogin-fail">Nu m-am putut autentifica în wiki: $1</string>
+  <string name="projects">Proiecte</string>
+  <string name="login-username-doesnt-exist">Acest nume de utilizator nu există</string>
+  <string name="developer-mode-enter-message">Ați intrat în modul de dezvoltator!</string>
+  <string name="unknown-item">Element necunoscut</string>
+  <string name="title-multiple-projects">mai multe proiecte ($1)</string>
+  <string name="title-on">la $1</string>
+  <string name="main-revert-type-unknown">necunoscut</string>
+  <string name="main-revert-type-in-userspace">în spațiul utilizator</string>
 </resources>

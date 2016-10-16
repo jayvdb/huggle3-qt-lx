@@ -153,7 +153,7 @@ namespace Huggle
             //! Request a page deletion csd or afd and so on
             void RequestPD(WikiEdit *edit = nullptr);
             void TrayMessage(QString title, QString text);
-            void WelcomeGood();
+            void FlagGood();
             void SwitchAlternativeFeedProvider(WikiSite *site);
             //! Try to load a page
             void RenderPage(QString Page);
@@ -204,7 +204,7 @@ namespace Huggle
             bool ShuttingDown;
             //! If system is shutting down this is displaying which part of shutdown is currently being executed
             ShutdownOp Shutdown;
-            ReportUser *fReportForm = nullptr;
+            //ReportUser *fReportForm = nullptr;
             //! Pointer to a form to block user
             BlockUser *fBlockForm = nullptr;
             //! Pointer to a form to delete a page
@@ -334,8 +334,9 @@ namespace Huggle
             void on_actionPatrol_triggered();
             void on_actionFinal_triggered();
             void on_actionPrint_API_for_diff_triggered();
-
             void on_actionContribution_browser_triggered();
+            void on_actionCheck_for_dups_triggered();
+            void on_actionIntroduction_triggered();
 
         private:
             void DisplayWelcomeMessage();

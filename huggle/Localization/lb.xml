@@ -125,8 +125,7 @@
   <string name="history-error-message-title">Réckgängegmaachen kann net gemaach ginn</string>
   <string name="userhistory-title">Lëscht vun Ären Ännerungen (chronologesch)</string>
   <string name="login-intro">Sicht w.e.g. e Projet eraus a gitt Äre Benotzernumm an Äert Passwuert an. Dir kënnt Iech op méi Projeten alogge wann Dir och op de Knäppche \'Porjeten\' klickt.</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">Aloggen</string>
+  <string name="login-tab-login">Patrimoine</string>
   <string name="login-language">Sprooch:</string>
   <string name="login-project">Projet:</string>
   <string name="login-username">Benotzernumm:</string>
@@ -139,6 +138,7 @@
   <string name="login-fail-enable-true">Aloggen op $1 huet net funktionéiert: An Äre perséinlechen Astellungen ass enable:true net dran.</string>
   <string name="login-fail-no-info">Aloggen op $1 huet net funktionéiert.
 Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
+  <string name="login-bot">Wat ass den Ënnerscheed tëscht engem Bot -Login an engem traditionelle Login?</string>
   <string name="login-fail-user-data">Aloggen op $1 huet funktionéiert: Benotzerinformatioun konnt net ofgeruf ginn. D\'Api Ufro huet keng Daten zréckgeschéckt.</string>
   <string name="login-failed-edit">Aloggen op $1 huet net funktionéiert: Dir hutt net genuch Ännerungen op dësem Projet.</string>
   <string name="login-retrieving-info">Benotzerinformatioun iwwer $1 offroen</string>
@@ -232,6 +232,7 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="main-user-message">Message...</string>
   <string name="main-user-warn">Warnen...</string>
   <string name="main-user-clear-tp">Diskussiounssäit vum Benotzer eidelmaachen</string>
+  <string name="main-user-retrieving-tp">Diskussiounssäit vu(n) $1 ofruffen</string>
   <string name="main-user-block">Spären...</string>
   <string name="main-browser-back">Zréck</string>
   <string name="main-browser-forward">Virun</string>
@@ -329,6 +330,7 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="updater-disable-notify">Aktualisatiounen desaktivéieren</string>
   <string name="userinfo-generic">Benotzerinformatioun</string>
   <string name="userinfo-retrieve">Informatiounen ofruffen</string>
+  <string name="shortcut-page-patrol-edit">Ännerung kontrolléiert</string>
   <string name="shortcut-report-username">Benotzernumm mellen</string>
   <string name="shortcut-report-user">Benotzer mellen</string>
   <string name="shortcut-my-talk">Meng Diskussiounssäit</string>
@@ -386,6 +388,7 @@ Benotzerinformatioun konnt net ofgefrot ginn: $2</string>
   <string name="missing-page">Et gëtt keng Säit $1 op dëser Wiki</string>
   <string name="feature-nfru">Dës Funktioun ass nëmme fir anonym (IP) Benotzer</string>
   <string name="report-no-user">Et gouf kee Benotzer erausgesicht fir de Rapport, sicht w.e.g. fir d\'éischt e Benotzer eraus</string>
+  <string name="welcome-show">Dëse Message och beim nächste Start vun Huggle weisen</string>
   <string name="welcome-tp-empty-fail">Dëse Benotzer huet keng eidel Diskussiounssäit, sidd Dir sécher datt Dir him e Message schécke wëllt?</string>
   <string name="cr-newer-edits">Konflikt geléist: all Ännerunge goufen zréckgesat, inklusiv nei Ännerungen. D\'Ännerunge ware vum selwechte Benotzer: $1.</string>
   <string name="cr-message-new">Et gëtt méi nei Ännerunge vu(n) $1, sidd Dir sécher datt Dir se wierklech zrécksetze wëllt?</string>

@@ -31,6 +31,7 @@
 #include "generic.hpp"
 #include "gc.hpp"
 #include "querypool.hpp"
+#include "welcomeinfo.hpp"
 #include "hooks.hpp"
 #include "history.hpp"
 #include "hugglefeedproviderwiki.hpp"
@@ -40,6 +41,7 @@
 #include "huggleparser.hpp"
 #include "huggleprofiler.hpp"
 #include "hugglequeue.hpp"
+#include "hugglequeueitemlabel.hpp"
 #include "huggletool.hpp"
 #include "huggleweb.hpp"
 #include "blockuser.hpp"
@@ -92,7 +94,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->EditablePage = false;
     this->ShuttingDown = false;
     this->ui->setupUi(this);
-    if (Configuration::HuggleConfiguration->Multiple)
+    if (Configuration::HuggleConfiguration->SystemConfig_Multiple)
     {
         this->ui->menuChange_provider->setVisible(false);
         this->ui->actionStop_provider->setVisible(false);
@@ -101,6 +103,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         this->ui->actionWiki->setVisible(false);
     }
     this->Status = new QLabel();
+    this->Status->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->Status->setWordWrap(true);
     this->Status->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     this->ui->statusBar->addWidget(this->Status, 1);
@@ -146,14 +149,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             site->GetProjectConfig()->WhiteList.append(hcfg->SystemConfig_Username);
     }
     QueryPool::HugglePool->Processes = this->Queries;
-    QString projects = hcfg->Project->Name;
-    if (hcfg->Multiple)
+    QString projects;
+    if (hcfg->SystemConfig_Multiple)
     {
         foreach (WikiSite *site, hcfg->Projects)
             projects += site->Name + ", ";
         projects = projects.mid(0, projects.length() - 2);
+    } else
+    {
+        // Set the name of current site
+        projects = hcfg->Project->Name;
     }
-    if (!hcfg->Multiple)
+    if (!hcfg->SystemConfig_Multiple)
         this->setWindowTitle("Huggle 3 QT-LX " + _l("title-on", projects));
     else
         this->setWindowTitle("Huggle 3 QT-LX " + _l("title-on", _l("title-multiple-projects", projects)));
@@ -173,7 +180,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // configure RC feed provider
     foreach (WikiSite *site, Configuration::HuggleConfiguration->Projects)
     {
-        if (Configuration::HuggleConfiguration->Multiple)
+        if (Configuration::HuggleConfiguration->SystemConfig_Multiple)
         {
             QMenu *menu = new QMenu(site->Name, this);
             this->ui->menuChange_provider->addMenu(menu);
@@ -360,14 +367,16 @@ void MainWindow::DisplayReportUserWindow(WikiUser *User)
         Generic::pMessageBox(this, _l("missing-aiv"), _l("function-miss"));
         return;
     }
-    if (this->fReportForm != nullptr)
-    {
-        delete this->fReportForm;
-        this->fReportForm = nullptr;
-    }
-    this->fReportForm = new ReportUser(this);
-    this->fReportForm->show();
-    this->fReportForm->SetUser(User);
+    // we don't need to do this because report form gets deleted on close
+    //if (this->fReportForm != nullptr)
+    //{
+    //    delete this->fReportForm;
+    //    this->fReportForm = nullptr;
+    //}
+    ReportUser *rf = new ReportUser(this);
+    rf->SetUser(User);
+    rf->setAttribute(Qt::WA_DeleteOnClose);
+    rf->show();
 }
 
 WikiEdit *MainWindow::GetCurrentWikiEdit()
@@ -710,6 +719,21 @@ void MainWindow::ReloadShort(QString id)
         case HUGGLE_ACCEL_MAIN_REVERT_AND_WARN9:
             ReloadIndexedMenuShortcut(this->RevertAndWarnItems, 9, s);
             return;
+        case HUGGLE_ACCEL_MAIN_REVERT_AND_WARN10:
+            ReloadIndexedMenuShortcut(this->RevertAndWarnItems, 10, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_AND_WARN11:
+            ReloadIndexedMenuShortcut(this->RevertAndWarnItems, 11, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_AND_WARN12:
+            ReloadIndexedMenuShortcut(this->RevertAndWarnItems, 12, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_AND_WARN13:
+            ReloadIndexedMenuShortcut(this->RevertAndWarnItems, 13, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_AND_WARN14:
+            ReloadIndexedMenuShortcut(this->RevertAndWarnItems, 14, s);
+            return;
         case HUGGLE_ACCEL_MAIN_WARN0:
             ReloadIndexedMenuShortcut(this->WarnItems, 0, s);
             return;
@@ -740,6 +764,21 @@ void MainWindow::ReloadShort(QString id)
         case HUGGLE_ACCEL_MAIN_WARN9:
             ReloadIndexedMenuShortcut(this->WarnItems, 9, s);
             return;
+        case HUGGLE_ACCEL_MAIN_WARN10:
+            ReloadIndexedMenuShortcut(this->WarnItems, 10, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_WARN11:
+            ReloadIndexedMenuShortcut(this->WarnItems, 11, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_WARN12:
+            ReloadIndexedMenuShortcut(this->WarnItems, 12, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_WARN13:
+            ReloadIndexedMenuShortcut(this->WarnItems, 13, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_WARN14:
+            ReloadIndexedMenuShortcut(this->WarnItems, 14, s);
+            return;
         case HUGGLE_ACCEL_MAIN_REVERT_0:
             ReloadIndexedMenuShortcut(this->RevertItems, 0, s);
             return;
@@ -769,6 +808,21 @@ void MainWindow::ReloadShort(QString id)
             return;
         case HUGGLE_ACCEL_MAIN_REVERT_9:
             ReloadIndexedMenuShortcut(this->RevertItems, 9, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_10:
+            ReloadIndexedMenuShortcut(this->RevertItems, 10, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_11:
+            ReloadIndexedMenuShortcut(this->RevertItems, 11, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_12:
+            ReloadIndexedMenuShortcut(this->RevertItems, 12, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_13:
+            ReloadIndexedMenuShortcut(this->RevertItems, 13, s);
+            return;
+        case HUGGLE_ACCEL_MAIN_REVERT_14:
+            ReloadIndexedMenuShortcut(this->RevertItems, 14, s);
             return;
         case HUGGLE_ACCEL_SUSPICIOUS_EDIT:
             q = this->ui->actionFlag_as_suspicious_edit;
@@ -813,6 +867,9 @@ void MainWindow::ReloadShort(QString id)
             break;
         case HUGGLE_ACCEL_USER_REPORT:
             q = this->ui->actionReport_user_2;
+            break;
+        case HUGGLE_ACCEL_MAIN_PATROL:
+            q = this->ui->actionPatrol;
             break;
     }
 
@@ -923,7 +980,7 @@ bool MainWindow::PreflightCheck(WikiEdit *_e)
         throw new Huggle::NullPointerException("WikiEdit *_e", BOOST_CURRENT_FUNCTION);
     bool Warn = false;
     QString type = _l("main-revert-type-unknown");
-    if (hcfg->WarnUserSpaceRoll && _e->Page->IsUserpage())
+    if (hcfg->SystemConfig_WarnUserSpaceRoll && _e->Page->IsUserpage())
     {
         type = _l("main-revert-type-in-userspace");
         Warn = true;
@@ -1628,8 +1685,13 @@ void MainWindow::PatrolEdit(WikiEdit *e)
     ProjectConfiguration *conf = this->GetCurrentWikiSite()->GetProjectConfig();
     if (e == nullptr)
         e = this->CurrentEdit;
-    if (e == nullptr || !conf->Patrolling)
+    if (e == nullptr)
         return;
+    if (!conf->Patrolling)
+    {
+        HUGGLE_DEBUG("Not patrolling " + e->Page->PageName + " because patrolling is not enabled on " + this->GetCurrentWikiSite()->Name, 2);
+        return;
+    }
     ApiQuery *query = nullptr;
     bool flaggedrevs = conf->PatrollingFlaggedRevs;
 
@@ -1869,7 +1931,7 @@ void MainWindow::ResumeQueue()
         site->Provider->Resume();
 }
 
-void MainWindow::WelcomeGood()
+void MainWindow::FlagGood()
 {
     if (this->CurrentEdit == nullptr || !this->CheckExit() || !this->CheckEditableBrowserPage())
         return;
@@ -2026,7 +2088,7 @@ void MainWindow::ChangeProvider(WikiSite *site, HuggleFeed *provider)
 
     site->Provider = provider;
     Syslog::HuggleLogs->Log(_l("provider-up", provider->ToString(), site->Name));
-    if (!hcfg->Multiple)
+    if (!hcfg->SystemConfig_Multiple)
     {
         // uncheck all menus for provider
         this->ui->actionXmlRcs->setChecked(false);
@@ -2193,7 +2255,7 @@ void MainWindow::on_actionDecrease_badness_score_by_20_triggered()
 
 void MainWindow::on_actionGood_edit_triggered()
 {
-    this->WelcomeGood();
+    this->FlagGood();
 }
 
 void MainWindow::on_actionUser_contributions_triggered()
@@ -2212,7 +2274,7 @@ void MainWindow::on_actionTalk_page_triggered()
 
 void MainWindow::on_actionFlag_as_a_good_edit_triggered()
 {
-    this->WelcomeGood();
+    this->FlagGood();
 }
 
 void MainWindow::on_actionDisplay_this_page_in_browser_triggered()
@@ -2828,8 +2890,7 @@ void MainWindow::on_actionMy_talk_page_triggered()
     if (Configuration::HuggleConfiguration->Restricted)
         return;
     this->LockPage();
-    this->Browser->DisplayPage(Configuration::GetProjectWikiURL(this->GetCurrentWikiSite()) +
-                                           "User_talk:" +
+    this->Browser->DisplayPage(Configuration::GetProjectWikiURL(this->GetCurrentWikiSite()) + "User_talk:" +
                                            QUrl::toPercentEncoding(hcfg->SystemConfig_Username));
 }
 
@@ -2838,8 +2899,7 @@ void MainWindow::on_actionMy_Contributions_triggered()
     if (Configuration::HuggleConfiguration->Restricted)
         return;
     this->LockPage();
-    this->Browser->DisplayPage(Configuration::GetProjectWikiURL(this->GetCurrentWikiSite()) +
-                                    "Special:Contributions/" +
+    this->Browser->DisplayPage(Configuration::GetProjectWikiURL(this->GetCurrentWikiSite()) + "Special:Contributions/" +
                                     QUrl::toPercentEncoding(hcfg->SystemConfig_Username));
 }
 
@@ -2994,4 +3054,41 @@ void Huggle::MainWindow::on_actionContribution_browser_triggered()
         return;
 
     WikiUtil::DisplayContributionBrowser(this->CurrentEdit->User, this);
+}
+
+void Huggle::MainWindow::on_actionCheck_for_dups_triggered()
+{
+    QHash<QString, int> occurences;
+    foreach (HuggleQueueItemLabel *e, this->Queue1->Items)
+    {
+        QString page = e->Edit->Page->PageName.toLower();
+        if (!occurences.contains(page))
+        {
+            occurences.insert(page, 1);
+        } else
+        {
+            occurences[page]++;
+        }
+    }
+    bool found = false;
+    foreach (QString page, occurences.keys())
+    {
+        if (occurences[page] > 1)
+        {
+            HUGGLE_WARNING("Multiple occurences found for " + page + ": " + QString::number(occurences[page]));
+            found = true;
+        }
+    }
+    if (!found)
+    {
+        HUGGLE_LOG("No duplicates found");
+    }
+}
+
+void Huggle::MainWindow::on_actionIntroduction_triggered()
+{
+    WelcomeInfo *w = new WelcomeInfo(this);
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->DisableFirst();
+    w->show();
 }

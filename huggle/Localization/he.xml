@@ -218,8 +218,9 @@
   <string name="irc-switch-rc">מעבר להזנת שינויים אחרונים מהוויקי</string>
   <string name="login-old">מאחזר הגדרות משתמש מהמיקום הישן</string>
   <string name="login-intro">נא לבחור מיזם ולהזין את שם המשתמש והססמה שלך. באפשרותך להתחבר למיזמים מרובים גם באמצעות לחיצה על הכפתור \"מיזמים\".</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">כניסה</string>
+  <string name="invalid-bot-user-name">זהו לא שם בוט תקין. דוגמה לשם בוט תקין: Jimbo@Huggle</string>
+  <string name="login-tab-botp">ססמת בוט</string>
+  <string name="login-tab-login">ישן</string>
   <string name="login-reload-tool-tip">רענון רשימת המיזמים הזמינים שאפשר להשתמש בהם בהאגל. זה יכול להיות שימושי בעת הפעלת האגל במיזם שבו הוא הופעל לאחרונה</string>
   <string name="login-language">שפה:</string>
   <string name="login-project">מיזם:</string>
@@ -228,12 +229,14 @@
   <string name="login-proxygroup">הגדרות שרת מתווך</string>
   <string name="login-proxy">שימוש בשרת מתווך</string>
   <string name="login-proxyaddress">כתובת:</string>
+  <string name="login-proxy-remember-this">שמירת הגדרה זו עבור הפעם הבאה</string>
   <string name="login-proxyport">פורט:</string>
   <string name="login-proxydomain">מתחם:</string>
   <string name="login-retrieving-user-conf">אחזור הגדרות אישיות</string>
   <string name="login-fail-css">הכניסה נכשלה ב־$1. אין אפשרות לאחזר את הגדרות המשתמש. Special:MyPage/huggle3.css חסר. האם יצרת את huggle3.css במרחב המשתמש שלך?</string>
   <string name="login-fail-enable-true">הכניסה נכשלה ב־$1: אין לך enable:true בקובץ ההגדרות האישי</string>
   <string name="login-fail-no-info">הכניסה נכשלה ב־$1: אין אפשרות לאחזר מידע על המשתמש: $2</string>
+  <string name="login-bot">מה ההבדל בין כניסת בוט לבין הכניסה הישנה?</string>
   <string name="login-fail-parse-config">הכניסה נכשלה ב־$1: אין אפשרות לפענח את הגדרות המשתמש. ר\' יומן debug לפרטים נוספים.</string>
   <string name="login-fail-user-data">כניסה נכשלה ב־$1: אין אפשרות לאחזר פרטי משתמש. שאילתת API לא החזירה נתונים.</string>
   <string name="login-fail-rollback-rights">הכניסה נכשלה ב־$1: אין לך הרשאות שחזור במיזם הזה.</string>
@@ -366,7 +369,7 @@
   <string name="main-user-report">דיווח</string>
   <string name="main-user-ib">הגדלת ציון הגריעוּת של המשתמש</string>
   <string name="main-user-clear-tp">ניקוי דף שיחת המשתמש</string>
-  <string name="main-user-retrieving-tp">אחזור דף השיחה של %1</string>
+  <string name="main-user-retrieving-tp">אחזור דף השיחה של $1</string>
   <string name="main-user-block">חסימה...</string>
   <string name="main-browser-back">הקודם</string>
   <string name="main-browser-forward">הבא</string>
@@ -543,6 +546,7 @@
   <string name="user-history-fail">לא ניתן לאחזר את ההיסטוריה עבור המשתמש: $1</string>
   <string name="userinfo-generic">מידע על המשתמש</string>
   <string name="userinfo-retrieve">אחזור מידע</string>
+  <string name="shortcut-page-patrol-edit">סימון העריכה כבדוקה</string>
   <string name="shortcut-report-username">דיווח שם משתמש</string>
   <string name="shortcut-report-user">דיווח משתמש</string>
   <string name="shortcut-my-talk">דך השיחה שלי</string>
@@ -569,6 +573,7 @@
   <string name="shortcut-tab">פתיחת לשונית חדשה</string>
   <string name="shortcut-rw-stay">שחזור העריכה הנוכחית, הזהרת משתמש והישארות בדף</string>
   <string name="shortcut-revert-and-stay">לשחזר את העריכה הנוכחית ולהישאר בדף</string>
+  <string name="shortcut-user-contribs-browser">לפתוח את תרומות המשתמש בדפדפן</string>
   <string name="warning-title">להזהיר את $1</string>
   <string name="warning-levelgroup">רמת אזהרה</string>
   <string name="warning-levelauto">אוטומטית</string>
@@ -663,6 +668,7 @@
   <string name="updating-wl">עדכון הרשימה הלבנה...</string>
   <string name="feature-nfru">האפשרות הזאת מיועדת רק למשתמש IP</string>
   <string name="report-no-user">לא נבחר שום משתמש לדיווח. נא לבחור משתמש תחילה.</string>
+  <string name="welcome-show">להציג את ההודעה הזאת בפעם הבאה שתריץ את Huggle</string>
   <string name="welcome-tp-empty-fail">למשתמש הזה יש דף שיחה שאינו ריק. האם לשלוח לו הודעה?</string>
   <string name="welcome-page-miss-fail">האגל לא הצליח לאחזר את תוכן דף שיחת המשתמש. האם ברצונך לשלוח למשתמש הודעת \"ברוך בואך\"?</string>
   <string name="cr-newer-edits">ההתנגשות נפתרה: כל העריכות שוחזרו, כולל עריכות חדשות. העריכות היו מאת אותו המשתמש: $1.</string>
@@ -721,4 +727,18 @@ $1</string>
   <string name="api.php-invalid-response">שרת api.php החזיר טקסט בלתי־תקין (אולי שרת הווב לא פועל?), נא ללחוץ על יומן ניפוי השגיאות למידע מדויק</string>
   <string name="login-username-doesnt-exist">שם המשתמש הזה אינו קיים</string>
   <string name="developer-mode-enter-title">יאללה</string>
+  <string name="developer-mode-enter-message">נכנסת למצב מפתחים!</string>
+  <string name="unimplemented">האפשרות הזאת עוד לא ממומשת</string>
+  <string name="unknown-item">פריט בלתי־ידוע</string>
+  <string name="title-multiple-projects">מיזמים מרובים ($1)</string>
+  <string name="title-on">על $1</string>
+  <string name="main-revert-custom-reason-text">לא ניתנה סיבה / שחזור ייחודי</string>
+  <string name="main-revert-already-pending-title">העריכה הזאת כבר שוחזרה</string>
+  <string name="main-revert-already-pending-text">אין לך אפשרות לשחזר את העריכה הזאת, כי היא כבר בתהליך שחזור. נא להמתין!</string>
+  <string name="main-revert-type-unknown">בלתי־ידוע</string>
+  <string name="main-revert-type-in-userspace">במרחב משתמש</string>
+  <string name="main-revert-type-made-by-you">שלך</string>
+  <string name="main-revert-type-made-on-talk-page">בדף השיחה</string>
+  <string name="main-revert-type-made-white-list">של משתמש ברשימה הלבנה</string>
+  <string name="main-revert-warn">זאת עריכה $1, אז גם אם היא נראית כמו השחתה, אולי היא לא כזאת, האם באמת לשחזר אותה?</string>
 </resources>

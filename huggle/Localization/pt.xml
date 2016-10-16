@@ -206,8 +206,7 @@ Este bloqueio substituirá o efeito do bloqueio de gama. Continuar?</string>
   <string name="irc-switch-rc">A trocar para o feed RC da wiki</string>
   <string name="login-old">A recuperar configuração de utilizador do local antigo.</string>
   <string name="login-intro">Por favor, escolha um projeto e digite o seu nome de utilizador(a) e palavra-passe. Pode iniciar a sessão em vários projetos ao clicar no botão \"Projetos\".</string>
-  <string name="login-tab-oauth">OAuth</string>
-  <string name="login-tab-login">Entrar</string>
+  <string name="login-tab-login" fuzzy="true">Entrar</string>
   <string name="login-reload-tool-tip">Recarregue uma lista de projetos disponíveis que podem ser usados com o huggle, isto pode ser útil no caso de desejar usar o huggle num projeto onde foi recentemente ativado</string>
   <string name="login-language">Língua:</string>
   <string name="login-project">Projeto:</string>
@@ -216,6 +215,7 @@ Este bloqueio substituirá o efeito do bloqueio de gama. Continuar?</string>
   <string name="login-proxygroup">Definições de proxy</string>
   <string name="login-proxy">Usar um servidor proxy</string>
   <string name="login-proxyaddress">Endereço:</string>
+  <string name="login-proxy-remember-this">Lembrar esta definição na próxima vez</string>
   <string name="login-proxyport">Porta:</string>
   <string name="login-proxydomain">Domínio:</string>
   <string name="login-retrieving-user-conf">A aceder à configuração de utilizador</string>
@@ -389,7 +389,7 @@ Especial:MyPage/huggle3.css está em falta. Criou a página huggle3.css no seu d
   <string name="main-no-page">A ação que solicitou requer uma página para carregar. Por favor, carregue uma página antes de tentar novamente.</string>
   <string name="main-revert-null">Impossível reverter, a edição é nula</string>
   <string name="main-revert-newpage-title">Não é possível desfazer</string>
-  <string name="main-revert-newpage" fuzzy="true">Esta é uma página nova, portanto a edição não pode ser desfeita. Pode marcá-la ou eliminá-la.</string>
+  <string name="main-revert-newpage">Esta é uma página nova, portanto a edição não pode ser desfeita. Pode marcá-la ou eliminá-la.</string>
   <string name="main-restore-text-fail">Não foi possível restaurar a revisão, porque não há texto disponível para ela</string>
   <string name="message-title">Mensagem $1</string>
   <string name="message-help">Introduza um ou ambos os campos de Assunto e Sumário. Se não introduzir o sumário, será usado o assunto. Se não introduzir o assunto, não será criada uma secção.</string>
@@ -526,6 +526,7 @@ Especial:MyPage/huggle3.css está em falta. Criou a página huggle3.css no seu d
   <string name="user-history-fail">não é possível aceder ao histórico do utilizador: $1</string>
   <string name="userinfo-generic">Informação de utilizador</string>
   <string name="userinfo-retrieve">Consultar informação</string>
+  <string name="shortcut-page-patrol-edit">Patrulhar edição</string>
   <string name="shortcut-report-username">Denunciar nome de utilizador(a)</string>
   <string name="shortcut-report-user">Denunciar utilizador(a)</string>
   <string name="shortcut-my-talk">Minha página de discussão</string>
@@ -552,6 +553,7 @@ Especial:MyPage/huggle3.css está em falta. Criou a página huggle3.css no seu d
   <string name="shortcut-tab">Abre uma nova aba</string>
   <string name="shortcut-rw-stay">Reverte a edição atual, avisa o utilizador e permanece na página</string>
   <string name="shortcut-revert-and-stay">Reverter edição atual e permanecer na página</string>
+  <string name="shortcut-user-contribs-browser">Mostrar contribuições de utilizador no navegador</string>
   <string name="warning-title">Aviso $1</string>
   <string name="warning-levelgroup">Nível de aviso</string>
   <string name="warning-levelauto">Automático</string>
@@ -634,6 +636,7 @@ Especial:MyPage/huggle3.css está em falta. Criou a página huggle3.css no seu d
   <string name="updating-wl">A actualizar a lista branca...</string>
   <string name="feature-nfru">Esta funcionalidade é apenas para utilizadores anónimos</string>
   <string name="report-no-user">Não foi selecionado nenhum utilizador para denunciar, marque um primeiro por favor</string>
+  <string name="welcome-show">Exibir esta mensagem novamente na próxima vez que iniciar o huggle</string>
   <string name="welcome-tp-empty-fail">Este utilizador não tem a página de discussão vazia, tem a certeza de que pretende enviar-lhe uma mensagem?</string>
   <string name="welcome-page-miss-fail">O Huggle não conseguiu aceder ao conteúdo da página de discussão de utilizador. Tem certeza de que deseja enviar uma mensagem de boas-vindas?</string>
   <string name="cr-newer-edits">Conflito resolvido: todas as edições foram revertidas, incluindo novas edições. As edições eram do mesmo utilizador: $1.</string>
@@ -649,6 +652,8 @@ Especial:MyPage/huggle3.css está em falta. Criou a página huggle3.css no seu d
   <string name="preferences-extension-enabled">Esta extensão não foi programada para ser desativada na próxima inicialização do huggle</string>
   <string name="preferences-extension-enabled-restart">A extensão foi ativada, contudo você precisará reiniciar o huggle para que isso aconteça</string>
   <string name="preferences-watchlist-watch">Adicionar às páginas vigiadas</string>
+  <string name="preferences-watchlist-unwatch">Remover das páginas vigiadas</string>
+  <string name="preferences-watchlist-nochange">Não fazer nada</string>
   <string name="fail">Falha</string>
   <string name="request">Pedir</string>
   <string name="requesting">A solicitar</string>
@@ -677,6 +682,7 @@ Especial:MyPage/huggle3.css está em falta. Criou a página huggle3.css no seu d
   <string name="unimplemented">Esta funcionalidade não foi implementada ainda</string>
   <string name="unknown-item">Elemento desconhecido</string>
   <string name="title-multiple-projects">vários projetos ($1)</string>
+  <string name="title-on">em $1</string>
   <string name="main-revert-custom-reason-text">Não foi fornecida nenhuma razão / reversão personalizada</string>
   <string name="main-revert-already-pending-title">Esta edição já está a ser desfeita</string>
   <string name="main-revert-already-pending-text">Não pode desfazer esta edição porque alguém já o fez. Por favor, aguarde!</string>
