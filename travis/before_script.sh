@@ -2,8 +2,6 @@
 
 g++ --version
 
-cd ./travis
-gunzip *.gz
 cd ./huggle
 
 if [ "$QTTYPE" = "4" ]; then
@@ -27,5 +25,3 @@ if [ "$QTTYPE" = "5" ]; then
         cmake . -DQT5_BUILD=true
 	make || exit 1
 fi
-
-cd ../../..

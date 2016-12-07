@@ -2,6 +2,7 @@
 # See ./travis/* for the actual scripts that get run
 
 language: cpp
+sudo: required
 
 env:
   - THENEEDFORTHIS=FAIL
@@ -19,6 +20,9 @@ matrix:
 #    - env: QTTYPE=5
   exclude:
     - env: THENEEDFORTHIS=FAIL
+
+before_install: bash -x ./travis/before_install.sh
+install: bash -x ./travis/install.sh
 
 before_script: bash -x ./travis/before_script.sh
 script: bash -x ./travis/script.sh
