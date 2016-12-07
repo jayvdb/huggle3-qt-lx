@@ -2,9 +2,9 @@
 
 g++ --version
 
-cd /home/travis/build/huggle/huggle3-qt-lx/travis
+cd ./travis
 gunzip *.gz
-cd /home/travis/build/huggle/huggle3-qt-lx/huggle
+cd ./huggle
 
 if [ "$QTTYPE" = "4" ]; then
 	./configure --qt4 --extension
@@ -27,3 +27,5 @@ if [ "$QTTYPE" = "5" ]; then
         cmake . -DQT5_BUILD=true
 	make || exit 1
 fi
+
+cd ../../..
